@@ -72,7 +72,7 @@ export default function OnboardingScreen() {
 
   const finishOnboarding = async () => {
     await AsyncStorage.setItem(ONBOARDING_STORAGE_KEY, 'true');
-    router.replace('/(main)/index');
+    router.replace('/cadastro');
   };
 
   const renderItem = ({ item }: ListRenderItemInfo<OnboardingStep>) => (
