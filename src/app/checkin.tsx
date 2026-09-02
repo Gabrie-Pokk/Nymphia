@@ -18,6 +18,12 @@ import SelectableChip from '@/components/selectable-chip';
 
 export const CHECKINS_KEY = '@nymphia/checkins';
 
+// ── Endereço do backend de IA ──
+// Em desenvolvimento local, aponta pro seu computador na mesma rede Wi-Fi
+// (não use "localhost" -- o celular não entende isso, precisa do IP).
+// Troque pelo endereço real quando o backend estiver publicado.
+const BACKEND_URL = 'http://192.168.1.100:8000';
+
 const COLORS = {
   background: '#FFFFFF',
   primary: '#C2185B',
@@ -25,6 +31,7 @@ const COLORS = {
   title: '#212121',
   body: '#555555',
   border: '#E0E0E0',
+  alerta: '#C0392B',
 };
 
 const HUMORES = [
@@ -46,12 +53,23 @@ const SINTOMAS: string[] = [
   'Nenhum',
 ];
 
+// Sintomas do checkbox que já são, por si só, motivo de alerta -- não
+// depende do texto livre pra saber que isso é sério.
+const SINTOMAS_DE_ALERTA = new Set(['Visão turva', 'Sangramento', 'Febre']);
+
+type AnaliseCheckin = {
+  categorias: { categoria: string; fonte: string }[];
+  alerta_sintoma_fisico: string[];
+  recomendacao: string;
+};
+
 type Checkin = {
   data: string;
   humor: number;
   descricao: string;
   sintomas: string[];
   movimentosBebe: number;
+  analiseIA?: AnaliseCheckin | null;
 };
 
 function formatarDataPt(data: Date): string {
@@ -76,6 +94,31 @@ function toggleSintoma(lista: string[], item: string): string[] {
     : [...semNenhum, item];
 }
 
+// Chama o backend de IA pra analisar o texto livre do check-in.
+// NUNCA lança erro -- se o backend estiver fora do ar, sem internet,
+// ou qualquer outro problema, devolve null e o check-in continua
+// salvando normalmente, só sem a análise extra.
+async function analisarComIA(texto: string): Promise<AnaliseCheckin | null> {
+  if (!texto.trim()) return null;
+  try {
+    const controle = new AbortController();
+    const tempoLimite = setTimeout(() => controle.abort(), 5000);
+    const resposta = await fetch(`${BACKEND_URL}/checkin/analisar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texto }),
+      signal: controle.signal,
+    });
+    clearTimeout(tempoLimite);
+    if (!resposta.ok) return null;
+    return (await resposta.json()) as AnaliseCheckin;
+  } catch {
+    // Sem internet, backend fora do ar, timeout -- qualquer motivo.
+    // O check-in não pode depender disso pra funcionar.
+    return null;
+  }
+}
+
 export default function CheckinScreen() {
   const hoje = new Date();
   const [humor, setHumor] = useState(3);
@@ -88,6 +131,10 @@ export default function CheckinScreen() {
   const salvar = async () => {
     setSalvando(true);
     try {
+      const sintomaDeAlertaMarcado = sintomas.some((s) => SINTOMAS_DE_ALERTA.has(s));
+      const analiseIA = await analisarComIA(descricao);
+      const alertaDoTexto = (analiseIA?.alerta_sintoma_fisico?.length ?? 0) > 0;
+
       const json = await AsyncStorage.getItem(CHECKINS_KEY);
       const historico: Checkin[] = json ? (JSON.parse(json) as Checkin[]) : [];
 
@@ -97,13 +144,22 @@ export default function CheckinScreen() {
         descricao: descricao.trim(),
         sintomas,
         movimentosBebe: movimentos,
+        analiseIA,
       });
 
       await AsyncStorage.setItem(CHECKINS_KEY, JSON.stringify(historico));
 
-      Alert.alert('Check-in salvo! 🌸', 'Seu registro de hoje foi guardado com sucesso.', [
-        { text: 'OK', onPress: () => router.replace('/(main)') },
-      ]);
+      if (sintomaDeAlertaMarcado || alertaDoTexto) {
+        Alert.alert(
+          'Atenção 🚨',
+          'O que você registrou hoje merece contato com seu médico o quanto antes. Seu check-in foi salvo, mas não espere a próxima consulta -- procure orientação médica agora.',
+          [{ text: 'Entendi', onPress: () => router.replace('/(main)') }],
+        );
+      } else {
+        Alert.alert('Check-in salvo! 🌸', 'Seu registro de hoje foi guardado com sucesso.', [
+          { text: 'OK', onPress: () => router.replace('/(main)') },
+        ]);
+      }
     } finally {
       setSalvando(false);
     }
@@ -200,7 +256,7 @@ export default function CheckinScreen() {
           onPress={salvar}
           disabled={salvando}
           accessibilityRole="button">
-          <Text style={styles.botaoTexto}>{salvando ? 'Salvando...' : 'Salvar check-in'}</Text>
+          <Text style={styles.botaoTexto}>{salvando ? 'Analisando...' : 'Salvar check-in'}</Text>
         </Pressable>
       </View>
     </SafeAreaView>
