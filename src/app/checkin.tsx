@@ -22,7 +22,7 @@ export const CHECKINS_KEY = '@nymphia/checkins';
 // Em desenvolvimento local, aponta pro seu computador na mesma rede Wi-Fi
 // (não use "localhost" -- o celular não entende isso, precisa do IP).
 // Troque pelo endereço real quando o backend estiver publicado.
-const BACKEND_URL = 'http://192.168.1.100:8000';
+const BACKEND_URL = 'http://192.168.0.114:8000';
 
 const COLORS = {
   background: '#FFFFFF',
