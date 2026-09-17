@@ -1,0 +1,14 @@
+              precision    recall  f1-score   support
+
+parto normal       1.00      0.84      0.91     30134
+   eclampsia       0.02      0.46      0.03       192
+
+    accuracy                           0.83     30326
+   macro avg       0.51      0.65      0.47     30326
+weighted avg       0.99      0.83      0.90     30326
+
+Matriz de confusao:
+[[25176  4958]
+ [  103    89]]
+
+ROC-AUC: 0.6979

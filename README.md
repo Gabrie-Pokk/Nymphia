@@ -1,56 +1,72 @@
-# Welcome to your Expo app 👋
+# 🌸 Nymphia — Cada batimento importa
+### Plataforma de Acompanhamento Gestacional Contínuo com Inteligência Artificial
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A **Nymphia** é uma plataforma e startup de Inteligência Artificial para acompanhamento gestacional contínuo conectando a gestante, o obstetra e a rede assistencial de saúde.
 
-## Get started
+---
 
-1. Install dependencies
+## 🚀 Tecnologias & Arquitetura
 
-   ```bash
-   npm install
-   ```
+- **Frontend PWA**: React 18 + Vite, Progressive Web App instalável em celulares (Android & iOS) com Service Worker para emergência 100% offline.
+- **Backend**: FastAPI (Python 3.10+), SQLAlchemy 2.0, Pydantic V2, Bcrypt e JWT.
+- **Coração de Inteligência Artificial**:
+  - **Random Forest (SINASC / CNES)**: Bem-Estar Fetal e Malformação congênita.
+  - **Random Forest (SIH / DataSUS)**: Pré-Eclâmpsia, Eclâmpsia, Diabetes Gestacional e Infecções Urinárias (ITU).
+  - **Isolation Forest**: Detecção não-supervisionada de atipicidade clínica multivariada.
+  - **BERTimbau Fine-Tuned (PT-BR)**: Extração neural de estados emocionais e sintomas físicos.
+  - **Motor Determinístico FEBRASGO/MS**: Triagem imediata de sinais de alarme obstétricos.
+- **Wearable Doppler**: Cinta Nymphia com simulação contínua de FHR (BCF) e sintetizador Doppler via Web Audio API.
+- **Conformidade CFM & LGPD**: Resolução CFM 2.454/2026 (direito de recusa e disclaimers estatísticos), auditoria de logs e exportação de dados (Art. 18).
 
-2. Start the app
+---
 
-   ```bash
-   npx expo start
-   ```
+## 📱 Instalação no Celular (PWA)
 
-In the output, you'll find options to open the app in a
+1. Abra a aplicação no navegador do celular (Chrome no Android ou Safari no iOS).
+2. **Android**: Toque no botão "Instalar no Celular" na barra de notificação.
+3. **iOS**: Toque no ícone de compartilhamento e selecione **"Adicionar à Tela de Início"**.
+4. O app roda em modo autônomo (*standalone*), com atalhos para emergência 192 e check-in diário.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+---
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## 💻 Execução Local
 
-## Get a fresh project
+### 1. Iniciar Tudo em 1 Clique (Windows)
+```powershell
+.\iniciar_nymphia.ps1
+```
+*Detecta automaticamente o IP da sua rede Wi-Fi e disponibiliza a aplicação para o seu celular.*
 
-When you're ready, run:
-
+### 2. Manualmente
 ```bash
-npm run reset-project
+# Backend
+cd nymphia_backend
+.\.venv\Scripts\uvicorn.exe app.main:app --host 0.0.0.0 --port 8000
+
+# Frontend
+cd frontend
+npm install
+npm run dev -- --host 0.0.0.0
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+---
 
-### Other setup steps
+## ☁️ Deploy em Nuvem 24/7 (Sem PC Ligado)
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+A plataforma conta com configurações prontas para deploy gratuito em nuvem:
+- **Render.com**: Arquivo `render.yaml` pronto para deploy do Dockerfile multi-stage.
+- **Railway.app**: Arquivo `railway.toml` configurado.
+- Consulte [`deploy_nuvem.md`](deploy_nuvem.md) para o passo a passo completo.
 
-## Learn more
+---
 
-To learn more about developing your project with Expo, look at the following resources:
+## 🧪 Testes & Validação E2E
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```powershell
+# Testes Unitários
+cd nymphia_backend
+.\.venv\Scripts\pytest.exe -v
 
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+# Validação E2E (32 checks ao vivo)
+python verify_e2e.py
+```

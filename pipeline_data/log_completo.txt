@@ -1,0 +1,517 @@
+[13:31:14] Ambiente OK. Log persistente em log_completo.txt
+[13:31:14] === Inicio do pipeline completo da Nymphia ===
+[13:31:14] --- Iniciando etapa: SINASC ---
+[13:31:14] SINASC: checkpoint ja existe, pulando download.
+[13:31:30] --- Iniciando etapa: CNES ---
+[13:31:30] CNES: checkpoint ja existe, pulando download.
+[13:31:30] --- Iniciando etapa: treino_malformacao ---
+[13:31:30] ERRO NAO PREVISTO na etapa treino_malformacao: cannot import name '_center' from 'numpy._core.umath' (/usr/local/lib/python3.12/dist-packages/numpy/_core/umath.py)
+[13:31:30] Traceback (most recent call last):
+  File "/tmp/ipykernel_1387/1229813308.py", line 558, in etapa_isolada
+    return fn(*args)
+           ^^^^^^^^^
+  File "/tmp/ipykernel_1387/1229813308.py", line 442, in treino_malformacao
+    from sklearn.model_selection import train_test_split
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/__init__.py", line 73, in <module>
+    from .base import clone  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/base.py", line 19, in <module>
+    from .utils._estimator_html_repr import _HTMLDocumentationLinkMixin, estimator_html_repr
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/utils/__init__.py", line 15, in <module>
+    from ._chunking import gen_batches, gen_even_slices
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/utils/_chunking.py", line 11, in <module>
+    from ._param_validation import Interval, validate_params
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/utils/_param_validation.py", line 14, in <module>
+    from scipy.sparse import csr_matrix, issparse
+  File "/usr/local/lib/python3.12/dist-packages/scipy/sparse/__init__.py", line 304, in <module>
+    from ._base import *
+  File "/usr/local/lib/python3.12/dist-packages/scipy/sparse/_base.py", line 8, in <module>
+    from ._sputils import (asmatrix, check_reshape_kwargs, check_shape,
+  File "/usr/local/lib/python3.12/dist-packages/scipy/sparse/_sputils.py", line 10, in <module>
+    from scipy._lib._util import np_long, np_ulong
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_lib/_util.py", line 14, in <module>
+    from scipy._lib._array_api import (Array, array_namespace, is_lazy_array,
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_lib/_array_api.py", line 25, in <module>
+    from scipy._lib.array_api_compat import (
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_lib/array_api_compat/numpy/__init__.py", line 4, in <module>
+    from numpy import *  # noqa: F403  # pyright: ignore[reportWildcardImportFromLibrary]
+    ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/numpy/__init__.py", line 376, in __getattr__
+    resize,
+        ^^^^
+  File "/usr/local/lib/python3.12/dist-packages/numpy/strings/__init__.py", line 1, in <module>
+    from numpy._core.strings import *
+  File "/usr/local/lib/python3.12/dist-packages/numpy/_core/strings.py", line 22, in <module>
+    from numpy._core.umath import (
+ImportError: cannot import name '_center' from 'numpy._core.umath' (/usr/local/lib/python3.12/dist-packages/numpy/_core/umath.py)
+
+[13:31:30] --- Iniciando etapa: treino_bemestar_fetal ---
+[13:31:30] ERRO NAO PREVISTO na etapa treino_bemestar_fetal: cannot import name '_center' from 'numpy._core.umath' (/usr/local/lib/python3.12/dist-packages/numpy/_core/umath.py)
+[13:31:30] Traceback (most recent call last):
+  File "/tmp/ipykernel_1387/1229813308.py", line 558, in etapa_isolada
+    return fn(*args)
+           ^^^^^^^^^
+  File "/tmp/ipykernel_1387/1229813308.py", line 386, in treino_bemestar_fetal
+    from sklearn.model_selection import train_test_split
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/__init__.py", line 73, in <module>
+    from .base import clone  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/base.py", line 19, in <module>
+    from .utils._estimator_html_repr import _HTMLDocumentationLinkMixin, estimator_html_repr
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/utils/__init__.py", line 15, in <module>
+    from ._chunking import gen_batches, gen_even_slices
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/utils/_chunking.py", line 11, in <module>
+    from ._param_validation import Interval, validate_params
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/utils/_param_validation.py", line 14, in <module>
+    from scipy.sparse import csr_matrix, issparse
+  File "/usr/local/lib/python3.12/dist-packages/scipy/sparse/__init__.py", line 304, in <module>
+    from ._base import *
+  File "/usr/local/lib/python3.12/dist-packages/scipy/sparse/_base.py", line 8, in <module>
+    from ._sputils import (asmatrix, check_reshape_kwargs, check_shape,
+  File "/usr/local/lib/python3.12/dist-packages/scipy/sparse/_sputils.py", line 10, in <module>
+    from scipy._lib._util import np_long, np_ulong
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_lib/_util.py", line 14, in <module>
+    from scipy._lib._array_api import (Array, array_namespace, is_lazy_array,
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_lib/_array_api.py", line 25, in <module>
+    from scipy._lib.array_api_compat import (
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_lib/array_api_compat/numpy/__init__.py", line 4, in <module>
+    from numpy import *  # noqa: F403  # pyright: ignore[reportWildcardImportFromLibrary]
+    ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/numpy/__init__.py", line 376, in __getattr__
+    resize,
+        ^^^^
+  File "/usr/local/lib/python3.12/dist-packages/numpy/strings/__init__.py", line 1, in <module>
+    from numpy._core.strings import *
+  File "/usr/local/lib/python3.12/dist-packages/numpy/_core/strings.py", line 22, in <module>
+    from numpy._core.umath import (
+ImportError: cannot import name '_center' from 'numpy._core.umath' (/usr/local/lib/python3.12/dist-packages/numpy/_core/umath.py)
+
+[13:31:30] --- Iniciando etapa: SIH ---
+[13:32:29]   SIH AC: 2649 casos relevantes
+[13:33:21]   SIH AL: 6724 casos relevantes
+[13:34:15]   SIH AP: 2329 casos relevantes
+[13:35:14]   SIH AM: 5917 casos relevantes
+[13:36:31]   SIH BA: 6569 casos relevantes
+[13:37:40]   SIH CE: 0 casos relevantes
+[13:38:42]   SIH DF: 3515 casos relevantes
+[13:39:38]   SIH ES: 8708 casos relevantes
+[13:40:42]   SIH GO: 0 casos relevantes
+[13:41:49]   SIH MA: 0 casos relevantes
+[13:42:45]   SIH MT: 7175 casos relevantes
+[13:43:42]   SIH MS: 10221 casos relevantes
+[13:45:21]   SIH MG: 35634 casos relevantes
+[13:46:26]   SIH PA: 4907 casos relevantes
+[13:47:20]   SIH PB: 7300 casos relevantes
+[13:48:38]   SIH PR: 8720 casos relevantes
+[13:49:47]   SIH PE: 10740 casos relevantes
+[13:50:42]   SIH PI: 10442 casos relevantes
+[13:52:01]   SIH RJ: 13064 casos relevantes
+[13:52:56]   SIH RN: 6320 casos relevantes
+[13:54:17]   SIH RS: 4262 casos relevantes
+[13:55:17]   SIH RO: 716 casos relevantes
+[13:56:10]   SIH RR: 3908 casos relevantes
+[13:57:20]   SIH SC: 3944 casos relevantes
+[13:58:58]   SIH SP: 37319 casos relevantes
+[13:59:53]   SIH SE: 6452 casos relevantes
+[14:00:48]   SIH TO: 2613 casos relevantes
+[14:00:52] SIH concluido: (210148, 116)
+[14:00:52] --- Iniciando etapa: treino_sih ---
+[14:00:52] ERRO NAO PREVISTO na etapa treino_sih: cannot import name '_center' from 'numpy._core.umath' (/usr/local/lib/python3.12/dist-packages/numpy/_core/umath.py)
+[14:00:52] Traceback (most recent call last):
+  File "/tmp/ipykernel_1387/1229813308.py", line 558, in etapa_isolada
+    return fn(*args)
+           ^^^^^^^^^
+  File "/tmp/ipykernel_1387/1229813308.py", line 493, in treino_condicoes_sih
+    from sklearn.model_selection import train_test_split
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/__init__.py", line 73, in <module>
+    from .base import clone  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/base.py", line 19, in <module>
+    from .utils._estimator_html_repr import _HTMLDocumentationLinkMixin, estimator_html_repr
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/utils/__init__.py", line 15, in <module>
+    from ._chunking import gen_batches, gen_even_slices
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/utils/_chunking.py", line 11, in <module>
+    from ._param_validation import Interval, validate_params
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/utils/_param_validation.py", line 14, in <module>
+    from scipy.sparse import csr_matrix, issparse
+  File "/usr/local/lib/python3.12/dist-packages/scipy/sparse/__init__.py", line 304, in <module>
+    from ._base import *
+  File "/usr/local/lib/python3.12/dist-packages/scipy/sparse/_base.py", line 8, in <module>
+    from ._sputils import (asmatrix, check_reshape_kwargs, check_shape,
+  File "/usr/local/lib/python3.12/dist-packages/scipy/sparse/_sputils.py", line 10, in <module>
+    from scipy._lib._util import np_long, np_ulong
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_lib/_util.py", line 14, in <module>
+    from scipy._lib._array_api import (Array, array_namespace, is_lazy_array,
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_lib/_array_api.py", line 25, in <module>
+    from scipy._lib.array_api_compat import (
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_lib/array_api_compat/numpy/__init__.py", line 4, in <module>
+    from numpy import *  # noqa: F403  # pyright: ignore[reportWildcardImportFromLibrary]
+    ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/numpy/__init__.py", line 376, in __getattr__
+    resize,
+        ^^^^
+  File "/usr/local/lib/python3.12/dist-packages/numpy/strings/__init__.py", line 1, in <module>
+    from numpy._core.strings import *
+  File "/usr/local/lib/python3.12/dist-packages/numpy/_core/strings.py", line 22, in <module>
+    from numpy._core.umath import (
+ImportError: cannot import name '_center' from 'numpy._core.umath' (/usr/local/lib/python3.12/dist-packages/numpy/_core/umath.py)
+
+[14:00:52] --- Iniciando etapa: SINAN ---
+[14:01:17]   SINAN dengue-2021: 2049270 casos brutos, consolidado
+[14:01:43]   SINAN dengue-2022: 2810190 casos brutos, consolidado
+[14:02:13]   SINAN dengue-2023: 3291912 casos brutos, consolidado
+[14:02:18]   SINAN zika-2021: 38832 casos brutos, consolidado
+[14:02:23]   SINAN zika-2022: 71608 casos brutos, consolidado
+[14:02:27]   SINAN zika-2023: 72006 casos brutos, consolidado
+[14:02:32]   SINAN sifilis_gestante-2021: 75113 casos brutos, consolidado
+[14:02:37]   SINAN sifilis_gestante-2022: 83667 casos brutos, consolidado
+[14:02:42]   SINAN sifilis_gestante-2023: 87305 casos brutos, consolidado
+[14:02:46]   SINAN toxoplasmose_gestacional-2021: 11093 casos brutos, consolidado
+[14:02:51]   SINAN toxoplasmose_gestacional-2022: 12447 casos brutos, consolidado
+[14:02:55]   SINAN toxoplasmose_gestacional-2023: 15023 casos brutos, consolidado
+[14:02:55] SINAN concluido: (181, 4)
+[14:02:55] === Pipeline concluido. Veja STATUS_FINAL.txt na pasta nymphia_pipeline. ===
+[14:02:55] Status final escrito. Fim da execucao.
+[14:37:34] Ambiente OK. Log persistente em log_completo.txt
+[14:37:34] === Inicio do pipeline completo da Nymphia ===
+[14:37:34] --- Iniciando etapa: SINASC ---
+[14:37:34] SINASC: checkpoint ja existe, pulando download.
+[14:37:39] --- Iniciando etapa: CNES ---
+[14:37:39] CNES: checkpoint ja existe, pulando download.
+[14:37:39] --- Iniciando etapa: treino_malformacao ---
+[14:37:39] ERRO NAO PREVISTO na etapa treino_malformacao: cannot import name '_center' from 'numpy._core.umath' (/usr/local/lib/python3.12/dist-packages/numpy/_core/umath.py)
+[14:37:39] Traceback (most recent call last):
+  File "/tmp/ipykernel_1387/1229813308.py", line 558, in etapa_isolada
+    return fn(*args)
+           ^^^^^^^^^
+  File "/tmp/ipykernel_1387/1229813308.py", line 442, in treino_malformacao
+    from sklearn.model_selection import train_test_split
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/__init__.py", line 73, in <module>
+    from .base import clone  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/base.py", line 19, in <module>
+    from .utils._estimator_html_repr import _HTMLDocumentationLinkMixin, estimator_html_repr
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/utils/__init__.py", line 15, in <module>
+    from ._chunking import gen_batches, gen_even_slices
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/utils/_chunking.py", line 11, in <module>
+    from ._param_validation import Interval, validate_params
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/utils/_param_validation.py", line 14, in <module>
+    from scipy.sparse import csr_matrix, issparse
+  File "/usr/local/lib/python3.12/dist-packages/scipy/sparse/__init__.py", line 304, in <module>
+    from ._base import *
+  File "/usr/local/lib/python3.12/dist-packages/scipy/sparse/_base.py", line 8, in <module>
+    from ._sputils import (asmatrix, check_reshape_kwargs, check_shape,
+  File "/usr/local/lib/python3.12/dist-packages/scipy/sparse/_sputils.py", line 10, in <module>
+    from scipy._lib._util import np_long, np_ulong
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_lib/_util.py", line 14, in <module>
+    from scipy._lib._array_api import (Array, array_namespace, is_lazy_array,
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_lib/_array_api.py", line 25, in <module>
+    from scipy._lib.array_api_compat import (
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_lib/array_api_compat/numpy/__init__.py", line 4, in <module>
+    from numpy import *  # noqa: F403  # pyright: ignore[reportWildcardImportFromLibrary]
+    ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/numpy/__init__.py", line 376, in __getattr__
+    resize,
+        ^^^^
+  File "/usr/local/lib/python3.12/dist-packages/numpy/strings/__init__.py", line 1, in <module>
+    from numpy._core.strings import *
+  File "/usr/local/lib/python3.12/dist-packages/numpy/_core/strings.py", line 22, in <module>
+    from numpy._core.umath import (
+ImportError: cannot import name '_center' from 'numpy._core.umath' (/usr/local/lib/python3.12/dist-packages/numpy/_core/umath.py)
+
+[14:37:39] --- Iniciando etapa: treino_bemestar_fetal ---
+[14:37:39] ERRO NAO PREVISTO na etapa treino_bemestar_fetal: cannot import name '_center' from 'numpy._core.umath' (/usr/local/lib/python3.12/dist-packages/numpy/_core/umath.py)
+[14:37:39] Traceback (most recent call last):
+  File "/tmp/ipykernel_1387/1229813308.py", line 558, in etapa_isolada
+    return fn(*args)
+           ^^^^^^^^^
+  File "/tmp/ipykernel_1387/1229813308.py", line 386, in treino_bemestar_fetal
+    from sklearn.model_selection import train_test_split
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/__init__.py", line 73, in <module>
+    from .base import clone  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/base.py", line 19, in <module>
+    from .utils._estimator_html_repr import _HTMLDocumentationLinkMixin, estimator_html_repr
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/utils/__init__.py", line 15, in <module>
+    from ._chunking import gen_batches, gen_even_slices
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/utils/_chunking.py", line 11, in <module>
+    from ._param_validation import Interval, validate_params
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/utils/_param_validation.py", line 14, in <module>
+    from scipy.sparse import csr_matrix, issparse
+  File "/usr/local/lib/python3.12/dist-packages/scipy/sparse/__init__.py", line 304, in <module>
+    from ._base import *
+  File "/usr/local/lib/python3.12/dist-packages/scipy/sparse/_base.py", line 8, in <module>
+    from ._sputils import (asmatrix, check_reshape_kwargs, check_shape,
+  File "/usr/local/lib/python3.12/dist-packages/scipy/sparse/_sputils.py", line 10, in <module>
+    from scipy._lib._util import np_long, np_ulong
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_lib/_util.py", line 14, in <module>
+    from scipy._lib._array_api import (Array, array_namespace, is_lazy_array,
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_lib/_array_api.py", line 25, in <module>
+    from scipy._lib.array_api_compat import (
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_lib/array_api_compat/numpy/__init__.py", line 4, in <module>
+    from numpy import *  # noqa: F403  # pyright: ignore[reportWildcardImportFromLibrary]
+    ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/numpy/__init__.py", line 376, in __getattr__
+    resize,
+        ^^^^
+  File "/usr/local/lib/python3.12/dist-packages/numpy/strings/__init__.py", line 1, in <module>
+    from numpy._core.strings import *
+  File "/usr/local/lib/python3.12/dist-packages/numpy/_core/strings.py", line 22, in <module>
+    from numpy._core.umath import (
+ImportError: cannot import name '_center' from 'numpy._core.umath' (/usr/local/lib/python3.12/dist-packages/numpy/_core/umath.py)
+
+[14:37:39] --- Iniciando etapa: SIH ---
+[14:37:39] SIH: checkpoint final ja existe, pulando download.
+[14:37:42] --- Iniciando etapa: treino_sih ---
+[14:37:42] ERRO NAO PREVISTO na etapa treino_sih: cannot import name '_center' from 'numpy._core.umath' (/usr/local/lib/python3.12/dist-packages/numpy/_core/umath.py)
+[14:37:42] Traceback (most recent call last):
+  File "/tmp/ipykernel_1387/1229813308.py", line 558, in etapa_isolada
+    return fn(*args)
+           ^^^^^^^^^
+  File "/tmp/ipykernel_1387/1229813308.py", line 493, in treino_condicoes_sih
+    from sklearn.model_selection import train_test_split
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/__init__.py", line 73, in <module>
+    from .base import clone  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/base.py", line 19, in <module>
+    from .utils._estimator_html_repr import _HTMLDocumentationLinkMixin, estimator_html_repr
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/utils/__init__.py", line 15, in <module>
+    from ._chunking import gen_batches, gen_even_slices
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/utils/_chunking.py", line 11, in <module>
+    from ._param_validation import Interval, validate_params
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/utils/_param_validation.py", line 14, in <module>
+    from scipy.sparse import csr_matrix, issparse
+  File "/usr/local/lib/python3.12/dist-packages/scipy/sparse/__init__.py", line 304, in <module>
+    from ._base import *
+  File "/usr/local/lib/python3.12/dist-packages/scipy/sparse/_base.py", line 8, in <module>
+    from ._sputils import (asmatrix, check_reshape_kwargs, check_shape,
+  File "/usr/local/lib/python3.12/dist-packages/scipy/sparse/_sputils.py", line 10, in <module>
+    from scipy._lib._util import np_long, np_ulong
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_lib/_util.py", line 14, in <module>
+    from scipy._lib._array_api import (Array, array_namespace, is_lazy_array,
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_lib/_array_api.py", line 25, in <module>
+    from scipy._lib.array_api_compat import (
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_lib/array_api_compat/numpy/__init__.py", line 4, in <module>
+    from numpy import *  # noqa: F403  # pyright: ignore[reportWildcardImportFromLibrary]
+    ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/numpy/__init__.py", line 376, in __getattr__
+    resize,
+        ^^^^
+  File "/usr/local/lib/python3.12/dist-packages/numpy/strings/__init__.py", line 1, in <module>
+    from numpy._core.strings import *
+  File "/usr/local/lib/python3.12/dist-packages/numpy/_core/strings.py", line 22, in <module>
+    from numpy._core.umath import (
+ImportError: cannot import name '_center' from 'numpy._core.umath' (/usr/local/lib/python3.12/dist-packages/numpy/_core/umath.py)
+
+[14:37:42] --- Iniciando etapa: SINAN ---
+[14:37:42] SINAN: checkpoint ja existe, pulando download.
+[14:37:42] === Pipeline concluido. Veja STATUS_FINAL.txt na pasta nymphia_pipeline. ===
+[14:37:42] Status final escrito. Fim da execucao.
+[01:45:15] Ambiente OK. Log persistente em log_completo.txt
+[01:45:16] === Inicio do pipeline completo da Nymphia ===
+[01:45:16] --- Iniciando etapa: SINASC ---
+[01:45:18] SINASC: checkpoint ja existe, pulando download.
+[01:45:25] --- Iniciando etapa: CNES ---
+[01:45:25] CNES: checkpoint ja existe, pulando download.
+[01:45:25] --- Iniciando etapa: treino_malformacao ---
+[01:45:25] ERRO NAO PREVISTO na etapa treino_malformacao: cannot import name '_center' from 'numpy._core.umath' (/usr/local/lib/python3.12/dist-packages/numpy/_core/umath.py)
+[01:45:25] Traceback (most recent call last):
+  File "/tmp/ipykernel_665/1058686048.py", line 574, in etapa_isolada
+    return fn(*args)
+           ^^^^^^^^^
+  File "/tmp/ipykernel_665/1058686048.py", line 458, in treino_malformacao
+    from sklearn.model_selection import train_test_split
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/__init__.py", line 70, in <module>
+    from sklearn.base import clone  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/base.py", line 21, in <module>
+    from sklearn.utils._missing import is_pandas_na, is_scalar_nan
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/utils/__init__.py", line 9, in <module>
+    from sklearn.utils._chunking import gen_batches, gen_even_slices
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/utils/_chunking.py", line 11, in <module>
+    from sklearn.utils._param_validation import Interval, validate_params
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/utils/_param_validation.py", line 14, in <module>
+    from scipy.sparse import csr_array, issparse
+  File "/usr/local/lib/python3.12/dist-packages/scipy/sparse/__init__.py", line 251, in <module>
+    from ._csr import *
+  File "/usr/local/lib/python3.12/dist-packages/scipy/sparse/_csr.py", line 15, in <module>
+    from ._compressed import _cs_matrix
+  File "/usr/local/lib/python3.12/dist-packages/scipy/sparse/_compressed.py", line 8, in <module>
+    from scipy._lib._util import _prune_array, copy_if_needed
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_lib/_util.py", line 17, in <module>
+    from scipy._lib._array_api import (Array, array_namespace, is_lazy_array, is_numpy,
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_lib/_array_api.py", line 24, in <module>
+    from scipy._external.array_api_compat import (
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_external/array_api_compat/numpy/__init__.py", line 9, in <module>
+    __all__ = clone_module("numpy", globals())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_external/array_api_compat/_internal.py", line 64, in clone_module
+    exec(f"from {mod.__name__} import *", objs)
+  File "<string>", line 1, in <module>
+  File "/usr/local/lib/python3.12/dist-packages/numpy/__init__.py", line 367, in __getattr__
+    radians,
+        ^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/numpy/char/__init__.py", line 1, in <module>
+    from numpy._core.defchararray import __all__, __doc__
+  File "/usr/local/lib/python3.12/dist-packages/numpy/_core/defchararray.py", line 23, in <module>
+    from numpy._core.strings import (
+  File "/usr/local/lib/python3.12/dist-packages/numpy/_core/strings.py", line 22, in <module>
+    from numpy._core.umath import (
+ImportError: cannot import name '_center' from 'numpy._core.umath' (/usr/local/lib/python3.12/dist-packages/numpy/_core/umath.py)
+
+[01:45:25] !!! ISSO E UM CONFLITO DE VERSAO NUMPY/SCIPY/SKLEARN JA CARREGADO NA MEMORIA. !!!
+[01:45:25] !!! Rodar essa celula de novo SEM reiniciar o Runtime NAO vai resolver.     !!!
+[01:45:25] !!! Va em Ambiente de execucao > Reiniciar sessao, depois rode a celula de  !!!
+[01:45:25] !!! novo -- os checkpoints ja salvos evitam refazer os downloads.           !!!
+[01:45:25] --- Iniciando etapa: treino_bemestar_fetal ---
+[01:45:25] ERRO NAO PREVISTO na etapa treino_bemestar_fetal: cannot import name '_center' from 'numpy._core.umath' (/usr/local/lib/python3.12/dist-packages/numpy/_core/umath.py)
+[01:45:25] Traceback (most recent call last):
+  File "/tmp/ipykernel_665/1058686048.py", line 574, in etapa_isolada
+    return fn(*args)
+           ^^^^^^^^^
+  File "/tmp/ipykernel_665/1058686048.py", line 402, in treino_bemestar_fetal
+    from sklearn.model_selection import train_test_split
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/__init__.py", line 70, in <module>
+    from sklearn.base import clone  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/base.py", line 21, in <module>
+    from sklearn.utils._missing import is_pandas_na, is_scalar_nan
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/utils/__init__.py", line 9, in <module>
+    from sklearn.utils._chunking import gen_batches, gen_even_slices
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/utils/_chunking.py", line 11, in <module>
+    from sklearn.utils._param_validation import Interval, validate_params
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/utils/_param_validation.py", line 14, in <module>
+    from scipy.sparse import csr_array, issparse
+  File "/usr/local/lib/python3.12/dist-packages/scipy/sparse/__init__.py", line 251, in <module>
+    from ._csr import *
+  File "/usr/local/lib/python3.12/dist-packages/scipy/sparse/_csr.py", line 15, in <module>
+    from ._compressed import _cs_matrix
+  File "/usr/local/lib/python3.12/dist-packages/scipy/sparse/_compressed.py", line 8, in <module>
+    from scipy._lib._util import _prune_array, copy_if_needed
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_lib/_util.py", line 17, in <module>
+    from scipy._lib._array_api import (Array, array_namespace, is_lazy_array, is_numpy,
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_lib/_array_api.py", line 24, in <module>
+    from scipy._external.array_api_compat import (
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_external/array_api_compat/numpy/__init__.py", line 9, in <module>
+    __all__ = clone_module("numpy", globals())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_external/array_api_compat/_internal.py", line 64, in clone_module
+    exec(f"from {mod.__name__} import *", objs)
+  File "<string>", line 1, in <module>
+  File "/usr/local/lib/python3.12/dist-packages/numpy/__init__.py", line 367, in __getattr__
+    radians,
+        ^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/numpy/char/__init__.py", line 1, in <module>
+    from numpy._core.defchararray import __all__, __doc__
+  File "/usr/local/lib/python3.12/dist-packages/numpy/_core/defchararray.py", line 23, in <module>
+    from numpy._core.strings import (
+  File "/usr/local/lib/python3.12/dist-packages/numpy/_core/strings.py", line 22, in <module>
+    from numpy._core.umath import (
+ImportError: cannot import name '_center' from 'numpy._core.umath' (/usr/local/lib/python3.12/dist-packages/numpy/_core/umath.py)
+
+[01:45:25] !!! ISSO E UM CONFLITO DE VERSAO NUMPY/SCIPY/SKLEARN JA CARREGADO NA MEMORIA. !!!
+[01:45:25] !!! Rodar essa celula de novo SEM reiniciar o Runtime NAO vai resolver.     !!!
+[01:45:25] !!! Va em Ambiente de execucao > Reiniciar sessao, depois rode a celula de  !!!
+[01:45:26] !!! novo -- os checkpoints ja salvos evitam refazer os downloads.           !!!
+[01:45:26] --- Iniciando etapa: SIH ---
+[01:45:26] SIH: checkpoint final ja existe, pulando download.
+[01:45:29] --- Iniciando etapa: treino_sih ---
+[01:45:29] ERRO NAO PREVISTO na etapa treino_sih: cannot import name '_center' from 'numpy._core.umath' (/usr/local/lib/python3.12/dist-packages/numpy/_core/umath.py)
+[01:45:29] Traceback (most recent call last):
+  File "/tmp/ipykernel_665/1058686048.py", line 574, in etapa_isolada
+    return fn(*args)
+           ^^^^^^^^^
+  File "/tmp/ipykernel_665/1058686048.py", line 509, in treino_condicoes_sih
+    from sklearn.model_selection import train_test_split
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/__init__.py", line 70, in <module>
+    from sklearn.base import clone  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/base.py", line 21, in <module>
+    from sklearn.utils._missing import is_pandas_na, is_scalar_nan
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/utils/__init__.py", line 9, in <module>
+    from sklearn.utils._chunking import gen_batches, gen_even_slices
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/utils/_chunking.py", line 11, in <module>
+    from sklearn.utils._param_validation import Interval, validate_params
+  File "/usr/local/lib/python3.12/dist-packages/sklearn/utils/_param_validation.py", line 14, in <module>
+    from scipy.sparse import csr_array, issparse
+  File "/usr/local/lib/python3.12/dist-packages/scipy/sparse/__init__.py", line 251, in <module>
+    from ._csr import *
+  File "/usr/local/lib/python3.12/dist-packages/scipy/sparse/_csr.py", line 15, in <module>
+    from ._compressed import _cs_matrix
+  File "/usr/local/lib/python3.12/dist-packages/scipy/sparse/_compressed.py", line 8, in <module>
+    from scipy._lib._util import _prune_array, copy_if_needed
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_lib/_util.py", line 17, in <module>
+    from scipy._lib._array_api import (Array, array_namespace, is_lazy_array, is_numpy,
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_lib/_array_api.py", line 24, in <module>
+    from scipy._external.array_api_compat import (
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_external/array_api_compat/numpy/__init__.py", line 9, in <module>
+    __all__ = clone_module("numpy", globals())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/scipy/_external/array_api_compat/_internal.py", line 64, in clone_module
+    exec(f"from {mod.__name__} import *", objs)
+  File "<string>", line 1, in <module>
+  File "/usr/local/lib/python3.12/dist-packages/numpy/__init__.py", line 367, in __getattr__
+    radians,
+        ^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/numpy/char/__init__.py", line 1, in <module>
+    from numpy._core.defchararray import __all__, __doc__
+  File "/usr/local/lib/python3.12/dist-packages/numpy/_core/defchararray.py", line 23, in <module>
+    from numpy._core.strings import (
+  File "/usr/local/lib/python3.12/dist-packages/numpy/_core/strings.py", line 22, in <module>
+    from numpy._core.umath import (
+ImportError: cannot import name '_center' from 'numpy._core.umath' (/usr/local/lib/python3.12/dist-packages/numpy/_core/umath.py)
+
+[01:45:29] !!! ISSO E UM CONFLITO DE VERSAO NUMPY/SCIPY/SKLEARN JA CARREGADO NA MEMORIA. !!!
+[01:45:29] !!! Rodar essa celula de novo SEM reiniciar o Runtime NAO vai resolver.     !!!
+[01:45:29] !!! Va em Ambiente de execucao > Reiniciar sessao, depois rode a celula de  !!!
+[01:45:29] !!! novo -- os checkpoints ja salvos evitam refazer os downloads.           !!!
+[01:45:29] --- Iniciando etapa: SINAN ---
+[01:45:29] SINAN: checkpoint ja existe, pulando download.
+[01:45:29] === Pipeline concluido. Veja STATUS_FINAL.txt na pasta nymphia_pipeline. ===
+[01:45:29] Status final escrito. Fim da execucao.
+[01:47:14] Ambiente OK. Log persistente em log_completo.txt
+[01:47:14] === Inicio do pipeline completo da Nymphia ===
+[01:47:14] --- Iniciando etapa: SINASC ---
+[01:47:14] SINASC: checkpoint ja existe, pulando download.
+[01:47:17] --- Iniciando etapa: CNES ---
+[01:47:17] CNES: checkpoint ja existe, pulando download.
+[01:47:17] --- Iniciando etapa: treino_malformacao ---
+[01:56:36] Treino malformacao concluido. ROC-AUC: 0.6751
+[01:56:36] --- Iniciando etapa: treino_bemestar_fetal ---
+[02:05:50] Treino bem-estar fetal concluido. ROC-AUC: 0.6907
+[02:05:50] --- Iniciando etapa: SIH ---
+[02:05:50] SIH: checkpoint final ja existe, pulando download.
+[02:05:51] --- Iniciando etapa: treino_sih ---
+[02:05:51] Treino SIH: colunas reais disponiveis: ['UF_ZI', 'ANO_CMPT', 'MES_CMPT', 'ESPEC', 'CGC_HOSP', 'N_AIH', 'IDENT', 'CEP', 'MUNIC_RES', 'NASC', 'SEXO', 'UTI_MES_IN', 'UTI_MES_AN', 'UTI_MES_AL', 'UTI_MES_TO', 'MARCA_UTI', 'UTI_INT_IN', 'UTI_INT_AN', 'UTI_INT_AL', 'UTI_INT_TO', 'DIAR_ACOM', 'QT_DIARIAS', 'PROC_SOLIC', 'PROC_REA', 'VAL_SH', 'VAL_SP', 'VAL_SADT', 'VAL_RN', 'VAL_ACOMP', 'VAL_ORTP', 'VAL_SANGUE', 'VAL_SADTSR', 'VAL_TRANSP', 'VAL_OBSANG', 'VAL_PED1AC', 'VAL_TOT', 'VAL_UTI', 'US_TOT', 'DT_INTER', 'DT_SAIDA', 'DIAG_PRINC', 'DIAG_SECUN', 'COBRANCA', 'NATUREZA', 'NAT_JUR', 'GESTAO', 'RUBRICA', 'IND_VDRL', 'MUNIC_MOV', 'COD_IDADE', 'IDADE', 'DIAS_PERM', 'MORTE', 'NACIONAL', 'NUM_PROC', 'CAR_INT', 'TOT_PT_SP', 'CPF_AUT', 'HOMONIMO', 'NUM_FILHOS', 'INSTRU', 'CID_NOTIF', 'CONTRACEP1', 'CONTRACEP2', 'GESTRISCO', 'INSC_PN', 'SEQ_AIH5', 'CBOR', 'CNAER', 'VINCPREV', 'GESTOR_COD', 'GESTOR_TP', 'GESTOR_CPF', 'GESTOR_DT', 'CNES', 'CNPJ_MANT', 'INFEHOSP', 'CID_ASSO', 'CID_MORTE', 'COMPLEX', 'FINANC', 'FAEC_TP', 'REGCT', 'RACA_COR', 'ETNIA', 'SEQUENCIA', 'REMESSA', 'AUD_JUST', 'SIS_JUST', 'VAL_SH_FED', 'VAL_SP_FED', 'VAL_SH_GES', 'VAL_SP_GES', 'VAL_UCI', 'MARCA_UCI', 'DIAGSEC1', 'DIAGSEC2', 'DIAGSEC3', 'DIAGSEC4', 'DIAGSEC5', 'DIAGSEC6', 'DIAGSEC7', 'DIAGSEC8', 'DIAGSEC9', 'TPDISEC1', 'TPDISEC2', 'TPDISEC3', 'TPDISEC4', 'TPDISEC5', 'TPDISEC6', 'TPDISEC7', 'TPDISEC8', 'TPDISEC9', 'ST_SITUAC', 'ST_BLOQ', 'ST_MOT_BLO']
+[02:06:06]   pre_eclampsia: ROC-AUC 0.7382
+[02:06:19]   eclampsia: ROC-AUC 0.6815
+[02:06:34]   diabetes_gestacional: ROC-AUC 0.7740
+[02:06:52]   itu: ROC-AUC 0.9439
+[02:06:52] Treino SIH concluido.
+[02:06:52] --- Iniciando etapa: SINAN ---
+[02:06:52] SINAN: checkpoint ja existe, pulando download.
+[02:06:52] === Pipeline concluido. Veja STATUS_FINAL.txt na pasta nymphia_pipeline. ===
+[02:06:52] Status final escrito. Fim da execucao.
+[02:13:32] Ambiente OK. Log persistente em log_completo.txt
+[02:13:32] === Inicio do pipeline completo da Nymphia ===
+[02:13:32] --- Iniciando etapa: SINASC ---
+[02:13:32] SINASC: checkpoint ja existe, pulando download.
+[02:13:35] --- Iniciando etapa: CNES ---
+[02:13:35] CNES: checkpoint ja existe, pulando download.
+[02:13:35] --- Iniciando etapa: treino_malformacao ---
+[02:13:35] Treino malformacao: checkpoint ja existe, pulando.
+[02:13:35] --- Iniciando etapa: treino_bemestar_fetal ---
+[02:13:35] Treino bem-estar fetal: checkpoint ja existe, pulando.
+[02:13:35] --- Iniciando etapa: SIH ---
+[02:13:35] SIH: checkpoint final ja existe, pulando download.
+[02:13:36] --- Iniciando etapa: treino_sih ---
+[02:13:36] Treino SIH: colunas reais disponiveis: ['UF_ZI', 'ANO_CMPT', 'MES_CMPT', 'ESPEC', 'CGC_HOSP', 'N_AIH', 'IDENT', 'CEP', 'MUNIC_RES', 'NASC', 'SEXO', 'UTI_MES_IN', 'UTI_MES_AN', 'UTI_MES_AL', 'UTI_MES_TO', 'MARCA_UTI', 'UTI_INT_IN', 'UTI_INT_AN', 'UTI_INT_AL', 'UTI_INT_TO', 'DIAR_ACOM', 'QT_DIARIAS', 'PROC_SOLIC', 'PROC_REA', 'VAL_SH', 'VAL_SP', 'VAL_SADT', 'VAL_RN', 'VAL_ACOMP', 'VAL_ORTP', 'VAL_SANGUE', 'VAL_SADTSR', 'VAL_TRANSP', 'VAL_OBSANG', 'VAL_PED1AC', 'VAL_TOT', 'VAL_UTI', 'US_TOT', 'DT_INTER', 'DT_SAIDA', 'DIAG_PRINC', 'DIAG_SECUN', 'COBRANCA', 'NATUREZA', 'NAT_JUR', 'GESTAO', 'RUBRICA', 'IND_VDRL', 'MUNIC_MOV', 'COD_IDADE', 'IDADE', 'DIAS_PERM', 'MORTE', 'NACIONAL', 'NUM_PROC', 'CAR_INT', 'TOT_PT_SP', 'CPF_AUT', 'HOMONIMO', 'NUM_FILHOS', 'INSTRU', 'CID_NOTIF', 'CONTRACEP1', 'CONTRACEP2', 'GESTRISCO', 'INSC_PN', 'SEQ_AIH5', 'CBOR', 'CNAER', 'VINCPREV', 'GESTOR_COD', 'GESTOR_TP', 'GESTOR_CPF', 'GESTOR_DT', 'CNES', 'CNPJ_MANT', 'INFEHOSP', 'CID_ASSO', 'CID_MORTE', 'COMPLEX', 'FINANC', 'FAEC_TP', 'REGCT', 'RACA_COR', 'ETNIA', 'SEQUENCIA', 'REMESSA', 'AUD_JUST', 'SIS_JUST', 'VAL_SH_FED', 'VAL_SP_FED', 'VAL_SH_GES', 'VAL_SP_GES', 'VAL_UCI', 'MARCA_UCI', 'DIAGSEC1', 'DIAGSEC2', 'DIAGSEC3', 'DIAGSEC4', 'DIAGSEC5', 'DIAGSEC6', 'DIAGSEC7', 'DIAGSEC8', 'DIAGSEC9', 'TPDISEC1', 'TPDISEC2', 'TPDISEC3', 'TPDISEC4', 'TPDISEC5', 'TPDISEC6', 'TPDISEC7', 'TPDISEC8', 'TPDISEC9', 'ST_SITUAC', 'ST_BLOQ', 'ST_MOT_BLO']
+[02:13:50]   pre_eclampsia: ROC-AUC 0.7382
+[02:14:03]   eclampsia: ROC-AUC 0.6815
+[02:14:19]   diabetes_gestacional: ROC-AUC 0.7740
+[02:14:36]   itu: ROC-AUC 0.9439
+[02:14:36] Treino SIH concluido.
+[02:14:36] --- Iniciando etapa: SINAN ---
+[02:14:36] SINAN: checkpoint ja existe, pulando download.
+[02:14:36] === Pipeline concluido. Veja STATUS_FINAL.txt na pasta nymphia_pipeline. ===
+[02:14:36] Status final escrito. Fim da execucao.

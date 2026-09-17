@@ -1,0 +1,14 @@
+                      precision    recall  f1-score   support
+
+        parto normal       0.98      0.70      0.82     30134
+diabetes_gestacional       0.11      0.70      0.18      1523
+
+            accuracy                           0.70     31657
+           macro avg       0.54      0.70      0.50     31657
+        weighted avg       0.94      0.70      0.79     31657
+
+Matriz de confusao:
+[[21239  8895]
+ [  462  1061]]
+
+ROC-AUC: 0.7691

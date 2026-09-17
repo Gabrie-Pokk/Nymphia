@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: nymphia-plataforma-ia
+    env: docker
+    dockerfilePath: Dockerfile
+    plan: free
+    region: ohio
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: NYMPHIA_SECRET_KEY
+        generateValue: true
+      - key: NYMPHIA_DB_TYPE
+        value: sqlite

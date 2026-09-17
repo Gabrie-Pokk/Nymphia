@@ -1,0 +1,4 @@
+Linhas: 3057521
+ROC-AUC (validação contra risco real): 0.6137
+Taxa anomalia em risco real: 0.194
+Taxa anomalia sem risco real: 0.082

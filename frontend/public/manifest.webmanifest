@@ -1,0 +1,49 @@
+{
+  "id": "com.nymphia.app",
+  "name": "Nymphia — Cada batimento importa",
+  "short_name": "Nymphia",
+  "description": "Plataforma de acompanhamento gestacional contínuo com inteligência artificial para gestantes e médicos obstetras.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#5C1A2A",
+  "background_color": "#FDF0F2",
+  "categories": ["health", "medical", "lifestyle"],
+  "icons": [
+    {
+      "src": "/lotus-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Emergência Obstétrica (192)",
+      "short_name": "Emergência",
+      "description": "Acesso imediato offline ao protocolo de emergência obstétrica e SAMU 192",
+      "url": "/emergencia",
+      "icons": [{ "src": "/lotus-logo.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Check-in Diário",
+      "short_name": "Check-in",
+      "description": "Registre humor, sintomas físicos e movimentos fetais de hoje",
+      "url": "/gestante/checkin",
+      "icons": [{ "src": "/lotus-logo.svg", "sizes": "any" }]
+    }
+  ]
+}

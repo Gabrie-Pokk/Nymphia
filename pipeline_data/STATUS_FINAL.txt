@@ -1,0 +1,14 @@
+=== STATUS DO PIPELINE NYMPHIA ===
+Ultima atualizacao: 2026-07-20 02:14:36
+
+SINASC: OK -- carregado do checkpoint
+CNES: OK -- carregado do checkpoint
+treino_malformacao: OK -- carregado do checkpoint
+treino_bemestar_fetal: OK -- carregado do checkpoint
+SIH: OK -- carregado do checkpoint
+treino_sih: OK -- {'pre_eclampsia': 'ROC-AUC 0.7382', 'eclampsia': 'ROC-AUC 0.6815', 'hellp': 'poucos casos, pulado', 'diabetes_gestacional': 'ROC-AUC 0.7740', 'itu': 'ROC-AUC 0.9439'}
+SINAN: OK -- carregado do checkpoint
+
+Arquivos esperados na pasta nymphia_pipeline:
+df_risco.parquet, agregado_cnes.parquet, sih_condicoes.parquet,
+sinan_incidencia.parquet, rf_*.joblib, metricas_*.txt

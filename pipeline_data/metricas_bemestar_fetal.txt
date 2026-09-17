@@ -1,0 +1,14 @@
+              precision    recall  f1-score   support
+
+   sem risco       0.89      0.77      0.82    513404
+   com risco       0.30      0.52      0.38     98101
+
+    accuracy                           0.73    611505
+   macro avg       0.59      0.64      0.60    611505
+weighted avg       0.80      0.73      0.75    611505
+
+Matriz de confusao:
+[[393137 120267]
+ [ 47368  50733]]
+
+ROC-AUC: 0.6907

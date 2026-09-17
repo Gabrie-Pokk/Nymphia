@@ -1,0 +1,14 @@
+              precision    recall  f1-score   support
+
+parto normal       1.00      0.95      0.97     30134
+         itu       0.01      0.44      0.01        18
+
+    accuracy                           0.95     30152
+   macro avg       0.50      0.70      0.49     30152
+weighted avg       1.00      0.95      0.97     30152
+
+Matriz de confusao:
+[[28656  1478]
+ [   10     8]]
+
+ROC-AUC: 0.7815

@@ -1,0 +1,435 @@
+texto,ansiedade,tristeza_desanimo,estresse_sobrecarga,medo_inseguranca,bem_estar,sintoma_fisico
+"Hoje acordei muito ansiosa, meu coração não parou de acelerar",1,0,0,0,0,0
+"Não consigo parar de pensar no parto, fico nervosa só de imaginar",1,0,0,0,0,0
+Estou muito aflita com os exames que vou fazer semana que vem,1,0,0,0,0,0
+"Sinto uma inquietação constante, não sei explicar direito",1,0,0,0,0,0
+A ansiedade tá tomando conta de mim ultimamente,1,0,0,0,0,0
+Fico angustiada pensando se vou dar conta de ser mãe,1,0,0,0,0,0
+Meu peito aperta de ansiedade quando penso na consulta,1,0,0,0,0,0
+"Não consigo relaxar, minha cabeça não para",1,0,0,0,0,0
+Tô nervosa demais com o resultado do exame de glicemia,1,0,0,0,0,0
+Sinto uma preocupação que não me larga o dia inteiro,1,0,0,0,0,0
+Passei a noite em claro de tão ansiosa que estava,1,0,0,0,0,0
+"Vivo checando informações sobre a gravidez, não consigo parar",1,0,0,0,0,0
+"Estou triste sem motivo aparente, só bateu essa vontade de chorar",0,1,0,0,0,0
+"Hoje não tive vontade de fazer nada, fiquei na cama o dia todo",0,1,0,0,0,0
+"Me sinto vazia por dentro, não sei explicar direito",0,1,0,0,0,0
+Chorei três vezes hoje sem razão clara,0,1,0,0,0,0
+Tá difícil sentir prazer nas coisas que eu gostava de fazer,0,1,0,0,0,0
+"Acordei desanimada, sem energia nenhuma pro dia",0,1,0,0,0,0
+Sinto uma tristeza profunda que não sei de onde vem,0,1,0,0,0,0
+"Não tenho vontade de sair da cama, tudo parece pesado",0,1,0,0,0,0
+Fico pensando bobagem e me emociono à toa,0,1,0,0,0,0
+"Hoje foi um dia de choro fácil, qualquer coisa me abala",0,1,0,0,0,0
+"Não aguento mais, estou exausta e sobrecarregada com tudo",0,0,1,0,0,0
+"Trabalho, casa, pré-natal, sinto que não sobra tempo pra nada",0,0,1,0,0,0
+"Estou no limite, tudo virou pressão demais ultimamente",0,0,1,0,0,0
+"Cansada demais, mal consigo terminar as tarefas do dia",0,0,1,0,0,0
+Sinto que estou sobrecarregada com as responsabilidades,0,0,1,0,0,0
+"Hoje foi estressante, não parei um minuto sequer",0,0,1,0,0,0
+"Estou sem tempo pra mim, tudo se acumulou essa semana",0,0,1,0,0,0
+"A rotina tá pesada demais, acho que preciso desacelerar",0,0,1,0,0,0
+Tenho medo de não saber cuidar bem do bebê quando ele nascer,0,0,0,1,0,0
+Fico insegura pensando se estou fazendo tudo certo,0,0,0,1,0,0
+E se alguma coisa der errado no parto? Isso me apavora,0,0,0,1,0,0
+"Tenho pavor de agulha, e sei que vou precisar de mais exames",0,0,0,1,0,0
+Não sei se vou conseguir dar conta de tudo isso sozinha,0,0,0,1,0,0
+Sinto um receio grande sobre como vai ser depois que ele nascer,0,0,0,1,0,0
+"Tenho medo de perder o bebê, isso não sai da minha cabeça",0,0,0,1,0,0
+Insegura se estou me alimentando do jeito certo pra gestação,0,0,0,1,0,0
+"Estou muito feliz hoje, me sinto tranquila com a gravidez",0,0,0,0,1,0
+"Foi um dia leve, tudo certo por aqui",0,0,0,0,1,0
+"Me sinto grata por essa fase, mesmo com os desafios",0,0,0,0,1,0
+"Hoje tô animada, consegui descansar bem essa noite",0,0,0,0,1,0
+"Sinto uma paz boa hoje, sem preocupação nenhuma",0,0,0,0,1,0
+"Dia tranquilo, me senti bem o tempo todo",0,0,0,0,1,0
+"Estou de bem com a vida hoje, o bebê mexeu bastante e isso me alegrou",0,0,0,0,1,0
+Consegui fazer uma caminhada e me senti ótima depois,0,0,0,0,1,0
+"Tudo tranquilo por aqui, sem nenhuma preocupação hoje",0,0,0,0,1,0
+"Foi um dia normal, fiz as coisas de sempre",0,0,0,0,0,0
+Fui ao mercado e depois descansei um pouco,0,0,0,0,0,0
+Nada de diferente pra registrar hoje,0,0,0,0,0,0
+Tomei minhas vitaminas e segui a rotina normal,0,0,0,0,0,0
+"Assisti um filme à tarde, dia tranquilo sem nada demais",0,0,0,0,0,0
+Tive um sangramento pequeno hoje de manhã e fiquei com medo,0,0,0,1,0,1
+"Não sinto o bebê mexer desde ontem, estou muito preocupada",1,0,0,0,0,1
+Estou com dor de cabeça forte e a visão ficou meio embaçada,0,0,0,0,0,1
+"Senti um inchaço maior nos pés hoje, mas sem outro sintoma",0,0,0,0,0,1
+"Tive uma contração forte e fiquei nervosa, não sei se é normal",1,0,0,0,0,1
+"Febre alta hoje à noite, fiquei com medo de ser algo sério",0,0,0,1,0,1
+Tô feliz com a gravidez mas ao mesmo tempo super ansiosa com o parto,1,0,0,0,1,0
+"Estou exausta e triste, foi um dia difícil emocionalmente",0,1,1,0,0,0
+Tenho medo do parto mas também ansiedade de conhecer logo o bebê,1,0,0,1,0,0
+"Chorei de cansaço hoje, a sobrecarga tá demais",0,1,1,0,0,0
+"Insegura e desanimada, não sei se vou dar conta de tudo isso",0,1,0,1,0,0
+Ansiosa com a consulta mas tentando ficar tranquila e confiar,1,0,0,0,1,0
+Fico ansiosa toda vez que tenho que marcar um exame novo,1,0,0,0,0,0
+"Minha cabeça não desliga à noite, fico pensando em tudo que pode dar errado",1,0,0,0,0,0
+Ansiedade bateu forte hoje sem eu nem saber o motivo certo,1,0,0,0,0,0
+Fiquei toda tensa esperando o resultado do exame de sangue,1,0,0,0,0,0
+"Vivo pesquisando sintomas na internet, isso só piora minha ansiedade",1,0,0,0,0,0
+Sinto o coração disparar quando penso em como vai ser o parto,1,0,0,0,0,0
+"Não durmo direito, minha mente fica acelerada a noite toda",1,0,0,0,0,0
+Toda consulta eu fico apreensiva demais antes de entrar,1,0,0,0,0,0
+Sinto um frio na barriga de ansiedade quase todo dia agora,1,0,0,0,0,0
+Fico rodando os mesmos pensamentos preocupantes na cabeça sem parar,1,0,0,0,0,0
+"Tenho estado mais irritada e inquieta, acho que é ansiedade mesmo",1,0,0,0,0,0
+Roí as unhas o dia inteiro de tão nervosa que fiquei hoje,1,0,0,0,0,0
+"Ando meio apagada essa semana, sem muita vontade de conversar",0,1,0,0,0,0
+Me peguei chorando no banho hoje sem nem saber bem o motivo,0,1,0,0,0,0
+"Sinto uma solidão grande, mesmo cercada de gente",0,1,0,0,0,0
+"Tudo parece mais pesado ultimamente, sem vontade de fazer nada",0,1,0,0,0,0
+"Hoje o dia foi cinza, sem energia pra nada mesmo",0,1,0,0,0,0
+"Fico emotiva à toa, um comercial na TV já me faz chorar",0,1,0,0,0,0
+"Não sinto vontade de arrumar o quarto do bebê, e isso me incomoda",0,1,0,0,0,0
+Sinto que perdi um pouco do brilho que tinha antes da gravidez,0,1,0,0,0,0
+"Passei o dia mais quieta, sem muita disposição pra nada",0,1,0,0,0,0
+"Me sinto desconectada de tudo hoje, como se estivesse no automático",0,1,0,0,0,0
+O trabalho tá consumindo toda minha energia essa semana,0,0,1,0,0,0
+"Durmo mal e acordo já cansada, essa rotina tá pesada",0,0,1,0,0,0
+As contas do mês me deixaram no talo de estresse hoje,0,0,1,0,0,0
+"Entre o trabalho e preparar tudo pro bebê, não sobra um minuto meu",0,0,1,0,0,0
+"Hoje foi corrido demais, nem parei pra almoçar direito",0,0,1,0,0,0
+Sinto que estou fazendo tudo sozinha e isso está me esgotando,0,0,1,0,0,0
+A pilha de coisas pra resolver antes do bebê chegar só cresce,0,0,1,0,0,0
+Chego em casa exausta e ainda tenho mil coisas pra organizar,0,0,1,0,0,0
+Sinto que não consigo desacelerar nem um pouco essa semana,0,0,1,0,0,0
+Tenho medo de o parto doer mais do que eu consigo aguentar,0,0,0,1,0,0
+Fico com medo de não ter leite suficiente quando ele nascer,0,0,0,1,0,0
+Será que vou saber reconhecer quando algo estiver errado com ele?,0,0,0,1,0,0
+Tenho medo de decepcionar as pessoas se algo sair diferente do planejado,0,0,0,1,0,0
+Fico insegura se estou preparada financeiramente pra essa fase,0,0,0,1,0,0
+Penso muito se vou conseguir equilibrar trabalho e maternidade,0,0,0,1,0,0
+"Tenho medo de alguma malformação, mesmo os exames vindo bons",0,0,0,1,0,0
+Insegura sobre como vai ser a relação com meu parceiro depois que o bebê chegar,0,0,0,1,0,0
+Sinto receio de precisar de uma cesárea de última hora,0,0,0,1,0,0
+"Tenho medo de machucar o bebê sem querer, essas coisas passam pela cabeça",0,0,0,1,0,0
+Consegui uma boa noite de sono e acordei renovada hoje,0,0,0,0,1,0
+O bebê chutou bastante hoje e isso me deixou emocionada de alegria,0,0,0,0,1,0
+"Tive uma consulta ótima, o médico disse que está tudo indo bem",0,0,0,0,1,0
+"Me senti acolhida pela família hoje, foi um dia gostoso",0,0,0,0,1,0
+Consegui organizar o enxoval hoje e fiquei super satisfeita,0,0,0,0,1,0
+"Dia produtivo e leve, sem nenhum aperto no peito",0,0,0,0,1,0
+"Me sinto confiante com a gravidez hoje, tranquila mesmo",0,0,0,0,1,0
+"Recebi um carinho grande do meu parceiro hoje, me senti bem cuidada",0,0,0,0,1,0
+Fiz uma caminhada leve e voltei com um humor ótimo,0,0,0,0,1,0
+Hoje me senti grata por cada detalhe dessa fase,0,0,0,0,1,0
+Fiz compras de manhã e resolvi umas pendências à tarde,0,0,0,0,0,0
+"Rotina normal, trabalhei e depois assisti série à noite",0,0,0,0,0,0
+"Fui na consulta de rotina, tudo dentro do esperado",0,0,0,0,0,0
+"Cozinhei, arrumei a casa, dia comum por aqui",0,0,0,0,0,0
+"Nada de especial pra registrar, seguiu tudo normal hoje",0,0,0,0,0,0
+Tomei café da manhã reforçado e segui pro trabalho,0,0,0,0,0,0
+"Senti muita azia depois do almoço, incomodou bastante hoje",0,0,0,0,0,1
+"Tive náusea forte de manhã, quase não consegui comer nada",0,0,0,0,0,1
+Senti uma tontura forte quando levantei rápido da cama,0,0,0,0,0,1
+Notei minhas mãos mais inchadas que o normal hoje,0,0,0,0,0,1
+"Senti uma ardência ao urinar hoje à tarde, achei estranho",0,0,0,0,0,1
+Tive uma cãibra forte na perna que me acordou de madrugada,0,0,0,0,0,1
+Senti falta de ar mesmo depois de um esforço pequeno,0,0,0,0,0,1
+Notei uma dor abdominal incomum do lado direito hoje,0,0,0,0,0,1
+Percebi um corrimento diferente do habitual e fiquei em dúvida se é normal,0,0,0,0,0,1
+"Minha pressão pareceu mais alta hoje, senti a cabeça latejando",0,0,0,0,0,1
+Tive muita náusea hoje e isso me deixou desanimada o dia inteiro,0,1,0,0,0,1
+Senti a pressão parecendo alta e fiquei bastante apreensiva,1,0,0,0,0,1
+"Notei inchaço nas mãos e no rosto, fiquei com medo de ser algo sério",0,0,0,1,0,1
+A azia não me deixou dormir e isso me deixou irritada e estressada,0,0,1,0,0,1
+Senti uma tontura forte e fiquei com medo de cair sozinha em casa,0,0,0,1,0,1
+"A falta de ar me assustou um pouco, fiquei ansiosa até passar",1,0,0,0,0,1
+Feliz com os movimentos do bebê mas cansada da correria do trabalho,0,0,1,0,1,0
+Grata pela gravidez mas exausta fisicamente essa semana,0,0,1,0,1,0
+Tô tentando ficar positiva mas o medo do parto não sai da cabeça,0,0,0,1,1,0
+"Ansiosa e triste ao mesmo tempo, semana difícil emocionalmente",1,1,0,0,0,0
+Sobrecarregada e com medo de não dar conta de tudo sozinha,0,0,1,1,0,0
+Insegura sobre o parto e ansiosa com os preparativos que faltam,1,0,0,1,0,0
+"Triste e sem energia, acho que a sobrecarga já tá afetando meu ânimo",0,1,1,0,0,0
+Fico feliz pensando no bebê mas insegura sobre ser uma boa mãe,0,0,0,1,1,0
+Hoje me peguei suspirando fundo várias vezes sem perceber o porquê,1,0,0,0,0,0
+"Fiquei remoendo uma conversa boba o dia inteiro, não consegui soltar",1,0,0,0,0,0
+Tenho sentido um nó na garganta sem motivo claro ultimamente,0,1,0,0,0,0
+"Chorei vendo uma foto antiga, me bateu uma saudade forte de repente",0,1,0,0,0,0
+"A casa bagunçada me deixou muito irritada hoje, sem paciência nenhuma",0,0,1,0,0,0
+"Sinto que tô correndo atrás do tempo o dia inteiro, sem conseguir alcançar",0,0,1,0,0,0
+Tenho medo de esquecer algo importante na hora de ir pro hospital,0,0,0,1,0,0
+Fico pensando se escolhi o hospital certo pra ter o bebê,0,0,0,1,0,0
+"Hoje o café da manhã em família foi bom, me senti tranquila depois",0,0,0,0,1,0
+Recebi uma notícia boa no trabalho e isso melhorou meu dia inteiro,0,0,0,0,1,0
+Passei no shopping e depois fui pra academia fazer uma atividade leve,0,0,0,0,0,0
+Organizei os documentos do pré-natal essa tarde,0,0,0,0,0,0
+"Senti um formigamento nas pernas à noite, incomodou um pouco",0,0,0,0,0,1
+"Notei que o apetite sumiu hoje, quase não consegui comer",0,0,0,0,0,1
+Tive uma sensação de peso na parte baixa da barriga a tarde toda,0,0,0,0,0,1
+A enjoada de hoje veio acompanhada de um desânimo grande,0,1,0,0,0,1
+Contente com o avanço da gravidez mas com uma pontinha de medo do que vem depois,0,0,0,1,1,0
+Estressada com o prazo do trabalho e ainda com um mal-estar físico,0,0,1,0,0,1
+Tive uma discussão boba com meu parceiro hoje e fiquei chateada o resto do dia,0,1,0,0,0,0
+"Me senti muito apoiada pela minha mãe hoje, conversamos bastante",0,0,0,0,1,0
+Minha sogra ficou dando palpite o dia todo e isso me deixou irritada,0,0,1,0,0,0
+Sinto que meu parceiro não entende direito o que eu tô sentindo ultimamente,0,1,0,0,0,0
+"A família toda veio almoçar hoje, foi um dia gostoso e leve",0,0,0,0,1,0
+Fico insegura se vou conseguir manter a relação forte depois que o bebê chegar,0,0,0,1,0,0
+"Discuti com minha irmã por besteira, acho que tá tudo mais sensível ultimamente",1,1,0,0,0,0
+"Meu parceiro fez um carinho de surpresa hoje, me senti muito amada",0,0,0,0,1,0
+"Sinto falta de atenção às vezes, queria mais presença dele nesse momento",0,1,0,0,0,0
+"Tivemos uma conversa boa sobre os planos pro bebê, fiquei mais tranquila",0,0,0,0,1,0
+Vi o bebê no ultrassom hoje e chorei de emoção,0,0,0,0,1,0
+"Descobri o sexo do bebê hoje, foi um misto de alegria e ansiedade",1,0,0,0,1,0
+"Senti o primeiro chute hoje, foi a coisa mais emocionante que já senti",0,0,0,0,1,0
+Comecei a sentir os movimentos ficarem mais fortes essa semana,0,0,0,0,1,0
+"Fizemos o chá de bebê hoje, foi lindo mas me deixou exausta",0,0,1,0,1,0
+Entrei no último trimestre hoje e bateu um misto de ansiedade e alegria,1,0,0,0,1,0
+"Montamos o berço hoje, ficou tudo mais real de repente e me emocionei",0,0,0,0,1,0
+"A ultrassom de hoje trouxe uma dúvida que o médico vai investigar melhor, fiquei apreensiva",1,0,0,1,0,0
+Vi umas fotos de outras grávidas nas redes e fiquei mal comparando meu corpo,0,1,0,0,0,0
+"Recebo conselho demais de todo mundo, já não sei mais em quem confiar",0,0,1,0,0,0
+Fico me comparando com outras gestantes e isso mexe com minha cabeça,1,1,0,0,0,0
+Tanta informação contraditória sobre gravidez só aumenta minha confusão,1,0,0,0,0,0
+"Parei de seguir umas contas de grávida nas redes, tava me fazendo mal",0,1,0,0,0,0
+"Não reconheço meu corpo no espelho ultimamente, isso mexeu comigo hoje",0,1,0,0,0,0
+"Aprendendo a aceitar as mudanças do corpo, hoje me senti bem com isso",0,0,0,0,1,0
+"As estrias novas me incomodaram um pouco hoje, mas tentei não ligar",0,1,0,0,0,0
+"Me sinto linda nessa fase, aceitando cada mudança com carinho",0,0,0,0,1,0
+Preocupada em como vai ser a volta ao trabalho depois da licença,1,0,0,1,0,0
+Meu chefe foi super compreensivo hoje sobre os horários das consultas,0,0,0,0,1,0
+Tenho medo de perder oportunidades no trabalho por causa da licença,0,0,0,1,0,0
+"Consegui negociar um horário melhor no trabalho, fiquei aliviada",0,0,0,0,1,0
+"A pressão no trabalho não dá trégua, mesmo eu grávida",0,0,1,0,0,0
+"Não durmo bem há dias, a barriga já não deixa achar posição confortável",0,0,0,0,0,1
+"Tive uns sonhos estranhos essa noite, acordei meio agitada",1,0,0,0,0,0
+"Dormi super bem hoje, acordei leve e de bom humor",0,0,0,0,1,0
+"A insônia tá difícil, fico rolando na cama sem conseguir pegar no sono",0,0,1,0,0,1
+"Mal posso esperar pra conhecer esse bebê, a ansiedade boa tá tomando conta",1,0,0,0,1,0
+Sinto uma gratidão enorme por essa gestação estar indo tão bem,0,0,0,0,1,0
+Empolgada demais escolhendo as roupinhas do enxoval hoje,0,0,0,0,1,0
+"Contando os dias pra conhecer o rostinho dele, ansiedade boa mesmo",1,0,0,0,1,0
+Frustrada porque não consigo mais fazer as coisas no ritmo de antes,0,0,1,0,0,0
+Fiquei irritada comigo mesma por esquecer coisas simples hoje,0,0,1,0,0,0
+A falta de paciência tá maior que o normal essa semana,0,0,1,0,0,0
+"Depois da perda que tive antes, cada consulta me deixa mais apreensiva que o normal",1,0,0,1,0,0
+Fico com medo de me apegar demais antes de passar dos três meses,0,0,0,1,0,0
+Recebi vários resultados de exame hoje e fiquei confusa tentando entender tudo,1,0,0,0,0,0
+"O médico explicou tudo com calma hoje, saí da consulta mais tranquila",0,0,0,0,1,0
+"A enjoo matinal voltou forte essa semana, difícil levantar da cama",0,0,0,0,0,1
+"Senti a barriga endurecer algumas vezes hoje, acho que são as contrações de treinamento",0,0,0,0,0,1
+"Dor lombar forte hoje, mal consegui ficar em pé por muito tempo",0,0,0,0,0,1
+Notei minhas gengivas sangrando um pouco ao escovar os dentes,0,0,0,0,0,1
+Prisão de ventre incomodando bastante essa semana,0,0,0,0,0,1
+"Senti coceira na barriga à noite, acho que é o estiramento da pele",0,0,0,0,0,1
+"As pernas ficaram pesadas e cheias de veinhas aparecendo, me incomodou hoje",0,0,0,0,0,1
+"Senti um desconforto na hora de urinar, vou ficar de olho se piora",0,0,0,0,0,1
+"Hoje tive uma sensibilidade a cheiros fora do normal, enjoada o dia todo",0,0,0,0,0,1
+Notei meu peso subir mais rápido essa semana e fiquei um pouco preocupada,1,0,0,0,0,1
+"dia comum, nada de novo pra falar hoje",0,0,0,0,0,0
+Trabalhei o dia todo e à noite só relaxei um pouco,0,0,0,0,0,0
+Fui na feira de manhã e resolvi umas coisas de casa à tarde,0,0,0,0,0,0
+"Recebi visita de uma amiga à tarde, conversamos sobre assuntos gerais",0,0,0,0,0,0
+Assisti as notícias e depois fui dormir cedo,0,0,0,0,0,0
+"Ansiosa, cansada e com uma dor nas costas que não passa desde ontem",1,0,1,0,0,1
+"Feliz com a gravidez, mas insegura sobre o parto e exausta com a rotina",0,0,1,1,1,0
+"Triste, sem energia e ainda com náusea o dia inteiro",0,1,0,0,0,1
+"Minha glicemia veio alta de novo hoje, fiquei frustrada com a dieta",0,0,1,0,0,1
+"Consegui manter a glicemia controlada essa semana, fiquei aliviada",0,0,0,0,1,0
+"Medi a pressão em casa e veio um pouco alta, fiquei apreensiva",1,0,0,0,0,1
+Ansiosa toda vez que preciso medir a pressão agora,1,0,0,0,0,0
+Cansada de controlar tudo que como por causa da diabetes gestacional,0,0,1,0,0,0
+"O médico ajustou minha dieta hoje, saí mais confiante da consulta",0,0,0,0,1,0
+Preocupada com os números do exame de glicemia que faço toda semana,1,0,0,0,0,0
+"Segui a dieta certinho essa semana e o resultado veio bom, fiquei feliz",0,0,0,0,1,0
+Dia bom hoje,0,0,0,0,1,0
+Tudo tranquilo,0,0,0,0,1,0
+"Dia difícil, só isso",0,1,0,0,0,0
+Cansada demais hoje,0,0,1,0,0,0
+Ansiosa sem motivo certo,1,0,0,0,0,0
+Enjoo o dia inteiro,0,0,0,0,0,1
+Nada de novo,0,0,0,0,0,0
+Só cansaço mesmo,0,0,1,0,0,0
+Medo bateu forte hoje,0,0,0,1,0,0
+Feliz e grata hoje,0,0,0,0,1,0
+Orei bastante hoje e isso me trouxe uma paz que eu precisava,0,0,0,0,1,0
+Tenho pedido muita força pra conseguir enfrentar essa fase com calma,1,0,0,0,0,0
+Fui na missa hoje e saí bem mais tranquila,0,0,0,0,1,0
+"Coloquei tudo na mão de Deus hoje, isso aliviou um pouco a ansiedade",1,0,0,0,1,0
+Agradeço todos os dias por essa gestação estar indo bem até agora,0,0,0,0,1,0
+"Ainda no início, tenho muito medo de alguma coisa acontecer antes das 12 semanas",0,0,0,1,0,0
+O enjoo do começo da gravidez tá difícil de lidar,0,0,0,0,0,1
+"Só vou relaxar um pouco depois do primeiro ultrassom, confesso",1,0,0,1,0,0
+Sensibilidade nos seios e um cansaço fora do normal essa semana,0,0,0,0,0,1
+"Já tô impaciente pra esse bebê nascer logo, a reta final tá difícil",0,0,1,0,0,0
+O peso da barriga já tá pesando bastante nas costas ultimamente,0,0,0,0,0,1
+"Contando os dias, ansiosa e cansada ao mesmo tempo nessa reta final",1,0,1,0,0,0
+Mal consigo dormir de tão grande que a barriga já está,0,0,0,0,0,1
+"Tô no final da gestação e a expectativa só cresce, é bom e nervoso ao mesmo tempo",1,0,0,0,1,0
+"Sendo gêmeos, sinto que minha preocupação é o dobro da de outras gestantes",1,0,0,0,0,0
+"Cansaço redobrado hoje, carregar dois bebês não é fácil",0,0,1,0,0,1
+"Por ser minha primeira gravidez, tudo me deixa insegura ainda",0,0,0,1,0,0
+"Já sendo mãe de outro filho, sinto mais confiança dessa vez",0,0,0,0,1,0
+"Comparado com minha primeira gravidez, essa tá bem mais tranquila",0,0,0,0,1,0
+Não sei se vou conseguir dividir atenção entre os filhos direito,0,0,0,1,0,0
+"Hoje bateu muita vontade de comer coisa doce, dia tranquilo fora isso",0,0,0,0,1,0
+Tive aversão a um cheiro de comida que eu adorava antes,0,0,0,0,0,1
+"Consegui comer bem hoje, apetite voltou ao normal",0,0,0,0,1,0
+Fiz uma caminhada leve hoje e me senti bem disposta depois,0,0,0,0,1,0
+Tentei fazer os exercícios da fisioterapia mas o cansaço venceu,0,0,1,0,0,0
+Yoga pra gestante hoje ajudou bastante a acalmar a cabeça,0,0,0,0,1,0
+As contas do enxoval estão pesando no orçamento esse mês,0,0,1,0,0,0
+Fizemos as contas do que falta comprar e ficamos preocupados com o valor,1,0,0,0,0,0
+"Consegui economizar pra comprar o carrinho, fiquei satisfeita",0,0,0,0,1,0
+"Recebi uma mensagem carinhosa de uma amiga hoje, me fez bem",0,0,0,0,1,0
+Fiquei magoada com um comentário sobre meu corpo hoje,0,1,0,0,0,0
+"Perdi a paciência fácil hoje, acho que os hormônios estão à flor da pele",0,0,1,0,0,0
+Um pensamento ruim passou pela cabeça hoje e não consegui afastar,1,0,0,0,0,0
+"Me senti sozinha hoje, mesmo com gente em casa",0,1,0,0,0,0
+Tive um momento de pânico pensando em como vai ser o pós-parto,1,0,0,1,0,0
+"Consegui conversar bastante com meu parceiro sobre meus medos, foi bom desabafar",0,0,0,0,1,0
+Fiquei remoendo os planos do parto o dia inteiro,1,0,0,0,0,0
+Recebi uma notícia inesperada hoje e fiquei sem chão por um tempo,1,1,0,0,0,0
+"Foi bom poder chorar hoje, acho que precisava colocar pra fora",0,1,0,0,0,0
+"Senti o útero repuxando um pouco à tarde, nada muito forte",0,0,0,0,0,1
+"Dor nas costelas incomodando ultimamente, acho que é o bebê crescendo",0,0,0,0,0,1
+"Suor excessivo hoje, mesmo sem fazer nenhum esforço grande",0,0,0,0,0,1
+"Senti o nariz entupido o dia todo, dizem que é comum na gravidez",0,0,0,0,0,1
+"Notei mais salivação que o normal hoje, estranho mas parece que é comum",0,0,0,0,0,1
+Sangramento leve nas gengivas de novo hoje ao escovar os dentes,0,0,0,0,0,1
+Dor pélvica incomodou bastante ao caminhar hoje,0,0,0,0,0,1
+"Senti uma pontada forte do lado esquerdo da barriga, passou rápido mas assustou",1,0,0,0,0,1
+"Trabalhei de casa hoje, dia tranquilo sem imprevistos",0,0,0,0,0,0
+Fui buscar uns exames no laboratório e resolvi umas coisas no caminho,0,0,0,0,0,0
+Passei o dia estudando pra um curso que estou fazendo,0,0,0,0,0,0
+"Limpei a casa e preparei o almoço, dia comum",0,0,0,0,0,0
+"Conversei com amigas à tarde, nada fora do comum pra registrar",0,0,0,0,0,0
+Feliz com o crescimento da barriga mas incomodada com a dor nas costas,0,0,0,0,1,1
+Ansiosa com o exame de amanhã e com o sono ruim de ontem à noite,1,0,0,0,0,1
+Grata pela gestação mas exausta com a correria de preparar tudo,0,0,1,0,1,0
+Triste com a distância da família mas tentando manter o ânimo,0,1,0,0,1,0
+Medo do parto e ao mesmo tempo muita vontade de conhecer o bebê logo,0,0,0,1,1,0
+"Comecei a separar a mala da maternidade hoje, deu um friozinho na barriga",1,0,0,0,1,0
+"Terminei de arrumar a mala da maternidade, me sinto mais preparada agora",0,0,0,0,1,0
+"Ainda não escolhi o pediatra, isso tá me deixando ansiosa",1,0,0,0,0,0
+"Fechei com o pediatra hoje, tirei um peso das costas",0,0,0,0,1,0
+"Pesquisei sobre plano de parto hoje, fiquei com muitas dúvidas ainda",1,0,0,0,0,0
+"Organizei os documentos pro hospital, checklist quase completo",0,0,0,0,1,0
+"Faltam tantas coisas ainda pra deixar pronto, fico agoniada só de pensar",0,0,1,0,0,0
+"A enfermeira foi super atenciosa hoje na consulta, me senti bem acolhida",0,0,0,0,1,0
+"Me senti mal atendida na consulta de hoje, saí frustrada",0,1,1,0,0,0
+"O médico tirou um tempo pra explicar tudo com calma, fiquei grata",0,0,0,0,1,0
+Fiquei com várias dúvidas depois da consulta e não consegui perguntar tudo,1,0,0,0,0,0
+"Troquei de obstetra hoje, ainda insegura se foi a decisão certa",0,0,0,1,0,0
+"A consulta de hoje foi rápida demais, saí com mais dúvida que antes",1,0,0,0,0,0
+Apareceram umas manchas escuras no rosto essa semana,0,0,0,0,0,1
+"Meu cabelo tá mais bonito que nunca nessa gravidez, adorei o efeito",0,0,0,0,1,0
+"A pele ficou mais oleosa e cheia de espinha de novo, meio incômodo",0,0,0,0,0,1
+Notei a linha escura na barriga aparecendo essa semana,0,0,0,0,0,1
+Já fico ansiosa pensando se vou conseguir amamentar direito,1,0,0,1,0,0
+"Fiz um curso sobre amamentação hoje, saí bem mais tranquila",0,0,0,0,1,0
+Tenho medo de não saber identificar quando o bebê tá com fome ou dor,0,0,0,1,0,0
+"Pensando em como vai ser dividir as noites depois que ele nascer, já bate um cansaço antecipado",1,0,1,0,0,0
+"Assisti uns vídeos sobre os primeiros dias com o bebê, fiquei mais confiante",0,0,0,0,1,0
+Hj foi tranquilo,0,0,0,0,1,0
+Enjoada de novo :(,0,0,0,0,0,1
+Ansiosa pra amanhã,1,0,0,0,0,0
+"Dia corrido, sem tempo pra nada",0,0,1,0,0,0
+"Tudo bem por aqui, obrigada",0,0,0,0,1,0
+Meio pra baixo hoje,0,1,0,0,0,0
+"Consulta boa, tudo certo",0,0,0,0,1,0
+Cansaço extremo hj,0,0,1,0,0,1
+"Bebê mexendo muito hj, adorei",0,0,0,0,1,0
+Sem novidade,0,0,0,0,0,0
+De boa hoje,0,0,0,0,1,0
+Não foi um dia fácil,0,1,0,0,0,0
+"Confio que tudo vai dar certo, mesmo com o medo que sinto às vezes",0,0,0,1,1,0
+Tenho fé de que essa fase difícil vai passar logo,0,1,0,0,1,0
+Sigo com esperança apesar dos dias mais pesados dessa semana,0,0,1,0,1,0
+A mudança de casa no meio da gravidez tá sendo mais puxada do que imaginei,0,0,1,0,0,0
+"Recebi visita surpresa e não tava preparada, virou um estresse danado",0,0,1,0,0,0
+O trânsito pra chegar nas consultas tá acabando com minha paciência,0,0,1,0,0,0
+"Tentando equilibrar tudo sozinha essa semana, tá pesado",0,0,1,0,0,0
+Tenho medo de me arrepender de alguma escolha que fizer agora,0,0,0,1,0,0
+Insegura se o quarto do bebê já tá pronto o suficiente,0,0,0,1,0,0
+Fico pensando se escolhi o nome certo pra ele,0,0,0,1,0,0
+Medo de não conseguir identificar sinal de trabalho de parto na hora certa,0,0,0,1,0,0
+Será que vou reconhecer quando for a hora de ir pro hospital de verdade?,1,0,0,1,0,0
+"Recebi elogios sobre como tô linda grávida hoje, me senti bem",0,0,0,0,1,0
+"Consegui fazer tudo que planejei hoje, dia produtivo e leve",0,0,0,0,1,0
+"Passei a tarde vendo fotos de bebê com meu parceiro, momento gostoso",0,0,0,0,1,0
+"Recebi o resultado do exame e veio tudo perfeito, aliviada e feliz",0,0,0,0,1,0
+Tirei uma soneca boa à tarde e acordei bem mais disposta,0,0,0,0,1,0
+Bateu uma nostalgia da vida antes da gravidez hoje,0,1,0,0,0,0
+"Me senti incompreendida numa conversa hoje, fiquei mal o resto do dia",0,1,0,0,0,0
+"Choro fácil hoje, qualquer coisa mexeu comigo",0,1,0,0,0,0
+Um pouco de melancolia sem razão aparente essa tarde,0,1,0,0,0,0
+"Senti o bebê soluçando pela primeira vez, estranho mas engraçado",0,0,0,0,1,1
+"Dor de cabeça leve o dia inteiro, nada muito forte",0,0,0,0,0,1
+Senti mais sede que o normal e fiquei tomando água o dia todo,0,0,0,0,0,1
+"Notei os pés maiores hoje, quase não entrei no sapato de sempre",0,0,0,0,0,1
+"Tive uma cólica leve à noite, passou rápido mas fiquei de olho",1,0,0,0,0,1
+Senti uma queimação no estômago depois do jantar,0,0,0,0,0,1
+"Dificuldade pra respirar fundo hoje, a barriga já ocupa muito espaço",0,0,0,0,0,1
+"Ardência ao urinar de novo hoje, vou mencionar na próxima consulta",0,0,0,0,0,1
+Senti um desconforto forte na parte baixa da barriga essa tarde,1,0,0,0,0,1
+"Passei o dia lendo um livro, nada de especial pra contar",0,0,0,0,0,0
+Cuidei do jardim de manhã e descansei à tarde,0,0,0,0,0,0
+"Recebi uma encomenda hoje, resto do dia foi tranquilo e normal",0,0,0,0,0,0
+"Ajudei meu parceiro numa tarefa de casa, dia comum",0,0,0,0,0,0
+"Assisti um documentário à noite, nada fora do comum",0,0,0,0,0,0
+"Trabalhei o dia inteiro em home office, rotina de sempre",0,0,0,0,0,0
+Feliz com os preparativos mas cansada de tanta coisa pra resolver,0,0,1,0,1,0
+Grata pelo apoio da família mas ainda insegura sobre o parto,0,0,0,1,1,0
+Enjoada o dia todo e isso me deixou sem paciência pra nada,0,0,1,0,0,1
+Ansiosa com a mala da maternidade e com medo de esquecer algo importante,1,0,0,1,0,0
+"Triste por não poder fazer tudo que fazia antes, mas tentando aceitar",0,1,0,0,1,0
+"Cansada, ansiosa e com uma dor de cabeça persistente hoje",1,0,1,0,0,1
+E se alguma coisa não sair do jeito que eu planejei pro parto?,0,0,0,1,0,0
+Não sei se vou saber o que fazer na primeira vez que ele chorar,0,0,0,1,0,0
+Fico paralisada só de imaginar a sala de parto,0,0,0,1,0,0
+"Prefiro nem pensar no que pode dar errado, prefiro focar no que der",0,0,0,1,0,0
+Será que vou dar conta de tudo isso sozinha mesmo?,0,0,0,1,0,0
+"Toda vez que penso no que vem depois, um frio passa por mim",0,0,0,1,0,0
+Não tenho certeza nenhuma se estou preparada pra essa mudança toda,0,0,0,1,0,0
+Fico imaginando cenários que nem deveria e isso me consome por dentro,0,0,0,1,0,0
+Queria ter mais certeza de que vai ficar tudo bem no final,0,0,0,1,0,0
+Uma parte de mim duvida se sou capaz de cuidar dele direito,0,0,0,1,0,0
+Não consigo deixar de pensar em tudo que pode fugir do controle,0,0,0,1,0,0
+Sinto um aperto quando penso em ficar sozinha na hora H,0,0,0,1,0,0
+Às vezes me pego duvidando se fiz as escolhas certas até aqui,0,0,0,1,0,0
+Tem uma vozinha na minha cabeça que fica questionando se vou conseguir,0,0,0,1,0,0
+Evito pensar em certas possibilidades porque não sei como reagiria,0,0,0,1,0,0
+Fico tensa só de cogitar que algo pudesse fugir do plano,0,0,0,1,0,0
+Não me sinto totalmente segura sobre como vai ser tudo daqui pra frente,0,0,0,1,0,0
+Uma dúvida constante me acompanha sobre se estou fazendo o suficiente,0,0,0,1,0,0
+Consegui aproveitar cada minuto do passeio de hoje sem pensar em mais nada,0,0,0,0,1,0
+Meu corpo relaxou de um jeito que não acontecia há semanas,0,0,0,0,1,0
+Terminei o dia com aquela sensação boa de dever cumprido,0,0,0,0,1,0
+"Rimos muito hoje com uma história boba, foi gostoso demais",0,0,0,0,1,0
+"Nada me incomodou o dia inteiro, o que já é raro ultimamente",0,0,0,0,1,0
+"Acordei com uma disposição diferente hoje, o corpo pediu pra ir",0,0,0,0,1,0
+Aproveitei o silêncio da manhã só pra sentir o momento,0,0,0,0,1,0
+O jantar em família hoje deixou um gostinho bom no coração,0,0,0,0,1,0
+"Passei a tarde sem pressa nenhuma, foi exatamente o que eu precisava",0,0,0,0,1,0
+Me peguei sorrindo sozinha pensando no bebê hoje,0,0,0,0,1,0
+"O dia fluiu redondinho, sem nenhum perrengue no caminho",0,0,0,0,1,0
+Consegui apreciar um momento pequeno hoje e isso encheu meu dia,0,0,0,0,1,0
+Foi um daqueles dias em que tudo parece encaixar direitinho,0,0,0,0,1,0
+Senti o peito mais aliviado depois da conversa que tive hoje,0,0,0,0,1,0
+Deu vontade de guardar esse momento de hoje na memória,0,0,0,0,1,0
+"A energia de hoje foi outra, tudo pareceu mais fácil",0,0,0,0,1,0
+Curti demais o carinho que recebi da família no almoço de hoje,0,0,0,0,1,0
+Senti uma satisfação simples só de ver o quarto do bebê quase pronto,0,0,0,0,1,0
+Minha lista de tarefas só cresce e eu sinto que encolho a cada dia,0,0,1,0,0,0
+Sinto os ombros duros de tanta coisa acumulada essa semana,0,0,1,0,0,0
+O dia acabou e ainda ficou metade das coisas por fazer,0,0,1,0,0,0
+"Não consigo focar em uma coisa só, tudo puxa minha atenção ao mesmo tempo",0,0,1,0,0,0
+"Respondi mais ríspida do que deveria hoje, acho que passei do limite",0,0,1,0,0,0
+Sinto que estou sempre correndo atrás do tempo e nunca alcanço,0,0,1,0,0,0
+A cabeça não para de rodar pensando em tudo que falta resolver,0,0,1,0,0,0
+"Mal sentei hoje, foi uma correria do início ao fim do dia",0,0,1,0,0,0
+Sinto o corpo pesado de tanta coisa pra dar conta hoje,0,0,1,0,0,0
+Cada coisa nova que aparece hoje parece um peso a mais nas costas,0,0,1,0,0,0
+"Perdi a paciência fácil hoje, a rotina tá apertando de todo lado",0,0,1,0,0,0
+"Sinto que preciso de um respiro, mas a agenda não dá brecha",0,0,1,0,0,0
+"Vivendo no piloto automático essa semana, sem tempo de parar",0,0,1,0,0,0
+A pressão de dar conta de tudo sozinha tá pesando bastante,0,0,1,0,0,0
+Sinto que estou sempre um passo atrás de tudo que preciso fazer,0,0,1,0,0,0
+"O corpo já dá sinais de que preciso desacelerar, mas não consigo",0,0,1,0,0,0
+Consegui aproveitar o dia mesmo com a lista de tarefas ainda cheia,0,0,1,0,1,0
+"Uma parte de mim duvida se dou conta de tudo, mas tento seguir em frente confiante",0,0,0,1,1,0
+"Entre uma coisa e outra na correria de hoje, ainda bateu aquele frio pensando no parto",0,0,1,1,0,0
