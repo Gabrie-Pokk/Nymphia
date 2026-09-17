@@ -26,6 +26,7 @@ import CintaNymphia from './pages/gestante/CintaNymphia';
 import VinculoMedico from './pages/gestante/VinculoMedico';
 import MyDataLGPD from './pages/gestante/MyDataLGPD';
 import CommunityFeed from './pages/comunidade/CommunityFeed';
+import SubscriptionScreen from './pages/gestante/SubscriptionScreen';
 
 // Páginas do Profissional
 import DoctorDashboard from './pages/profissional/DoctorDashboard';
@@ -211,6 +212,8 @@ export default function App() {
                 {currentPath === '/cinta' && <CintaNymphia onBack={() => navigate('/')} onNavigateEmergency={() => navigate('/emergencia')} />}
                 {currentPath === '/vinculo-medico' && <VinculoMedico onBack={() => navigate('/')} />}
                 {currentPath === '/comunidade' && <CommunityFeed onBack={() => navigate('/')} />}
+                {currentPath === '/assinatura' && <SubscriptionScreen onBack={() => navigate('/')} />}
+                {currentPath === '/planos' && <SubscriptionScreen onBack={() => navigate('/')} />}
                 {currentPath === '/meus-dados' && <MyDataLGPD onBack={() => navigate('/')} />}
               </>
             )}

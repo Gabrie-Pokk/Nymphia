@@ -21,6 +21,8 @@ class PerfilClinico(Base):
     maternidade_nome = Column(String(255), nullable=True)
     maternidade_endereco = Column(String(255), nullable=True)
     maternidade_telefone = Column(String(50), nullable=True)
+    maternidade_latitude = Column(Float, nullable=True)
+    maternidade_longitude = Column(Float, nullable=True)
     atualizado_em = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     gestante = relationship("Gestante", back_populates="perfil_clinico")

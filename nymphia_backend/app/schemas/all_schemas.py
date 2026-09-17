@@ -21,6 +21,13 @@ class GestanteRegister(BaseModel):
     senha: str = Field(..., min_length=8, max_length=72)
     recusa_ia: bool = False
 
+    @field_validator("senha")
+    @classmethod
+    def validar_senha_bcrypt(cls, v: str) -> str:
+        if len(v.encode("utf-8")) > 72:
+            raise ValueError("A senha excede o limite seguro de 72 bytes do algoritmo de criptografia (bcrypt).")
+        return v
+
     @field_validator("nome")
     @classmethod
     def validar_nome(cls, v: str) -> str:
@@ -33,10 +40,24 @@ class GestanteLogin(BaseModel):
     email: EmailStr = Field(..., max_length=120)
     senha: str = Field(..., max_length=72)
 
+    @field_validator("senha")
+    @classmethod
+    def validar_senha_bcrypt(cls, v: str) -> str:
+        if len(v.encode("utf-8")) > 72:
+            raise ValueError("A senha excede o limite seguro de 72 bytes do algoritmo de criptografia (bcrypt).")
+        return v
+
 class ProfissionalRegister(BaseModel):
     nome: str = Field(..., min_length=2, max_length=100)
     email: EmailStr = Field(..., max_length=120)
     senha: str = Field(..., min_length=8, max_length=72)
+
+    @field_validator("senha")
+    @classmethod
+    def validar_senha_bcrypt(cls, v: str) -> str:
+        if len(v.encode("utf-8")) > 72:
+            raise ValueError("A senha excede o limite seguro de 72 bytes do algoritmo de criptografia (bcrypt).")
+        return v
     registro_tipo: str = Field(..., pattern="^(CRM|COREN)$")
     registro_numero: str = Field(..., min_length=3, max_length=12)
     registro_uf: str = Field(..., min_length=2, max_length=2)
@@ -69,10 +90,24 @@ class ProfissionalLogin(BaseModel):
     email: EmailStr = Field(..., max_length=120)
     senha: str = Field(..., max_length=72)
 
+    @field_validator("senha")
+    @classmethod
+    def validar_senha_bcrypt(cls, v: str) -> str:
+        if len(v.encode("utf-8")) > 72:
+            raise ValueError("A senha excede o limite seguro de 72 bytes do algoritmo de criptografia (bcrypt).")
+        return v
+
 class ParceiroRegister(BaseModel):
     nome: str = Field(..., min_length=2, max_length=100)
     email: EmailStr = Field(..., max_length=120)
     senha: str = Field(..., min_length=8, max_length=72)
+
+    @field_validator("senha")
+    @classmethod
+    def validar_senha_bcrypt(cls, v: str) -> str:
+        if len(v.encode("utf-8")) > 72:
+            raise ValueError("A senha excede o limite seguro de 72 bytes do algoritmo de criptografia (bcrypt).")
+        return v
 
     @field_validator("nome")
     @classmethod
@@ -85,6 +120,13 @@ class ParceiroRegister(BaseModel):
 class ParceiroLogin(BaseModel):
     email: EmailStr = Field(..., max_length=120)
     senha: str = Field(..., max_length=72)
+
+    @field_validator("senha")
+    @classmethod
+    def validar_senha_bcrypt(cls, v: str) -> str:
+        if len(v.encode("utf-8")) > 72:
+            raise ValueError("A senha excede o limite seguro de 72 bytes do algoritmo de criptografia (bcrypt).")
+        return v
 
 class AuthResponse(BaseModel):
     token: str
@@ -109,6 +151,8 @@ class PerfilClinicoBase(BaseModel):
     maternidade_nome: Optional[str] = Field(None, max_length=120)
     maternidade_endereco: Optional[str] = Field(None, max_length=200)
     maternidade_telefone: Optional[str] = Field(None, max_length=25)
+    maternidade_latitude: Optional[float] = None
+    maternidade_longitude: Optional[float] = None
 
     @field_validator("dum")
     @classmethod
@@ -163,6 +207,8 @@ class PerfilClinicoUpdate(BaseModel):
     maternidade_nome: Optional[str] = Field(None, max_length=120)
     maternidade_endereco: Optional[str] = Field(None, max_length=200)
     maternidade_telefone: Optional[str] = Field(None, max_length=25)
+    maternidade_latitude: Optional[float] = None
+    maternidade_longitude: Optional[float] = None
 
     @field_validator("dum")
     @classmethod
@@ -514,3 +560,45 @@ class ObservacaoProfissionalOut(BaseModel):
     criado_em: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+# --- Assinaturas & Pagamentos Schemas ---
+class PlanoInfo(BaseModel):
+    id: str
+    nome: str
+    preco: float
+    periodo: str
+    descricao: str
+    recursos: List[str]
+    destaque: bool
+
+class AssinaturaOut(BaseModel):
+    plano: str
+    status: str
+    valor_mensal: float
+    forma_pagamento: Optional[str] = None
+    iniciada_em: datetime
+    expira_em: Optional[datetime] = None
+    proxima_cobranca: Optional[datetime] = None
+    recursos_liberados: List[str] = Field(default_factory=list)
+
+    model_config = ConfigDict(from_attributes=True)
+
+class CheckoutAssinaturaRequest(BaseModel):
+    plano: str = Field(..., pattern="^(free|premium|premium_plus|clinica)$")
+    forma_pagamento: str = Field("pix", pattern="^(pix|cartao_credito)$")
+
+class CheckoutAssinaturaResponse(BaseModel):
+    status: str
+    plano: str
+    valor: float
+    forma_pagamento: str
+    mercado_pago_id: Optional[str] = None
+    checkout_url: Optional[str] = None
+    pix_copia_cola: Optional[str] = None
+    pix_qrcode: Optional[str] = None
+    expira_em_minutos: Optional[int] = 30
+
+class SimularWebhookRequest(BaseModel):
+    usuario_id: Optional[str] = None
+    subscription_id: Optional[str] = None
+    status: str = Field("approved", pattern="^(approved|rejected|failed|cancelled)$")

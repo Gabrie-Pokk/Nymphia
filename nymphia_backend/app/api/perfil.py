@@ -42,6 +42,8 @@ def criar_perfil_clinico(
         maternidade_nome=payload.maternidade_nome,
         maternidade_endereco=payload.maternidade_endereco,
         maternidade_telefone=payload.maternidade_telefone,
+        maternidade_latitude=payload.maternidade_latitude,
+        maternidade_longitude=payload.maternidade_longitude,
         atualizado_em=datetime.utcnow()
     )
     db.add(perfil)

@@ -12,7 +12,7 @@ from app.api import (
     health, auth, perfil, checkin, conversa,
     agenda, vinculo, exames, risco, emergencia,
     parceiro, comunidade, dispositivos, cinta,
-    governance, lgpd, legacy
+    governance, lgpd, legacy, assinaturas
 )
 from app.services.ai_risk_service import carregar_modelos_ml
 from app.services.ai_text_service import carregar_bertimbau
@@ -66,6 +66,7 @@ app.include_router(risco.router)
 app.include_router(emergencia.router)
 app.include_router(parceiro.router)
 app.include_router(comunidade.router)
+app.include_router(assinaturas.router)
 app.include_router(dispositivos.router)
 app.include_router(cinta.router)
 app.include_router(governance.router)

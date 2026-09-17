@@ -254,38 +254,56 @@ export default function DailyCheckin({ onBack }) {
           </div>
         </div>
 
-        {/* 3. Contador de Movimentos Fetais */}
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', fontWeight: 600, color: 'var(--color-vinho)', marginBottom: '4px' }}>
-            Movimentos do bebê sentidos hoje:
-          </label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <button
-              type="button"
-              className="btn btn-outline"
-              onClick={() => setMovimentosBebe(Math.max(0, movimentosBebe - 1))}
-              aria-label="Diminuir contador de movimentos"
-              style={{ minHeight: '44px', minWidth: '44px' }}
-            >
-              <Minus size={18} />
-            </button>
-            <span style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-vinho)', minWidth: '40px', textAlign: 'center' }}>
-              {movimentosBebe}
-            </span>
-            <button
-              type="button"
-              className="btn btn-outline"
-              onClick={() => setMovimentosBebe(Math.min(150, movimentosBebe + 1))}
-              aria-label="Aumentar contador de movimentos"
-              style={{ minHeight: '44px', minWidth: '44px' }}
-            >
-              <Plus size={18} />
-            </button>
-            <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
-              (No 3º trimestre, o ideal é notar pelo menos 6 movimentos por hora após as refeições)
-            </span>
+                {/* 3. Acompanhamento de Movimentos Fetais (Baseado na Idade Gestacional) */}
+        {semanaGestacional >= 20 ? (
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontWeight: 600, color: 'var(--color-vinho)', marginBottom: '4px' }}>
+              Movimentos do bebê sentidos hoje:
+            </label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => setMovimentosBebe(Math.max(0, movimentosBebe - 1))}
+                aria-label="Diminuir contador de movimentos"
+                style={{ minHeight: '44px', minWidth: '44px' }}
+              >
+                <Minus size={18} />
+              </button>
+              <span style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-vinho)', minWidth: '40px', textAlign: 'center' }}>
+                {movimentosBebe}
+              </span>
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => setMovimentosBebe(Math.min(150, movimentosBebe + 1))}
+                aria-label="Aumentar contador de movimentos"
+                style={{ minHeight: '44px', minWidth: '44px' }}
+              >
+                <Plus size={18} />
+              </button>
+              <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
+                (No 3º trimestre, o ideal é notar pelo menos 6 movimentos por hora após as refeições)
+              </span>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div style={{
+            marginBottom: '20px',
+            padding: '12px 16px',
+            backgroundColor: 'var(--color-rosa-claro)',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--color-border)',
+            fontSize: '0.84rem',
+            color: 'var(--color-text-main)',
+            lineHeight: 1.45
+          }}>
+            <strong style={{ color: 'var(--color-vinho)', display: 'block', marginBottom: '2px' }}>
+              🍼 Movimentos Fetais (Semana {semanaGestacional}):
+            </strong>
+            A percepção consistente dos movimentos do bebê inicia-se clinicamente entre a 20ª e a 24ª semana de gestação. Nesta fase anterior, é absolutamente normal e esperado não sentir chutes diários.
+          </div>
+        )}
 
         {/* 4. Descrição Livre */}
         <div className="form-group" style={{ marginBottom: '20px' }}>

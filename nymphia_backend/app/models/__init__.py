@@ -29,3 +29,5 @@ __all__ = [
     "CalibracaoClinica",
     "IntegracaoLaboratorial"
 ]
+
+from app.models.subscription import Assinatura, TransacaoPagamento

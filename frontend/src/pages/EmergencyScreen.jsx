@@ -144,7 +144,7 @@ export default function EmergencyScreen({ onExit }) {
             Ligar ({maternidade.telefone || 'Maternidade'})
           </a>
           <a
-            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(maternidade.endereco || maternidade.nome)}`}
+            href={maternidade.latitude && maternidade.longitude ? `geo:${maternidade.latitude},${maternidade.longitude}?q=${encodeURIComponent(maternidade.nome)}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(maternidade.endereco || maternidade.nome)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="btn btn-outline"
