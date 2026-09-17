@@ -1,1 +1,21 @@
-﻿uploads_documentos/
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+
+# ML models (2.3 GB — manter fora do repositório)
+modelos/
+
+# Banco de dados SQLite (dados de usuários reais)
+nymphia.db
+
+# Uploads de usuários
+uploads_documentos/
+
+# Logs
+*.log
+emergencias.log

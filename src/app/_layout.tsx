@@ -22,6 +22,7 @@ export default function RootLayout() {
             <Stack.Screen name="login" />
             <Stack.Screen name="onboarding-clinico" />
             <Stack.Screen name="checkin" />
+            <Stack.Screen name="agenda" />
             <Stack.Screen name="alarmes" />
             <Stack.Screen name="emergencia" options={{ presentation: 'fullScreenModal' }} />
           </Stack>

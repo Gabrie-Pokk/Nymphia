@@ -160,6 +160,21 @@ export default function HomeScreen() {
             <Text style={styles.seta}>›</Text>
           </Pressable>
 
+          {/* Agenda */}
+          <Pressable
+            style={styles.card}
+            onPress={() => router.push('/agenda')}
+            accessibilityRole="button">
+            <View style={[styles.icone, { backgroundColor: '#E3F2FD' }]}>
+              <Text style={styles.iconeEmoji}>📅</Text>
+            </View>
+            <View style={styles.cardTexto}>
+              <Text style={styles.cardTitulo}>Agenda</Text>
+              <Text style={styles.cardSubtitulo}>Consultas, vacinas e exames</Text>
+            </View>
+            <Text style={styles.seta}>›</Text>
+          </Pressable>
+
           {/* Alarmes */}
           <Pressable
             style={styles.card}
