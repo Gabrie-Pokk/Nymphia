@@ -37,6 +37,10 @@ export default function Exams({ onBack }) {
       setErro('Por favor, selecione um arquivo de laudo (PDF, JPG ou PNG).');
       return;
     }
+    if (arquivo.size > 10 * 1024 * 1024) {
+      setErro('O arquivo é muito grande. O limite máximo permitido é 10 MB.');
+      return;
+    }
 
     setCarregando(true);
     const formData = new FormData();
@@ -116,6 +120,7 @@ export default function Exams({ onBack }) {
             type="date"
             className="form-control"
             value={dataRealizacao}
+            max={new Date().toISOString().split('T')[0]}
             onChange={(e) => setDataRealizacao(e.target.value)}
             required
           />

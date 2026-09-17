@@ -153,6 +153,8 @@ export default function CommunityFeed({ onBack }) {
               rows={3}
               placeholder="Compartilhe sua dúvida ou momento gestacional..."
               value={novoPostConteudo}
+              maxLength={1500}
+              minLength={5}
               onChange={(e) => setNovoPostConteudo(e.target.value)}
               required
             />

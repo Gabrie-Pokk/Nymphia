@@ -4,6 +4,8 @@ import { Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import BackButton from '../components/BackButton';
 
+const NOME_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ\s'.-]{2,100}$/;
+
 export default function RegisterGestante({ onBackToLogin }) {
   const { login } = useAuth();
   const [nome, setNome] = useState('');
@@ -18,12 +20,17 @@ export default function RegisterGestante({ onBackToLogin }) {
     e.preventDefault();
     setErro('');
 
-    if (nome.trim().length < 3) {
-      setErro('O nome deve ter no mínimo 3 caracteres.');
+    const nomeTrim = nome.trim();
+    if (!NOME_REGEX.test(nomeTrim)) {
+      setErro('O nome completo deve conter apenas letras, espaços e hífens, sem números ou símbolos.');
       return;
     }
     if (senha.length < 8) {
       setErro('A senha deve ter no mínimo 8 caracteres.');
+      return;
+    }
+    if (senha.length > 72) {
+      setErro('A senha deve ter no máximo 72 caracteres.');
       return;
     }
 
@@ -33,7 +40,7 @@ export default function RegisterGestante({ onBackToLogin }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          nome: nome.trim(),
+          nome: nomeTrim,
           email: email.trim().toLowerCase(),
           senha,
           recusa_ia: recusaIa
@@ -80,13 +87,14 @@ export default function RegisterGestante({ onBackToLogin }) {
 
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label htmlFor="reg-nome">Nome Completo</label>
+          <label htmlFor="reg-nome">Nome Completo (apenas letras)</label>
           <input
             id="reg-nome"
             type="text"
             className="form-control"
-            placeholder="Seu nome"
+            placeholder="Ex: Maria Clara Santos"
             value={nome}
+            maxLength={100}
             onChange={(e) => setNome(e.target.value)}
             required
           />
@@ -100,13 +108,14 @@ export default function RegisterGestante({ onBackToLogin }) {
             className="form-control"
             placeholder="seuemail@exemplo.com"
             value={email}
+            maxLength={120}
             onChange={(e) => setEmail(e.target.value)}
             required
           />
         </div>
 
         <div className="form-group">
-          <label htmlFor="reg-senha">Senha (Mínimo 8 caracteres)</label>
+          <label htmlFor="reg-senha">Senha (8 a 72 caracteres)</label>
           <div style={{ position: 'relative' }}>
             <input
               id="reg-senha"
@@ -117,6 +126,7 @@ export default function RegisterGestante({ onBackToLogin }) {
               onChange={(e) => setSenha(e.target.value)}
               required
               minLength={8}
+              maxLength={72}
               style={{ paddingRight: '44px' }}
             />
             <button

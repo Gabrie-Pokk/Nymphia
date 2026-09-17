@@ -4,6 +4,8 @@ import { ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import BackButton from '../components/BackButton';
 
+const NOME_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ\s'.-]{2,100}$/;
+
 export default function RegisterParceiro({ onBackToLogin }) {
   const { login } = useAuth();
   const [nome, setNome] = useState('');
@@ -16,12 +18,13 @@ export default function RegisterParceiro({ onBackToLogin }) {
     e.preventDefault();
     setErro('');
 
-    if (nome.trim().length < 3) {
-      setErro('O nome deve ter no mínimo 3 caracteres.');
+    const nomeTrim = nome.trim();
+    if (!NOME_REGEX.test(nomeTrim)) {
+      setErro('O nome completo deve conter apenas letras, espaços e hífens (não são permitidos números).');
       return;
     }
-    if (senha.length < 8) {
-      setErro('A senha deve ter no mínimo 8 caracteres.');
+    if (senha.length < 8 || senha.length > 72) {
+      setErro('A senha deve ter entre 8 e 72 caracteres.');
       return;
     }
 
@@ -31,7 +34,7 @@ export default function RegisterParceiro({ onBackToLogin }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          nome: nome.trim(),
+          nome: nomeTrim,
           email: email.trim().toLowerCase(),
           senha
         })
@@ -54,8 +57,8 @@ export default function RegisterParceiro({ onBackToLogin }) {
 
       <div style={{ textAlign: 'center', marginBottom: '24px' }}>
         <LotusLogo size={44} color="var(--color-vinho)" className="mx-auto" />
-        <h1 style={{ fontSize: '1.5rem', marginTop: '8px' }}>Cadastro do Parceiro</h1>
-        <p className="text-muted">Apoio contínuo e alerta de emergência conectado</p>
+        <h1 style={{ fontSize: '1.5rem', marginTop: '8px' }}>Cadastro do Parceiro / Rede de Apoio</h1>
+        <p className="text-muted">Apoio logístico, marcos gestacionais e socorro rápido</p>
       </div>
 
       {erro && (
@@ -77,35 +80,37 @@ export default function RegisterParceiro({ onBackToLogin }) {
 
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label htmlFor="parc-nome">Nome Completo</label>
+          <label htmlFor="reg-parc-nome">Nome Completo (apenas letras)</label>
           <input
-            id="parc-nome"
+            id="reg-parc-nome"
             type="text"
             className="form-control"
-            placeholder="Seu nome"
+            placeholder="Ex: Carlos Eduardo Lima"
             value={nome}
+            maxLength={100}
             onChange={(e) => setNome(e.target.value)}
             required
           />
         </div>
 
         <div className="form-group">
-          <label htmlFor="parc-email">E-mail</label>
+          <label htmlFor="reg-parc-email">E-mail</label>
           <input
-            id="parc-email"
+            id="reg-parc-email"
             type="email"
             className="form-control"
             placeholder="seuemail@exemplo.com"
             value={email}
+            maxLength={120}
             onChange={(e) => setEmail(e.target.value)}
             required
           />
         </div>
 
         <div className="form-group">
-          <label htmlFor="parc-senha">Senha (Mínimo 8 caracteres)</label>
+          <label htmlFor="reg-parc-senha">Senha (8 a 72 caracteres)</label>
           <input
-            id="parc-senha"
+            id="reg-parc-senha"
             type="password"
             className="form-control"
             placeholder="Mínimo 8 caracteres"
@@ -113,16 +118,17 @@ export default function RegisterParceiro({ onBackToLogin }) {
             onChange={(e) => setSenha(e.target.value)}
             required
             minLength={8}
+            maxLength={72}
           />
         </div>
 
         <button
           type="submit"
           className="btn btn-primary"
-          style={{ width: '100%', minHeight: '48px', marginTop: '10px' }}
+          style={{ width: '100%', minHeight: '48px', marginTop: '12px' }}
           disabled={carregando}
         >
-          {carregando ? 'Cadastrando...' : 'Criar Conta de Parceiro'}
+          {carregando ? 'Criando Conta...' : 'Cadastrar e Conectar'}
           <ArrowRight size={18} />
         </button>
       </form>

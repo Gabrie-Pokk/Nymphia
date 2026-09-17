@@ -4,9 +4,17 @@ import { ArrowRight, UploadCloud, CheckCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import BackButton from '../components/BackButton';
 
+const NOME_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ\s'.-]{2,100}$/;
+const REGISTRO_REGEX = /^[0-9]{3,10}(-[A-Za-z0-9])?$/;
+const UFS_BRASIL = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
+  'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
+  'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+];
+
 export default function RegisterProfissional({ onBackToLogin }) {
   const { login } = useAuth();
-  const [etapa, setEtapa] = useState(1); // 1: dados cadastrais, 2: upload documento comprovante
+  const [etapa, setEtapa] = useState(1);
   const [tokenCriado, setTokenCriado] = useState(null);
   const [profCriado, setProfCriado] = useState(null);
 
@@ -25,8 +33,20 @@ export default function RegisterProfissional({ onBackToLogin }) {
     e.preventDefault();
     setErro('');
 
-    if (registroNumero.trim().length < 3) {
-      setErro('Número de registro profissional inválido.');
+    const nomeTrim = nome.trim();
+    if (!NOME_REGEX.test(nomeTrim)) {
+      setErro('O nome deve conter apenas letras, espaços e abreviações (ex: Dr. Lucas), sem números.');
+      return;
+    }
+
+    const regTrim = registroNumero.trim();
+    if (!REGISTRO_REGEX.test(regTrim)) {
+      setErro('Número de registro inválido. Digite entre 3 e 10 dígitos numéricos.');
+      return;
+    }
+
+    if (senha.length < 8 || senha.length > 72) {
+      setErro('A senha deve ter entre 8 e 72 caracteres.');
       return;
     }
 
@@ -36,11 +56,11 @@ export default function RegisterProfissional({ onBackToLogin }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          nome: nome.trim(),
+          nome: nomeTrim,
           email: email.trim().toLowerCase(),
           senha,
           registro_tipo: registroTipo,
-          registro_numero: registroNumero.trim(),
+          registro_numero: regTrim,
           registro_uf: registroUf.toUpperCase()
         })
       });
@@ -50,7 +70,7 @@ export default function RegisterProfissional({ onBackToLogin }) {
       }
       setTokenCriado(data.token);
       setProfCriado(data);
-      setEtapa(2); // Avança para etapa de upload opcional
+      setEtapa(2);
     } catch (err) {
       setErro(err.message);
     } finally {
@@ -58,48 +78,40 @@ export default function RegisterProfissional({ onBackToLogin }) {
     }
   };
 
-  const handleUploadDocumento = async () => {
+  const handleUploadDocumento = async (e) => {
+    e.preventDefault();
     if (!arquivo) {
-      // Conclui sem upload (acesso não fica bloqueado esperando)
       login(tokenCriado, profCriado);
       return;
     }
 
     setCarregando(true);
-    const formData = new FormData();
-    formData.append('arquivo', arquivo);
-
     try {
-      const res = await fetch('/auth/profissional/upload-documento', {
+      const formData = new FormData();
+      formData.append('arquivo', arquivo);
+
+      await fetch('/auth/profissional/upload-documento', {
         method: 'POST',
         headers: { Authorization: `Bearer ${tokenCriado}` },
         body: formData
       });
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.detail || 'Falha ao enviar documento.');
-      }
-      login(tokenCriado, profCriado);
+
+      login(tokenCriado, { ...profCriado, status_verificacao: 'em_analise' });
     } catch (err) {
-      setErro(err.message);
+      login(tokenCriado, profCriado);
     } finally {
       setCarregando(false);
     }
   };
 
-  const handlePularUpload = () => {
-    // Acesso liberado imediatamente; verificação é posterior e não bloqueia
-    login(tokenCriado, profCriado);
-  };
-
   return (
-    <div style={{ padding: '24px', maxWidth: '460px', margin: '0 auto' }}>
+    <div style={{ padding: '24px', maxWidth: '440px', margin: '0 auto' }}>
       <BackButton onClick={onBackToLogin} label="Voltar para Login" />
 
       <div style={{ textAlign: 'center', marginBottom: '24px' }}>
         <LotusLogo size={44} color="var(--color-vinho)" className="mx-auto" />
-        <h1 style={{ fontSize: '1.5rem', marginTop: '8px' }}>Cadastro de Profissional</h1>
-        <p className="text-muted">Área clínica para Médicos Obstetras e Enfermeiros Obstétricos</p>
+        <h1 style={{ fontSize: '1.5rem', marginTop: '8px' }}>Cadastro de Obstetra / Enfermeira</h1>
+        <p className="text-muted">Acesso clínico e monitoramento em tempo real</p>
       </div>
 
       {erro && (
@@ -122,50 +134,38 @@ export default function RegisterProfissional({ onBackToLogin }) {
       {etapa === 1 ? (
         <form onSubmit={handleCadastro}>
           <div className="form-group">
-            <label htmlFor="prof-nome">Nome Completo</label>
+            <label htmlFor="reg-prof-nome">Nome Completo (com titulação)</label>
             <input
-              id="prof-nome"
+              id="reg-prof-nome"
               type="text"
               className="form-control"
-              placeholder="Dr(a). Seu Nome"
+              placeholder="Ex: Dra. Helena Silveira"
               value={nome}
+              maxLength={100}
               onChange={(e) => setNome(e.target.value)}
               required
             />
           </div>
 
           <div className="form-group">
-            <label htmlFor="prof-email">E-mail Profissional</label>
+            <label htmlFor="reg-prof-email">E-mail Corporativo ou Pessoal</label>
             <input
-              id="prof-email"
+              id="reg-prof-email"
               type="email"
               className="form-control"
-              placeholder="doutor@clinica.com.br"
+              placeholder="helena@clinica.med.br"
               value={email}
+              maxLength={120}
               onChange={(e) => setEmail(e.target.value)}
               required
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="prof-senha">Senha</label>
-            <input
-              id="prof-senha"
-              type="password"
-              className="form-control"
-              placeholder="Mínimo 8 caracteres"
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              required
-              minLength={8}
-            />
-          </div>
-
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <div className="form-group" style={{ flex: 1 }}>
-              <label htmlFor="prof-tipo">Conselho</label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr 1fr', gap: '8px' }}>
+            <div className="form-group">
+              <label htmlFor="reg-prof-tipo">Conselho</label>
               <select
-                id="prof-tipo"
+                id="reg-prof-tipo"
                 className="form-control"
                 value={registroTipo}
                 onChange={(e) => setRegistroTipo(e.target.value)}
@@ -175,78 +175,112 @@ export default function RegisterProfissional({ onBackToLogin }) {
               </select>
             </div>
 
-            <div className="form-group" style={{ flex: 2 }}>
-              <label htmlFor="prof-num">Número</label>
+            <div className="form-group">
+              <label htmlFor="reg-prof-num">Número</label>
               <input
-                id="prof-num"
+                id="reg-prof-num"
                 type="text"
                 className="form-control"
                 placeholder="123456"
                 value={registroNumero}
-                onChange={(e) => setRegistroNumero(e.target.value)}
+                maxLength={10}
+                onChange={(e) => setRegistroNumero(e.target.value.replace(/[^0-9-]/g, ''))}
                 required
               />
             </div>
 
-            <div className="form-group" style={{ flex: 1 }}>
-              <label htmlFor="prof-uf">UF</label>
-              <input
-                id="prof-uf"
-                type="text"
+            <div className="form-group">
+              <label htmlFor="reg-prof-uf">UF</label>
+              <select
+                id="reg-prof-uf"
                 className="form-control"
-                placeholder="SP"
-                maxLength={2}
                 value={registroUf}
-                onChange={(e) => setRegistroUf(e.target.value.toUpperCase())}
-                required
-              />
+                onChange={(e) => setRegistroUf(e.target.value)}
+              >
+                {UFS_BRASIL.map((uf) => (
+                  <option key={uf} value={uf}>{uf}</option>
+                ))}
+              </select>
             </div>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="reg-prof-senha">Senha (8 a 72 caracteres)</label>
+            <input
+              id="reg-prof-senha"
+              type="password"
+              className="form-control"
+              placeholder="Mínimo 8 caracteres"
+              value={senha}
+              onChange={(e) => setSenha(e.target.value)}
+              required
+              minLength={8}
+              maxLength={72}
+            />
           </div>
 
           <button
             type="submit"
             className="btn btn-primary"
-            style={{ width: '100%', minHeight: '48px', marginTop: '10px' }}
+            style={{ width: '100%', minHeight: '48px', marginTop: '12px' }}
             disabled={carregando}
           >
-            {carregando ? 'Cadastrando...' : 'Avançar para Verificação'}
+            {carregando ? 'Cadastrando...' : 'Avançar'}
             <ArrowRight size={18} />
           </button>
         </form>
       ) : (
-        <div className="card" style={{ textAlign: 'center', padding: '24px' }}>
-          <UploadCloud size={44} color="var(--color-rosa)" style={{ margin: '0 auto 12px auto' }} />
-          <h2 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>Comprovante Profissional</h2>
-          <p className="text-muted" style={{ fontSize: '0.88rem', marginBottom: '16px' }}>
-            Envie uma foto da sua carteira profissional (CRM/COREN) ou diploma (PDF, JPG ou PNG, máx 10MB).
-          </p>
-
-          <input
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png"
-            onChange={(e) => setArquivo(e.target.files[0])}
-            style={{ marginBottom: '16px', display: 'block', width: '100%' }}
-          />
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={handleUploadDocumento}
-              disabled={carregando}
-            >
-              {carregando ? 'Enviando documento...' : 'Enviar e Acessar Painel'}
-            </button>
-
-            <button
-              type="button"
-              className="btn btn-outline"
-              onClick={handlePularUpload}
-              disabled={carregando}
-            >
-              Enviar Depois (Acessar Imediatamente)
-            </button>
+        <div>
+          <div
+            style={{
+              padding: '16px',
+              backgroundColor: '#E8F8F0',
+              color: '#1E7E34',
+              borderRadius: 'var(--radius-md)',
+              marginBottom: '16px',
+              display: 'flex',
+              gap: '10px'
+            }}
+          >
+            <CheckCircle size={24} />
+            <div>
+              <strong>Cadastro inicial realizado!</strong>
+              <p style={{ margin: 0, fontSize: '0.85rem' }}>
+                Para liberar a prescrição e acesso total, anexe seu comprovante de registro ou faça isso mais tarde.
+              </p>
+            </div>
           </div>
+
+          <form onSubmit={handleUploadDocumento}>
+            <div className="form-group">
+              <label>Comprovante de Registro Profissional (PDF, JPG ou PNG - máx 10MB)</label>
+              <input
+                type="file"
+                accept="application/pdf,image/*"
+                className="form-control"
+                onChange={(e) => setArquivo(e.target.files[0])}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+              <button
+                type="button"
+                className="btn btn-outline"
+                style={{ flex: 1 }}
+                onClick={() => login(tokenCriado, profCriado)}
+              >
+                Pular por enquanto
+              </button>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                style={{ flex: 1 }}
+                disabled={carregando}
+              >
+                {carregando ? 'Enviando...' : 'Enviar e Entrar'}
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>

@@ -13,6 +13,7 @@ export default function Devices({ onBack }) {
   const [glicemia, setGlicemia] = useState(85.0);
   const [conectandoBle, setConectandoBle] = useState(false);
   const [sucesso, setSucesso] = useState('');
+  const [erro, setErro] = useState('');
   const [carregando, setCarregando] = useState(false);
 
   const carregarMedicoes = async () => {
@@ -30,6 +31,26 @@ export default function Devices({ onBack }) {
   }, []);
 
   const handleSalvarMedicao = async (origem = 'manual') => {
+    setErro('');
+    const s = Number(sistolica);
+    const d = Number(diastolica);
+    const g = Number(glicemia);
+
+    if (tipo === 'pressao_arterial') {
+      if (s < 60 || s > 250 || d < 30 || d > 160) {
+        setErro('A pressão arterial deve estar entre 60-250 mmHg (sistólica) e 30-160 mmHg (diastólica).');
+        return;
+      }
+      if (s <= d) {
+        setErro('A pressão sistólica (máxima) deve ser obrigatoriamente maior que a diastólica (mínima).');
+        return;
+      }
+    } else if (tipo === 'glicemia') {
+      if (g < 20 || g > 600) {
+        setErro('O valor de glicemia deve estar entre 20 e 600 mg/dL.');
+        return;
+      }
+    }
     setCarregando(true);
     setSucesso('');
     try {
@@ -102,6 +123,11 @@ export default function Devices({ onBack }) {
         </div>
       </div>
 
+      {erro && (
+        <div role="alert" style={{ padding: '12px', backgroundColor: '#FDEEE9', color: '#8A2B1A', borderRadius: 'var(--radius-sm)', marginBottom: '16px', borderLeft: '4px solid #D9534F' }}>
+          {erro}
+        </div>
+      )}
       {sucesso && (
         <div role="status" style={{ padding: '12px', backgroundColor: '#E8F8F0', color: '#1E7E34', borderRadius: 'var(--radius-sm)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <CheckCircle2 size={18} /> {sucesso}
@@ -139,7 +165,7 @@ export default function Devices({ onBack }) {
                   type="number"
                   className="form-control"
                   value={sistolica}
-                  onChange={(e) => setSistolica(e.target.value)}
+                  min={60} max={250} onChange={(e) => setSistolica(e.target.value)}
                 />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
@@ -148,7 +174,7 @@ export default function Devices({ onBack }) {
                   type="number"
                   className="form-control"
                   value={diastolica}
-                  onChange={(e) => setDiastolica(e.target.value)}
+                  min={30} max={160} onChange={(e) => setDiastolica(e.target.value)}
                 />
               </div>
             </div>
@@ -184,7 +210,7 @@ export default function Devices({ onBack }) {
                 step="0.1"
                 className="form-control"
                 value={glicemia}
-                onChange={(e) => setGlicemia(e.target.value)}
+                min={20} max={600} onChange={(e) => setGlicemia(e.target.value)}
               />
               <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
                 Valores de jejum esperados no 1º tri: &lt; 92 mg/dL

@@ -25,6 +25,10 @@ export default function VisualDiary({ onBack }) {
   const handleFotoChange = (e) => {
     const file = e.target.files && e.target.files[0];
     if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert("A foto selecionada ultrapassa o limite máximo de 5 MB.");
+        return;
+      }
       const reader = new FileReader();
       reader.onload = (ev) => {
         setFotoUrl(ev.target.result);
@@ -91,7 +95,7 @@ export default function VisualDiary({ onBack }) {
               type="number"
               className="form-control"
               min={1}
-              max={42}
+              max={45}
               value={semana}
               onChange={(e) => setSemana(e.target.value)}
               required
@@ -124,6 +128,7 @@ export default function VisualDiary({ onBack }) {
               rows={3}
               placeholder="O que marcou essa semana? Como foi a reação da família ou os preparativos do quartinho?"
               value={nota}
+              maxLength={1000}
               onChange={(e) => setNota(e.target.value)}
               required
             />

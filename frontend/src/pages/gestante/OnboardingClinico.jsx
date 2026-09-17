@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { Calendar, Heart, Shield, Plus, Trash2, ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Calendar, Heart, Shield, Plus, Trash2, ArrowRight, ArrowLeft, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import TriageDisclaimer from '../../components/TriageDisclaimer';
+
+const TELEFONE_REGEX = /^(?:19[0-9]|\(?\d{2}\)?\s?\d{4,5}-?\d{4})$/;
 
 export default function OnboardingClinico({ onCompleted }) {
   const { authHeaders } = useAuth();
 
   // REGRA SEÇÃO 13.1: Um ÚNICO objeto de estado para o formulário inteiro!
-  // Nunca useState isolado por campo. Nunca defaultValue.
   const [formState, setFormState] = useState({
     // Etapa 1: Dados Pessoais e Obstétricos
     idade: 28,
@@ -38,17 +39,22 @@ export default function OnboardingClinico({ onCompleted }) {
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
 
-  // Atualização genérica de campo no estado único
+  const hoje = new Date().toISOString().split('T')[0];
+  const limitePassadoDum = new Date(Date.now() - 320 * 86400000).toISOString().split('T')[0];
+
+  // Cálculo da consistência obstétrica
+  const totalDesfechos = Number(formState.partos_normais || 0) + Number(formState.partos_cesareos || 0) + Number(formState.perdas_gestacionais || 0);
+  const totalGestacoes = Number(formState.gestacoes_anteriores || 0);
+  const isInconsistenteObstetrico = totalDesfechos > totalGestacoes;
+
   const updateField = (field, value) => {
     setFormState((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Cálculo de DPP ao alterar DUM (Regra Seção 7.1 e 13.1)
   const handleDumChange = (e) => {
     const novaDum = e.target.value;
     let novaDpp = formState.dpp;
 
-    // Se NÃO foi editada manualmente, calcula automaticamente DUM + 280 dias
     if (!formState.dpp_editada_manualmente && novaDum) {
       const d = new Date(novaDum + 'T12:00:00');
       if (!isNaN(d.getTime())) {
@@ -64,88 +70,135 @@ export default function OnboardingClinico({ onCompleted }) {
     }));
   };
 
-  // Edição manual da DPP
   const handleDppChange = (e) => {
     setFormState((prev) => ({
       ...prev,
       dpp: e.target.value,
-      dpp_editada_manualmente: true // Trava edição manual para não ser sobrescrita por DUM
+      dpp_editada_manualmente: true
     }));
   };
 
-  // Histórico familiar: adicionar item à lista
-  const handleAdicionarHistorico = () => {
+  const handleAddHistorico = () => {
     if (!formState.nova_condicao.trim()) return;
     const novoItem = {
       parente: formState.novo_parente,
-      condicao: formState.nova_condicao.trim()
+      condicao: formState.nova_condicao.trim().slice(0, 100)
     };
     setFormState((prev) => ({
       ...prev,
       historico_familiar: [...prev.historico_familiar, novoItem],
-      nova_condicao: 'Hipertensão Arterial'
+      nova_condicao: ''
     }));
   };
 
-  // Histórico familiar: remover item da lista
-  const handleRemoverHistorico = (indexToRemove) => {
+  const handleRemoveHistorico = (index) => {
     setFormState((prev) => ({
       ...prev,
-      historico_familiar: prev.historico_familiar.filter((_, idx) => idx !== indexToRemove)
+      historico_familiar: prev.historico_familiar.filter((_, i) => i !== index)
     }));
   };
 
-  const handleSubmitFinal = async () => {
+  const avancarEtapa = () => {
     setErro('');
-    if (!formState.dum || !formState.dpp) {
-      setErro('Por favor, informe a data da última menstruação (DUM) e confirme a DPP.');
-      setEtapa(2);
-      return;
+    if (etapa === 1) {
+      if (formState.idade < 10 || formState.idade > 65) {
+        setErro('Idade materna deve estar entre 10 e 65 anos.');
+        return;
+      }
+      if (isInconsistenteObstetrico) {
+        setErro(`Inconsistência obstétrica: A soma de partos (${formState.partos_normais + formState.partos_cesareos}) e perdas (${formState.perdas_gestacionais}) totaliza ${totalDesfechos}, o que não pode ser maior que o total de gestações anteriores (${totalGestacoes}).`);
+        return;
+      }
+    }
+
+    if (etapa === 2) {
+      if (!formState.dum) {
+        setErro('Por favor, informe a Data da Última Menstruação (DUM).');
+        return;
+      }
+      if (formState.dum > hoje) {
+        setErro('A DUM não pode ser uma data futura.');
+        return;
+      }
+      if (formState.dum < limitePassadoDum) {
+        setErro('A DUM não pode ser anterior a 320 dias (~45 semanas).');
+        return;
+      }
+      if (!formState.dpp) {
+        setErro('Por favor, defina a Data Provável do Parto (DPP).');
+        return;
+      }
+      if (formState.dpp < formState.dum) {
+        setErro('A DPP não pode ser anterior à DUM.');
+        return;
+      }
+    }
+
+    setEtapa((prev) => prev + 1);
+  };
+
+  const handleFinalizar = async (e) => {
+    e.preventDefault();
+    setErro('');
+
+    if (formState.maternidade_telefone && formState.maternidade_telefone.trim()) {
+      const tel = formState.maternidade_telefone.trim();
+      if (!TELEFONE_REGEX.test(tel)) {
+        setErro('Telefone da maternidade inválido. Digite um telefone com DDD ou número de emergência (ex: 192 ou (11) 98888-7777).');
+        return;
+      }
     }
 
     setCarregando(true);
     try {
-      // 1. Salva perfil clínico
+      const perfilPayload = {
+        idade: Number(formState.idade),
+        estado_civil: formState.estado_civil,
+        escolaridade: formState.escolaridade,
+        gestacoes_anteriores: Number(formState.gestacoes_anteriores),
+        partos_normais: Number(formState.partos_normais),
+        partos_cesareos: Number(formState.partos_cesareos),
+        perdas_gestacionais: Number(formState.perdas_gestacionais),
+        dum: formState.dum,
+        dpp: formState.dpp,
+        dpp_editada_manualmente: formState.dpp_editada_manualmente,
+        maternidade_nome: formState.maternidade_nome.trim().slice(0, 120),
+        maternidade_endereco: formState.maternidade_endereco.trim().slice(0, 200),
+        maternidade_telefone: formState.maternidade_telefone.trim().slice(0, 25)
+      };
+
       const resPerfil = await fetch('/perfil-clinico', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({
-          idade: Number(formState.idade),
-          estado_civil: formState.estado_civil,
-          escolaridade: formState.escolaridade,
-          gestacoes_anteriores: Number(formState.gestacoes_anteriores),
-          partos_normais: Number(formState.partos_normais),
-          partos_cesareos: Number(formState.partos_cesareos),
-          perdas_gestacionais: Number(formState.perdas_gestacionais),
-          dum: formState.dum,
-          dpp: formState.dpp,
-          dpp_editada_manualmente: formState.dpp_editada_manualmente,
-          maternidade_nome: formState.maternidade_nome || "Hospital da Mulher / Maternidade Geral",
-          maternidade_endereco: formState.maternidade_endereco || "Centro",
-          maternidade_telefone: formState.maternidade_telefone || "192"
-        })
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders()
+        },
+        body: JSON.stringify(perfilPayload)
       });
 
-      if (!resPerfil.ok && resPerfil.status !== 409) {
+      if (!resPerfil.ok) {
         const d = await resPerfil.json();
-        throw new Error(d.detail || 'Erro ao registrar perfil clínico.');
+        throw new Error(d.detail || 'Falha ao salvar dados obstétricos.');
       }
 
-      // 2. Salva histórico familiar item por item
       for (const item of formState.historico_familiar) {
         await fetch('/historico-familiar', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          headers: {
+            'Content-Type': 'application/json',
+            ...authHeaders()
+          },
           body: JSON.stringify(item)
         });
       }
 
-      // Salva maternidade no cache local para resiliência offline
-      localStorage.setItem('nymphia_maternidade_cache', JSON.stringify({
-        nome: formState.maternidade_nome || "Hospital da Mulher / Maternidade Geral",
-        endereco: formState.maternidade_endereco || "Centro",
-        telefone: formState.maternidade_telefone || "192"
-      }));
+      if (formState.maternidade_nome) {
+        localStorage.setItem('nymphia_maternidade_cache', JSON.stringify({
+          nome: formState.maternidade_nome,
+          endereco: formState.maternidade_endereco,
+          telefone: formState.maternidade_telefone
+        }));
+      }
 
       onCompleted();
     } catch (err) {
@@ -202,78 +255,139 @@ export default function OnboardingClinico({ onCompleted }) {
         <div>
           <h2>Seu Histórico Obstétrico</h2>
           <p className="text-muted" style={{ marginBottom: '20px' }}>
-            Essas informações calibram nossos modelos clínicos populacionais.
+            Essas informações calibram nossos modelos clínicos populacionais com limites médicos reais.
           </p>
 
           <div className="form-group">
-            <label htmlFor="form-idade">Sua Idade</label>
+            <label htmlFor="form-idade">Sua Idade (10 a 65 anos)</label>
             <input
               id="form-idade"
               type="number"
               className="form-control"
-              min={12}
-              max={60}
+              min={10}
+              max={65}
               value={formState.idade}
-              onChange={(e) => updateField('idade', e.target.value)}
+              onChange={(e) => updateField('idade', Number(e.target.value))}
               required
             />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div className="form-group">
-              <label htmlFor="form-gest">Gestações Anteriores</label>
+              <label htmlFor="form-gest">Gestações Anteriores (máx. 20)</label>
               <input
                 id="form-gest"
                 type="number"
                 className="form-control"
                 min={0}
+                max={20}
                 value={formState.gestacoes_anteriores}
-                onChange={(e) => updateField('gestacoes_anteriores', e.target.value)}
+                onChange={(e) => updateField('gestacoes_anteriores', Number(e.target.value))}
               />
             </div>
             <div className="form-group">
-              <label htmlFor="form-perdas">Perdas Gestacionais</label>
+              <label htmlFor="form-perdas">Perdas / Abortos (máx. 15)</label>
               <input
                 id="form-perdas"
                 type="number"
                 className="form-control"
                 min={0}
+                max={15}
                 value={formState.perdas_gestacionais}
-                onChange={(e) => updateField('perdas_gestacionais', e.target.value)}
+                onChange={(e) => updateField('perdas_gestacionais', Number(e.target.value))}
               />
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div className="form-group">
-              <label htmlFor="form-normais">Partos Normais</label>
+              <label htmlFor="form-partos-normais">Partos Normais (máx. 20)</label>
               <input
-                id="form-normais"
+                id="form-partos-normais"
                 type="number"
                 className="form-control"
                 min={0}
+                max={20}
                 value={formState.partos_normais}
-                onChange={(e) => updateField('partos_normais', e.target.value)}
+                onChange={(e) => updateField('partos_normais', Number(e.target.value))}
               />
             </div>
             <div className="form-group">
-              <label htmlFor="form-cesareas">Cesáreas Prévias</label>
+              <label htmlFor="form-partos-cesareas">Cesáreas (máx. 10)</label>
               <input
-                id="form-cesareas"
+                id="form-partos-cesareas"
                 type="number"
                 className="form-control"
                 min={0}
+                max={10}
                 value={formState.partos_cesareos}
-                onChange={(e) => updateField('partos_cesareos', e.target.value)}
+                onChange={(e) => updateField('partos_cesareos', Number(e.target.value))}
               />
             </div>
+          </div>
+
+          {/* Alerta de consistência obstétrica em tempo real */}
+          {isInconsistenteObstetrico && (
+            <div
+              style={{
+                backgroundColor: '#FDEEE9',
+                color: '#8A2B1A',
+                padding: '10px 14px',
+                borderRadius: 'var(--radius-md)',
+                marginBottom: '16px',
+                fontSize: '0.84rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <AlertTriangle size={20} />
+              <span>
+                <strong>Atenção Obstétrica:</strong> A soma de partos ({totalDesfechos - formState.perdas_gestacionais}) e perdas ({formState.perdas_gestacionais}) = {totalDesfechos}, não pode ser maior do que as gestações anteriores informadas ({totalGestacoes}).
+              </span>
+            </div>
+          )}
+
+          <div className="form-group">
+            <label htmlFor="form-est-civ">Estado Civil</label>
+            <select
+              id="form-est-civ"
+              className="form-control"
+              value={formState.estado_civil}
+              onChange={(e) => updateField('estado_civil', e.target.value)}
+            >
+              <option value="Solteira">Solteira</option>
+              <option value="Casada / União Estável">Casada / União Estável</option>
+              <option value="Divorciada / Separada">Divorciada / Separada</option>
+              <option value="Viúva">Viúva</option>
+              <option value="Outro">Outro</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="form-esc">Escolaridade</label>
+            <select
+              id="form-esc"
+              className="form-control"
+              value={formState.escolaridade}
+              onChange={(e) => updateField('escolaridade', e.target.value)}
+            >
+              <option value="Fundamental Incompleto">Fundamental Incompleto</option>
+              <option value="Fundamental Completo">Fundamental Completo</option>
+              <option value="Médio Incompleto">Médio Incompleto</option>
+              <option value="Médio Completo">Médio Completo</option>
+              <option value="Superior Incompleto">Superior Incompleto</option>
+              <option value="Superior Completo">Superior Completo</option>
+              <option value="Pós-Graduação">Pós-Graduação</option>
+            </select>
           </div>
 
           <button
             type="button"
             className="btn btn-primary"
             style={{ width: '100%', minHeight: '48px', marginTop: '16px' }}
-            onClick={() => setEtapa(2)}
+            onClick={avancarEtapa}
+            disabled={isInconsistenteObstetrico}
           >
             Avançar para DUM e DPP
             <ArrowRight size={18} />
@@ -281,54 +395,54 @@ export default function OnboardingClinico({ onCompleted }) {
         </div>
       )}
 
-      {/* ETAPA 2: DUM E DPP (AMBOS VISÍVEIS COM TRAVA MANUAL) */}
+      {/* ETAPA 2: DUM E DPP */}
       {etapa === 2 && (
         <div>
-          <h2>Data da Gestação</h2>
-          <p className="text-muted" style={{ marginBottom: '16px' }}>
-            Ambos os campos permanecem sempre visíveis para conferência com ultrassom.
+          <h2>Datas Importantes</h2>
+          <p className="text-muted" style={{ marginBottom: '20px' }}>
+            A DUM calcula automaticamente sua Data Provável do Parto (DPP). Ambas são ajustáveis com segurança.
           </p>
 
           <div className="form-group">
             <label htmlFor="form-dum">
-              Data da Última Menstruação (DUM)
+              DUM — Data da Última Menstruação <span style={{ color: 'var(--color-rosa)' }}>*</span>
             </label>
             <input
               id="form-dum"
               type="date"
               className="form-control"
               value={formState.dum}
+              max={hoje}
+              min={limitePassadoDum}
               onChange={handleDumChange}
               required
             />
-            <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
-              Ao preencher a DUM, a DPP calcula automaticamente (+280 dias).
+            <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+              Deve estar nos últimos 320 dias e não pode ser futura.
             </span>
           </div>
 
           <div className="form-group">
             <label htmlFor="form-dpp">
-              Data Provável do Parto (DPP)
-              {formState.dpp_editada_manualmente && (
-                <span className="badge-gold" style={{ marginLeft: '8px' }}>
-                  Ajustada Manualmente
-                </span>
-              )}
+              DPP — Data Provável do Parto {formState.dpp_editada_manualmente ? '(Ajustada manualmente)' : '(Calculada: DUM + 40 semanas)'}
             </label>
             <input
               id="form-dpp"
               type="date"
               className="form-control"
               value={formState.dpp}
+              min={formState.dum || hoje}
               onChange={handleDppChange}
               required
             />
-            <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
-              Médicos frequentemente ajustam a DPP por ultrassom de 1º trimestre. Se você editar este campo manualmente, alterações na DUM não irão sobrescrever sua escolha.
-            </span>
+            {formState.dpp_editada_manualmente && (
+              <span style={{ fontSize: '0.78rem', color: 'var(--color-dourado)', marginTop: '4px', display: 'block' }}>
+                ✓ Trava manual ativada: esta data prevalecerá para sua rotina clínica.
+              </span>
+            )}
           </div>
 
-          <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+          <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
             <button
               type="button"
               className="btn btn-outline"
@@ -340,129 +454,92 @@ export default function OnboardingClinico({ onCompleted }) {
             <button
               type="button"
               className="btn btn-primary"
-              style={{ flex: 1.5 }}
-              onClick={() => {
-                if (!formState.dum) {
-                  setErro('Por favor, informe a DUM.');
-                  return;
-                }
-                setErro('');
-                setEtapa(3);
-              }}
+              style={{ flex: 1 }}
+              onClick={avancarEtapa}
             >
-              Avançar para Histórico <ArrowRight size={18} />
+              Avançar para Histórico
+              <ArrowRight size={18} />
             </button>
           </div>
         </div>
       )}
 
-      {/* ETAPA 3: HISTÓRICO FAMILIAR DINÂMICO */}
+      {/* ETAPA 3: HISTÓRICO FAMILIAR */}
       {etapa === 3 && (
         <div>
           <h2>Histórico Clínico Familiar</h2>
-          <p className="text-muted" style={{ marginBottom: '16px' }}>
-            O grau de parentesco altera o peso do risco genético obstétrico.
+          <p className="text-muted" style={{ marginBottom: '20px' }}>
+            Condições crônicas na família (especialmente hipertensão, diabetes e pré-eclâmpsia) auxiliam os algoritmos de prevenção.
           </p>
 
-          <div className="card" style={{ backgroundColor: '#FFFFFF', border: '1.5px dashed var(--color-border)' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '8px', marginBottom: '12px' }}>
-              <div className="form-group" style={{ margin: 0 }}>
-                <label htmlFor="hist-parente">Parente</label>
-                <select
-                  id="hist-parente"
-                  className="form-control"
-                  value={formState.novo_parente}
-                  onChange={(e) => updateField('novo_parente', e.target.value)}
-                >
-                  <option value="mãe">Mãe</option>
-                  <option value="pai">Pai</option>
-                  <option value="irmã">Irmã</option>
-                  <option value="irmão">Irmão</option>
-                  <option value="avó materna">Avó Materna</option>
-                  <option value="avó paterna">Avó Paterna</option>
-                  <option value="avô materno">Avô Materno</option>
-                  <option value="avô paterno">Avô Paterno</option>
-                </select>
-              </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 2fr auto', gap: '8px', marginBottom: '16px' }}>
+            <select
+              className="form-control"
+              value={formState.novo_parente}
+              onChange={(e) => updateField('novo_parente', e.target.value)}
+            >
+              <option value="mãe">Mãe</option>
+              <option value="pai">Pai</option>
+              <option value="irmã">Irmã</option>
+              <option value="irmão">Irmão</option>
+              <option value="avó materna">Avó Materna</option>
+              <option value="avô materno">Avô Materno</option>
+              <option value="avó paterna">Avó Paterna</option>
+              <option value="avô paterno">Avô Paterno</option>
+              <option value="filho anterior">Filho Anterior</option>
+            </select>
 
-              <div className="form-group" style={{ margin: 0 }}>
-                <label htmlFor="hist-condicao">Condição Clínica</label>
-                <select
-                  id="hist-condicao"
-                  className="form-control"
-                  value={formState.nova_condicao}
-                  onChange={(e) => updateField('nova_condicao', e.target.value)}
-                >
-                  <option value="Hipertensão Arterial">Hipertensão Arterial</option>
-                  <option value="Pré-eclâmpsia">Pré-eclâmpsia</option>
-                  <option value="Eclâmpsia">Eclâmpsia</option>
-                  <option value="Diabetes Mellitus">Diabetes Mellitus</option>
-                  <option value="Doença Cardíaca">Doença Cardíaca</option>
-                  <option value="Trombose / Trombofilia">Trombose / Trombofilia</option>
-                  <option value="Hipotireoidismo">Hipotireoidismo</option>
-                </select>
-              </div>
-            </div>
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Ex: Pré-eclâmpsia, Diabetes..."
+              value={formState.nova_condicao}
+              maxLength={100}
+              onChange={(e) => updateField('nova_condicao', e.target.value)}
+            />
 
             <button
               type="button"
-              className="btn btn-outline"
-              style={{ width: '100%', borderColor: 'var(--color-rosa)', color: 'var(--color-rosa)' }}
-              onClick={handleAdicionarHistorico}
+              className="btn btn-secondary"
+              onClick={handleAddHistorico}
+              style={{ minHeight: '44px', padding: '0 16px' }}
             >
-              <Plus size={18} /> Adicionar ao Histórico
+              <Plus size={18} />
             </button>
           </div>
 
-          {/* Lista de Condições Adicionadas */}
-          <div style={{ marginTop: '16px', marginBottom: '20px' }}>
-            <h3 style={{ fontSize: '0.95rem', marginBottom: '8px' }}>Condições Registradas:</h3>
-            {formState.historico_familiar.length === 0 ? (
-              <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-                Nenhuma condição adicionada até o momento. Se não houver histórico conhecido, você pode avançar.
-              </p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {formState.historico_familiar.map((item, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      backgroundColor: 'var(--color-rosa-claro)',
-                      padding: '10px 14px',
-                      borderRadius: 'var(--radius-md)',
-                      border: '1px solid var(--color-border)'
-                    }}
-                  >
-                    <div>
-                      <strong style={{ color: 'var(--color-vinho)', textTransform: 'capitalize' }}>
-                        {item.parente}:
-                      </strong>{' '}
-                      <span style={{ color: 'var(--color-text-main)' }}>{item.condicao}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoverHistorico(idx)}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'var(--color-vermelho)',
-                        padding: '4px',
-                        cursor: 'pointer'
-                      }}
-                      aria-label={`Remover ${item.condicao} de ${item.parente}`}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
+            {formState.historico_familiar.map((item, idx) => (
+              <div
+                key={idx}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '10px 14px',
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--color-border)'
+                }}
+              >
+                <div>
+                  <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{item.parente}:</span>{' '}
+                  <span>{item.condicao}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveHistorico(idx)}
+                  style={{ background: 'transparent', border: 'none', color: '#D9534F', cursor: 'pointer', padding: '4px' }}
+                  title="Remover"
+                  aria-label="Remover histórico familiar"
+                >
+                  <Trash2 size={16} />
+                </button>
               </div>
-            )}
+            ))}
           </div>
 
-          <div style={{ display: 'flex', gap: '12px' }}>
+          <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
             <button
               type="button"
               className="btn btn-outline"
@@ -474,10 +551,11 @@ export default function OnboardingClinico({ onCompleted }) {
             <button
               type="button"
               className="btn btn-primary"
-              style={{ flex: 1.5 }}
+              style={{ flex: 1 }}
               onClick={() => setEtapa(4)}
             >
-              Avançar para Maternidade <ArrowRight size={18} />
+              Avançar para Maternidade
+              <ArrowRight size={18} />
             </button>
           </div>
         </div>
@@ -485,53 +563,55 @@ export default function OnboardingClinico({ onCompleted }) {
 
       {/* ETAPA 4: MATERNIDADE DE REFERÊNCIA */}
       {etapa === 4 && (
-        <div>
+        <form onSubmit={handleFinalizar}>
           <h2>Maternidade de Referência</h2>
-          <p className="text-muted" style={{ marginBottom: '16px' }}>
-            Usada pela tela de emergência com discagem direta e rota de trânsito em um toque.
+          <p className="text-muted" style={{ marginBottom: '20px' }}>
+            O hospital ou maternidade vinculado ao seu plano ou SUS. Salvo localmente para abrir no botão de emergência mesmo sem internet.
           </p>
 
           <div className="form-group">
-            <label htmlFor="mat-nome">Nome da Maternidade ou Hospital</label>
+            <label htmlFor="form-mat-nome">Nome da Maternidade ou Hospital</label>
             <input
-              id="mat-nome"
+              id="form-mat-nome"
               type="text"
               className="form-control"
-              placeholder="Ex: Maternidade Municipal Santa Maria"
+              placeholder="Ex: Maternidade Leonor Mendes de Barros"
               value={formState.maternidade_nome}
+              maxLength={120}
               onChange={(e) => updateField('maternidade_nome', e.target.value)}
               required
             />
           </div>
 
           <div className="form-group">
-            <label htmlFor="mat-end">Endereço Completo</label>
+            <label htmlFor="form-mat-end">Endereço Completo</label>
             <input
-              id="mat-end"
+              id="form-mat-end"
               type="text"
               className="form-control"
-              placeholder="Rua, número, bairro e cidade"
+              placeholder="Av. Celso Garcia, 2477 - Belenzinho"
               value={formState.maternidade_endereco}
+              maxLength={200}
               onChange={(e) => updateField('maternidade_endereco', e.target.value)}
               required
             />
           </div>
 
           <div className="form-group">
-            <label htmlFor="mat-tel">Telefone de Emergência da Maternidade</label>
+            <label htmlFor="form-mat-tel">Telefone da Maternidade ou Pronto-Socorro</label>
             <input
-              id="mat-tel"
+              id="form-mat-tel"
               type="tel"
               className="form-control"
-              placeholder="Ex: 1133334444"
+              placeholder="Ex: (11) 2694-8000 ou 192"
               value={formState.maternidade_telefone}
+              maxLength={20}
               onChange={(e) => updateField('maternidade_telefone', e.target.value)}
+              required
             />
           </div>
 
-          <TriageDisclaimer />
-
-          <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+          <div style={{ display: 'flex', gap: '10px', marginTop: '28px' }}>
             <button
               type="button"
               className="btn btn-outline"
@@ -541,18 +621,19 @@ export default function OnboardingClinico({ onCompleted }) {
               <ArrowLeft size={18} /> Voltar
             </button>
             <button
-              type="button"
+              type="submit"
               className="btn btn-primary"
-              style={{ flex: 1.5 }}
-              onClick={handleSubmitFinal}
+              style={{ flex: 1 }}
               disabled={carregando}
             >
-              {carregando ? 'Salvando Perfil...' : 'Concluir Onboarding'}
+              {carregando ? 'Gravando Dados...' : 'Concluir Onboarding'}
               <CheckCircle2 size={18} />
             </button>
           </div>
-        </div>
+        </form>
       )}
+
+      <TriageDisclaimer />
     </div>
   );
 }

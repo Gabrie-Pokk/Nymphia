@@ -275,7 +275,7 @@ export default function DailyCheckin({ onBack }) {
             <button
               type="button"
               className="btn btn-outline"
-              onClick={() => setMovimentosBebe(movimentosBebe + 1)}
+              onClick={() => setMovimentosBebe(Math.min(150, movimentosBebe + 1))}
               aria-label="Aumentar contador de movimentos"
               style={{ minHeight: '44px', minWidth: '44px' }}
             >
@@ -296,11 +296,13 @@ export default function DailyCheckin({ onBack }) {
             id="checkin-desc"
             className="form-control"
             rows={3}
+            maxLength={1500}
             placeholder="Ex: Estou me sentindo bem, mas um pouco ansiosa e com dor de cabeça leve..."
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
             style={{ resize: 'vertical' }}
           />
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginTop: '4px', textAlign: 'right' }}>{descricao.length}/1500 caracteres</span>
         </div>
 
         <button

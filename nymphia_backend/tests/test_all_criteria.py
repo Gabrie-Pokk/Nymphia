@@ -35,7 +35,7 @@ def test_cadastro_com_email_repetido_retorna_409(client):
         "senha": "senhaSegura123"
     })
     res = client.post("/auth/gestante/cadastro", json={
-        "nome": "Ana Lima 2",
+        "nome": "Ana Lima Santos",
         "email": "ana@teste.com",
         "senha": "outraSenha456"
     })
