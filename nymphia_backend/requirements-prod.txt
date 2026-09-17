@@ -1,3 +1,6 @@
+# Dependências de produção -- sem torch/transformers.
+# O BERTimbau fica indisponível, mas todos os outros recursos funcionam:
+# auth, check-in por regras, modelos RF, agenda.
 fastapi==0.111.0
 uvicorn[standard]==0.30.1
 pydantic==2.7.1
@@ -9,5 +12,3 @@ python-multipart==0.0.9
 sqlalchemy==2.0.30
 bcrypt==4.1.3
 pyjwt==2.8.0
-torch>=2.0
-transformers>=4.40

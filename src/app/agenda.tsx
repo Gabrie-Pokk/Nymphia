@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { fetchAutenticado, useAuth } from '@/components/auth-context';
 
-const BACKEND_URL = 'http://192.168.1.100:8000';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? 'http://192.168.1.100:8000';
 
 const COLORS = {
   background: '#FFFFFF',

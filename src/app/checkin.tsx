@@ -21,7 +21,7 @@ export const GESTANTE_ID_KEY = '@nymphia/gestante_id';
 
 // ── Endereço do backend de IA ──
 // Em desenvolvimento local, aponta pro seu computador na mesma rede Wi-Fi.
-const BACKEND_URL = 'http://192.168.1.100:8000';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? 'http://192.168.1.100:8000';
 
 const COLORS = {
   background: '#FFFFFF',
