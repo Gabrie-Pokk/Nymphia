@@ -159,8 +159,8 @@ export default function App() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => navigate('/')}>
           <LotusLogo size={28} color="#FFFFFF" />
           <div>
-            <h1>Nymphia</h1>
-            <span className="header-slogan">Cada batimento importa.</span>
+            <h1 style={{ color: '#FFFFFF', margin: 0, fontSize: '1.28rem', fontWeight: 800 }}>Nymphia</h1>
+            <span className="header-slogan" style={{ color: '#FDF0F2', opacity: 0.95, fontSize: '0.78rem' }}>Cada batimento importa.</span>
           </div>
         </div>
 

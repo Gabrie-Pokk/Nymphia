@@ -23,7 +23,8 @@ def gerar_convite_parceiro(
     gestante: Gestante = Depends(get_current_gestante)
 ):
     chars = string.ascii_uppercase + string.digits
-    codigo = "PARC-" + "".join(random.choices(chars, k=5))
+    chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    codigo = "P" + "".join(random.choices(chars, k=7))
     _parceiro_convites[codigo] = gestante.id
     return ParceiroCodigoConviteOut(codigo=codigo)
 

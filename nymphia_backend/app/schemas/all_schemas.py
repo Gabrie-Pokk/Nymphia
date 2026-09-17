@@ -10,7 +10,7 @@ UF_REGEX = re.compile(r"^(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|
 # Regex para CRM/COREN: 3 a 10 dígitos com sufixo opcional
 REGISTRO_REGEX = re.compile(r"^[0-9]{3,10}(-[A-Za-z0-9])?$")
 # Regex para código de convite de 8 caracteres alfanuméricos limpos
-CODIGO_REGEX = re.compile(r"^[A-HJ-NP-Z2-9]{8}$")
+CODIGO_REGEX = re.compile(r"^[A-Z0-9\-]{6,12}$")
 # Regex para telefone (emergência 190/192/193 ou fixo/celular brasileiro com DDD)
 TELEFONE_REGEX = re.compile(r"^(?:19[0-9]|\(?\d{2}\)?\s?\d{4,5}-?\d{4})$")
 
@@ -421,6 +421,22 @@ class PostOut(BaseModel):
     sinalizado: bool
     criado_em: datetime
     comentarios: List[ComentarioOut] = Field(default_factory=list)
+
+    model_config = ConfigDict(from_attributes=True)
+
+class PreferenciasComunidadeCreate(BaseModel):
+    experiencia: Optional[str] = Field(None, max_length=100)
+    preferencia_parto: Optional[str] = Field(None, max_length=100)
+    interesses: List[str] = Field(default_factory=list)
+    estilo_vida: Optional[str] = Field(None, max_length=100)
+
+class PreferenciasComunidadeOut(BaseModel):
+    experiencia: Optional[str] = None
+    preferencia_parto: Optional[str] = None
+    interesses: List[str] = Field(default_factory=list)
+    estilo_vida: Optional[str] = None
+    grupos_recomendados: List[str] = Field(default_factory=list)
+    atualizado_em: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 

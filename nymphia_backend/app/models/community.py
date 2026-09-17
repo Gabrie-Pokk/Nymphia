@@ -8,7 +8,7 @@ class PostComunidade(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     gestante_id = Column(String(36), ForeignKey("gestantes.id", ondelete="CASCADE"), nullable=False)
-    apelido = Column(String(50), nullable=False)  # Public nickname, NEVER real name
+    apelido = Column(String(50), nullable=False)  # Pseudônimo protetivo anônimo
     grupo = Column(String(100), nullable=False)
     conteudo = Column(Text, nullable=False)
     sinalizado = Column(Boolean, default=False, nullable=False)
@@ -33,3 +33,17 @@ class ComentarioComunidade(Base):
 
     post = relationship("PostComunidade", back_populates="comentarios")
     gestante = relationship("Gestante", back_populates="comentarios")
+
+
+class PreferenciasComunidade(Base):
+    __tablename__ = "preferencias_comunidade"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    gestante_id = Column(String(36), ForeignKey("gestantes.id", ondelete="CASCADE"), nullable=False, unique=True)
+    experiencia = Column(String(100), nullable=True)  # ex: Primeira gestação, Já tenho filhos
+    preferencia_parto = Column(String(100), nullable=True)  # ex: Parto humanizado, Cesárea planejada
+    interesses = Column(Text, nullable=True)  # JSON codificado de interesses
+    estilo_vida = Column(String(100), nullable=True)  # ex: Prática, Tranquila, Estudiosa
+    atualizado_em = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    gestante = relationship("Gestante")

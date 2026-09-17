@@ -90,18 +90,21 @@ body {
 }
 
 .app-header h1 {
-  font-size: 1.25rem;
+  color: #FFFFFF !important;
+  font-size: 1.3rem;
   font-weight: 700;
   letter-spacing: -0.01em;
   display: flex;
   align-items: center;
   gap: 10px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .app-header .header-slogan {
-  font-size: 0.75rem;
-  color: var(--color-rosa-claro);
-  opacity: 0.85;
+  color: #FDF0F2 !important;
+  font-size: 0.78rem;
+  opacity: 0.95;
+  font-weight: 500;
 }
 
 /* Main Content Viewport */
@@ -281,6 +284,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   color: var(--color-vinho);
 }
 
+.form-control, input, textarea, select {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+}
+
 .form-control {
   min-height: 46px;
   padding: 10px 14px;
@@ -290,6 +301,20 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   color: var(--color-text-main);
   background-color: #FFFFFF;
   transition: var(--transition);
+}
+
+textarea.form-control {
+  min-height: 85px;
+  resize: vertical;
+  max-width: 100% !important;
+  white-space: pre-wrap;
+}
+
+/* Prevenção de quebra de layout em cards e balões */
+.card, .card-vinho, .app-main, .message-bubble {
+  max-width: 100% !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
 }
 
 .form-control:focus {

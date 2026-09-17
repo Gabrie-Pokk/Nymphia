@@ -13,6 +13,16 @@ URGENCY_PATTERNS = [
     (r"(convuls|desmai|perda.*conscienc)", "Crise convulsiva / síncope")
 ]
 
+# Exclusões seguras para termos que contêm 'sangue' em contexto não hemorrágico
+EXCLUSOES_SANGUE = [
+    r"exame\s+(de\s+)?sangue",
+    r"coleta\s+(de\s+)?sangue",
+    r"amostra\s+(de\s+)?sangue",
+    r"tipo\s+(sangu[ií]neo|de\s+sangue)",
+    r"tubo\s+de\s+sangue",
+    r"press[aã]o\s+do\s+sangue"
+]
+
 def analyze_urgency(text: str) -> Tuple[bool, List[str], str]:
     """
     Deterministic clinical urgency rule engine.
@@ -23,21 +33,26 @@ def analyze_urgency(text: str) -> Tuple[bool, List[str], str]:
         return False, [], ""
 
     text_lower = text.lower()
+
+    # Normaliza exclusões laboratoriais para evitar falso positivo em exames de rotina
+    text_analise = text_lower
+    for exc in EXCLUSOES_SANGUE:
+        text_analise = re.sub(exc, "exame_laboratorial", text_analise)
+
     alerts: List[str] = []
 
     for pattern, description in URGENCY_PATTERNS:
-        if re.search(pattern, text_lower):
+        if re.search(pattern, text_analise):
             alerts.append(description)
 
     is_urgent = len(alerts) > 0
-    guidance = ""
 
+    guidance = ""
     if is_urgent:
-        alerts_text = "; ".join(alerts)
         guidance = (
             f"ALERTA CLÍNICO DE URGÊNCIA: Foram identificados sinais que requerem avaliação imediata "
-            f"({alerts_text}). Isto não é um diagnóstico, mas um indicativo de que você deve buscar "
-            f"imediatamente o pronto atendimento obstétrico de sua maternidade ou acionar o SAMU pelo número 192."
+            f"({', '.join(alerts)}). Isto não é um diagnóstico. Dirija-se imediatamente à emergência "
+            f"obstétrica mais próxima ou acione o SAMU 192."
         )
 
     return is_urgent, alerts, guidance

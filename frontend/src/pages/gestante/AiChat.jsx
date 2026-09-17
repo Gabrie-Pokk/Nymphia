@@ -90,23 +90,23 @@ export default function AiChat({ onBack }) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
       <BackButton onClick={onBack} label="Voltar para Início" />
 
       {/* Header do Chat */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid var(--color-border)' }}>
         <LotusLogo size={32} color="var(--color-rosa)" />
         <div>
-          <h2 style={{ fontSize: '1.15rem', margin: 0 }}>Assistente Clínica Nymphia</h2>
-          <p className="text-muted" style={{ fontSize: '0.78rem' }}>
-            Apoio contínuo baseado em protocolos FEBRASGO e Ministério da Saúde
+          <h2 style={{ fontSize: '1.15rem', margin: 0, color: 'var(--color-vinho)' }}>Assistente Clínica Nymphia</h2>
+          <p className="text-muted" style={{ fontSize: '0.78rem', margin: '2px 0 0' }}>
+            Apoio contínuo e acolhimento fundamentado em protocolos FEBRASGO e Ministério da Saúde
           </p>
         </div>
       </div>
 
       <TriageDisclaimer />
 
-      {/* Área de Mensagens com Rolagem */}
+      {/* Área de Mensagens com Rolagem e Contenção Segura */}
       <div
         style={{
           flex: 1,
@@ -114,13 +114,16 @@ export default function AiChat({ onBack }) {
           padding: '12px 0',
           display: 'flex',
           flexDirection: 'column',
-          gap: '12px'
+          gap: '12px',
+          width: '100%',
+          maxWidth: '100%',
+          boxSizing: 'border-box'
         }}
       >
         {mensagens.length === 0 ? (
           <div style={{ textAlign: 'center', margin: 'auto 0', padding: '24px' }}>
-            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
-              Olá! Pergunte sobre sua rotina gestacional, prevenção de infecções (como toxoplasmose), vacinas, alimentação ou compartilhe seus sintomas.
+            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', lineHeight: 1.5 }}>
+              Olá! Tire dúvidas sobre sintomas (enjoos, azia, dores lombares), movimentos do bebê, alimentação segura, exames e acolhimento emocional.
             </p>
           </div>
         ) : (
@@ -132,7 +135,10 @@ export default function AiChat({ onBack }) {
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
-                  alignItems: isGestante ? 'flex-end' : 'flex-start'
+                  alignItems: isGestante ? 'flex-end' : 'flex-start',
+                  width: '100%',
+                  maxWidth: '100%',
+                  boxSizing: 'border-box'
                 }}
               >
                 <div
@@ -149,8 +155,12 @@ export default function AiChat({ onBack }) {
                     border: msg.alerta_emergencia ? '2px solid var(--color-vermelho)' : '1px solid var(--color-border)',
                     boxShadow: 'var(--shadow-sm)',
                     fontSize: '0.92rem',
-                    lineHeight: 1.45,
-                    position: 'relative'
+                    lineHeight: 1.48,
+                    position: 'relative',
+                    overflowWrap: 'anywhere',
+                    wordBreak: 'break-word',
+                    whiteSpace: 'pre-wrap',
+                    boxSizing: 'border-box'
                   }}
                 >
                   {msg.alerta_emergencia && (
@@ -196,8 +206,8 @@ export default function AiChat({ onBack }) {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input de Mensagem */}
-      <form onSubmit={handleEnviar} style={{ display: 'flex', gap: '8px', paddingTop: '10px' }}>
+      {/* Input de Mensagem com Contenção Antivazamento */}
+      <form onSubmit={handleEnviar} style={{ display: 'flex', gap: '8px', paddingTop: '10px', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
         <input
           type="text"
           className="form-control"
@@ -205,13 +215,13 @@ export default function AiChat({ onBack }) {
           value={inputTexto}
           onChange={(e) => setInputTexto(e.target.value)}
           disabled={carregando}
-          style={{ flex: 1 }}
+          style={{ flex: 1, minWidth: 0, boxSizing: 'border-box' }}
         />
         <button
           type="submit"
           className="btn btn-primary"
           disabled={carregando || !inputTexto.trim()}
-          style={{ minWidth: '48px', minHeight: '48px', padding: '0 16px' }}
+          style={{ minWidth: '48px', minHeight: '48px', padding: '0 16px', flexShrink: 0 }}
           aria-label="Enviar mensagem"
         >
           <Send size={18} />
