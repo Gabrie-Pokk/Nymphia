@@ -11,7 +11,7 @@ from app.storage.object_storage import STORAGE_DIR
 from app.api import (
     health, auth, perfil, checkin, conversa,
     agenda, vinculo, exames, risco, emergencia,
-    parceiro, comunidade, dispositivos, cinta,
+    parceiro, comunidade, dispositivos,
     governance, lgpd, legacy, assinaturas
 )
 from app.services.ai_risk_service import carregar_modelos_ml
@@ -68,7 +68,6 @@ app.include_router(parceiro.router)
 app.include_router(comunidade.router)
 app.include_router(assinaturas.router)
 app.include_router(dispositivos.router)
-app.include_router(cinta.router)
 app.include_router(governance.router)
 app.include_router(lgpd.router)
 app.include_router(legacy.router)

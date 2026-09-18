@@ -15,7 +15,6 @@ A **Nymphia** é uma plataforma e startup de Inteligência Artificial para acomp
   - **Isolation Forest**: Detecção não-supervisionada de atipicidade clínica multivariada.
   - **BERTimbau Fine-Tuned (PT-BR)**: Extração neural de estados emocionais e sintomas físicos.
   - **Motor Determinístico FEBRASGO/MS**: Triagem imediata de sinais de alarme obstétricos.
-- **Wearable Doppler**: Cinta Nymphia com simulação contínua de FHR (BCF) e sintetizador Doppler via Web Audio API.
 - **Conformidade CFM & LGPD**: Resolução CFM 2.454/2026 (direito de recusa e disclaimers estatísticos), auditoria de logs e exportação de dados (Art. 18).
 
 ---

@@ -38,7 +38,7 @@ def listar_calibracoes(db: Session = Depends(get_db)):
                 "atualizado_em": datetime.utcnow()
             },
             {
-                "condicao": "Frequência Cardíaca Fetal (Doppler)",
+                "condicao": "Frequência Cardíaca Materna (Wearable Bluetooth)",
                 "limiar_chave": "fhr_bradicardia_corte",
                 "limiar_valor": 110.0,
                 "unidade": "bpm",

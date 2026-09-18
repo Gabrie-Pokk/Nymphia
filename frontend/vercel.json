@@ -1,7 +1,7 @@
 {
   "rewrites": [
     {
-      "source": "/(auth|perfil-clinico|historico-familiar|checkin|conversa|agenda|vinculo|exames|risco|emergencia|parceiro|comunidade|dispositivos|cinta|governance|meus-dados|minha-conta|health|storage)(.*)",
+      "source": "/(auth|perfil-clinico|historico-familiar|checkin|conversa|agenda|vinculo|exames|risco|emergencia|parceiro|comunidade|dispositivos|governance|meus-dados|minha-conta|health|storage)(.*)",
       "destination": "https://nymphia-plataforma-ia.onrender.com/$1$2"
     },
     {

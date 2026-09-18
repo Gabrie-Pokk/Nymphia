@@ -27,7 +27,6 @@ class Gestante(Base):
     comentarios = relationship("ComentarioComunidade", back_populates="gestante", cascade="all, delete-orphan")
     logs_acesso = relationship("LogAcesso", back_populates="gestante", cascade="all, delete-orphan")
     medicoes = relationship("MedicaoDispositivo", back_populates="gestante", cascade="all, delete-orphan")
-    leituras_cinta = relationship("CintaNymphiaLeitura", back_populates="gestante", cascade="all, delete-orphan")
     observacoes_medicas = relationship("ObservacaoProfissional", back_populates="gestante", cascade="all, delete-orphan")
 
 

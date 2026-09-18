@@ -20,7 +20,6 @@ export default defineConfig({
       '/parceiro': 'http://127.0.0.1:8000',
       '/comunidade': 'http://127.0.0.1:8000',
       '/dispositivos': 'http://127.0.0.1:8000',
-      '/cinta': 'http://127.0.0.1:8000',
       '/governance': 'http://127.0.0.1:8000',
       '/meus-dados': 'http://127.0.0.1:8000',
       '/minha-conta': 'http://127.0.0.1:8000',

@@ -183,15 +183,6 @@ export default function GestanteHome({ onNavigate }) {
         <button
           className="btn btn-outline"
           style={{ flexDirection: 'column', height: '96px', padding: '12px', textAlign: 'center' }}
-          onClick={() => onNavigate('/cinta')}
-        >
-          <Heart size={26} color="var(--color-rosa)" />
-          <span style={{ fontSize: '0.85rem', marginTop: '6px' }}>Cinta Nymphia (Doppler)</span>
-        </button>
-
-        <button
-          className="btn btn-outline"
-          style={{ flexDirection: 'column', height: '96px', padding: '12px', textAlign: 'center' }}
           onClick={() => onNavigate('/prenatal-card')}
         >
           <FileText size={26} color="var(--color-vinho)" />

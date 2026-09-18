@@ -518,18 +518,6 @@ class MedicaoOut(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-# --- Cinta Nymphia Schemas (Roadmap 2027 V3) ---
-class CintaLeituraCreate(BaseModel):
-    bpm: int = Field(..., ge=40, le=240, description="Batimentos Cardíacos Fetais entre 40 e 240 bpm")
-
-class CintaLeituraOut(BaseModel):
-    id: int
-    gestante_id: str
-    bpm: int
-    status: str
-    data_hora: datetime
-
-    model_config = ConfigDict(from_attributes=True)
 
 # --- LGPD Schemas ---
 class LogAcessoOut(BaseModel):

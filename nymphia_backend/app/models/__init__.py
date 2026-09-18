@@ -3,7 +3,7 @@ from app.models.clinical import PerfilClinico, HistoricoFamiliar, CheckinRegistr
 from app.models.interaction import Mensagem, EventoAgenda, EventoEmergencia
 from app.models.relations import Vinculo, CodigoConvite, VinculoParceiro, LogAcesso
 from app.models.community import PostComunidade, ComentarioComunidade
-from app.models.devices import MedicaoDispositivo, CintaNymphiaLeitura
+from app.models.devices import MedicaoDispositivo
 from app.models.governance import ObservacaoProfissional, CalibracaoClinica, IntegracaoLaboratorial
 
 __all__ = [
@@ -24,8 +24,7 @@ __all__ = [
     "PostComunidade",
     "ComentarioComunidade",
     "MedicaoDispositivo",
-    "CintaNymphiaLeitura",
-    "ObservacaoProfissional",
+        "ObservacaoProfissional",
     "CalibracaoClinica",
     "IntegracaoLaboratorial"
 ]

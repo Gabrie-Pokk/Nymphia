@@ -219,17 +219,14 @@ def run_e2e_validations():
         res_med_pa.status_code == 201 and res_med_gli.status_code == 201
     )
 
-    # 8. Cinta Nymphia (Doppler Wearable FHR 2027)
-    res_cinta_sim = requests.get(f"{BACKEND_URL}/cinta/simulador")
-    sim_data = res_cinta_sim.json()
-    res_cinta_tele = requests.post(f"{BACKEND_URL}/cinta/telemetria", headers=headers_gestante, json={
-        "bpm": sim_data.get("bpm", 140)
-    })
-    res_cinta_rec = requests.get(f"{BACKEND_URL}/cinta/leituras-recentes", headers=headers_gestante)
+    # 8. Catálogo Oficial de Assinaturas (Sem Cinta Doppler)
+    res_planos = requests.get(f"{BACKEND_URL}/assinatura/planos")
+    planos_data = res_planos.json() if res_planos.status_code == 200 else []
+    tem_cinta = any("cinta" in str(p).lower() or "doppler" in str(p).lower() for p in planos_data)
     log_test(
-        "Cinta Nymphia (Doppler FHR): Telemetria e Simulador Contínuo",
-        res_cinta_tele.status_code == 201 and len(res_cinta_rec.json()) > 0,
-        f"FHR: {sim_data.get('bpm')} bpm ({sim_data.get('status')})"
+        "Catálogo de Assinaturas Oficial (Cinta Doppler removida com sucesso)",
+        res_planos.status_code == 200 and len(planos_data) == 4 and not tem_cinta,
+        f"Planos ativos: {len(planos_data)} | Livre de Cinta Doppler: {not tem_cinta}"
     )
 
     # 9. Painel Médico, Vínculo Unilateral e Ordenação por Urgência

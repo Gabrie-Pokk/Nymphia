@@ -22,7 +22,6 @@ import PrenatalCard from './pages/gestante/PrenatalCard';
 import Exams from './pages/gestante/Exams';
 import VisualDiary from './pages/gestante/VisualDiary';
 import Devices from './pages/gestante/Devices';
-import CintaNymphia from './pages/gestante/CintaNymphia';
 import VinculoMedico from './pages/gestante/VinculoMedico';
 import MyDataLGPD from './pages/gestante/MyDataLGPD';
 import CommunityFeed from './pages/comunidade/CommunityFeed';
@@ -209,8 +208,7 @@ export default function App() {
                 {currentPath === '/exames' && <Exams onBack={() => navigate('/')} />}
                 {currentPath === '/diario-visual' && <VisualDiary onBack={() => navigate('/')} />}
                 {currentPath === '/dispositivos' && <Devices onBack={() => navigate('/')} />}
-                {currentPath === '/cinta' && <CintaNymphia onBack={() => navigate('/')} onNavigateEmergency={() => navigate('/emergencia')} />}
-                {currentPath === '/vinculo-medico' && <VinculoMedico onBack={() => navigate('/')} />}
+                                {currentPath === '/vinculo-medico' && <VinculoMedico onBack={() => navigate('/')} />}
                 {currentPath === '/comunidade' && <CommunityFeed onBack={() => navigate('/')} />}
                 {currentPath === '/assinatura' && <SubscriptionScreen onBack={() => navigate('/')} />}
                 {currentPath === '/planos' && <SubscriptionScreen onBack={() => navigate('/')} />}

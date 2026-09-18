@@ -56,7 +56,7 @@ PLANOS_NYMPHIA = {
             "Modo Parceiro completo (marcos e agenda compartilhada)",
             "Comunidade Segura Nymphia com Questionário de Gostos",
             "Diário Visual Gestacional com fotos e ultrassons",
-            "Suporte à telemetria fetal da Cinta Nymphia"
+            "Monitoramento contínuo de biomarcadores e glicemia"
         ],
         "destaque": True
     },
@@ -69,7 +69,7 @@ PLANOS_NYMPHIA = {
         "recursos": [
             "Painel web multi-gestantes com priorização por risco",
             "Ficha clínica completa auditada (CFM e LGPD)",
-            "Telemetria contínua de dispositivos Bluetooth e Cinta",
+            "Telemetria contínua de dispositivos Bluetooth SIG homologados",
             "Exportação e auditoria completa de acessos"
         ],
         "destaque": False
@@ -258,7 +258,7 @@ def verificar_acesso_recurso(
         "modo_parceiro_completo",
         "comunidade_segura",
         "diario_visual",
-        "cinta_doppler"
+        "telemetria_iot_avancada"
     ]
     RECURSOS_CLINICA = [
         "painel_multi_paciente",

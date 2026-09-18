@@ -135,7 +135,7 @@ def test_dispositivos_pressao_sistolica_menor_que_diastolica_rejeitada(client):
     })
     assert res_glic.status_code == 422
 
-def test_cinta_bpm_limites_fisiologicos(client):
+def test_dispositivo_sistolica_limites_fisiologicos(client):
     res = client.post("/auth/gestante/cadastro", json={
         "nome": "Renata Lima",
         "email": "renata.lima@teste.com",
@@ -144,11 +144,13 @@ def test_cinta_bpm_limites_fisiologicos(client):
     token = res.json()["token"]
     headers = {"Authorization": f"Bearer {token}"}
 
-    # BPM absurdo (ex: 350 bpm)
-    res_bpm = client.post("/cinta/telemetria", headers=headers, json={
-        "bpm": 350
+    # Pressao arterial com valor absurdo (ex: 350 mmHg)
+    res_pa = client.post("/dispositivos/medicao", headers=headers, json={
+        "tipo": "pressao_arterial",
+        "sistolica": 350,
+        "diastolica": 80
     })
-    assert res_bpm.status_code == 422
+    assert res_pa.status_code == 422
 
 def test_chat_mensagem_vazia_rejeitada(client):
     res = client.post("/auth/gestante/cadastro", json={
