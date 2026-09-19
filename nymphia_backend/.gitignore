@@ -7,8 +7,8 @@ __pycache__/
 venv/
 env/
 
-# ML models (2.3 GB — manter fora do repositório)
-modelos/
+# Mantém pasta pesada do BERTimbau (2.3 GB) fora do Git, mas inclui os 6 modelos Random Forest
+modelos/bertimbau_nymphia/
 
 # Banco de dados SQLite (dados de usuários reais)
 nymphia.db

@@ -5,14 +5,10 @@ frontend/node_modules/
 # Python Virtual Environments & Bytecode
 __pycache__/
 *.py[cod]
-*$py.class
 *.so
-.Python
-env/
-venv/
 .venv/
-ENV/
-*.pytest_cache/
+venv/
+env/
 .pytest_cache/
 
 # SQLite & Local Databases
@@ -21,6 +17,7 @@ ENV/
 *.sqlite
 *.sqlite3
 nymphia.db
+nymphia_backend/nymphia.db
 nymphia_backend/nymphia.db.old
 
 # Builds & Outputs
@@ -29,20 +26,20 @@ build/
 web-build/
 frontend/dist/
 
-# Uploads & User Generated Files
+# Uploads
 uploads_documentos/
 nymphia_backend/uploads_documentos/
 
-# Heavy Machine Learning Weights (2.3 GB — preservados localmente, Google Colab e Nuvem)
-modelos/
-nymphia_backend/modelos/
+# Heavy Machine Learning Weights (apenas BERTimbau de 2.3 GB e tensores brutos)
+bertimbau_nymphia/
+nymphia_backend/modelos/bertimbau_nymphia/
 *.pt
 *.safetensors
 *.bin
 
-# Environment & Secrets
+# Environment & Secrets (NUNCA commitar chaves)
 .env
-.env*.local
+.env*
 *.pem
 *.key
 
