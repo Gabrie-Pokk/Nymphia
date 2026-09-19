@@ -195,8 +195,26 @@ def obter_quiz_gostos_parceiro(
         VinculoParceiro.parceiro_id == parceiro.id,
         VinculoParceiro.status == "ativo"
     ).first()
+
+    # Auto-recuperação do vínculo da conta de demonstração Lucas Mendes <-> Mariana Costa
+    if not vinculo and parceiro.email == "parceiro@nymphia.com.br":
+        gestante_demo = db.query(Gestante).filter_by(email="gestante@nymphia.com.br").first()
+        if gestante_demo:
+            vinculo = VinculoParceiro(
+                gestante_id=gestante_demo.id,
+                parceiro_id=parceiro.id,
+                status="ativo",
+                criado_em=datetime.utcnow()
+            )
+            db.add(vinculo)
+            db.commit()
+            db.refresh(vinculo)
+
     if not vinculo:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Nenhum vínculo ativo com gestante")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Nenhum vínculo ativo com gestante. Conecte-se com o código da gestante na tela inicial."
+        )
 
     quiz = db.query(QuizGostosGestante).filter(QuizGostosGestante.gestante_id == vinculo.gestante_id).first()
     if not quiz:
@@ -229,8 +247,26 @@ def salvar_quiz_gostos_parceiro(
         VinculoParceiro.parceiro_id == parceiro.id,
         VinculoParceiro.status == "ativo"
     ).first()
+
+    # Auto-recuperação do vínculo da conta de demonstração Lucas Mendes <-> Mariana Costa
+    if not vinculo and parceiro.email == "parceiro@nymphia.com.br":
+        gestante_demo = db.query(Gestante).filter_by(email="gestante@nymphia.com.br").first()
+        if gestante_demo:
+            vinculo = VinculoParceiro(
+                gestante_id=gestante_demo.id,
+                parceiro_id=parceiro.id,
+                status="ativo",
+                criado_em=datetime.utcnow()
+            )
+            db.add(vinculo)
+            db.commit()
+            db.refresh(vinculo)
+
     if not vinculo:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Nenhum vínculo ativo com gestante")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Nenhum vínculo ativo com gestante. Por favor, conecte-se com o código fornecido pela gestante no início antes de responder ao quiz."
+        )
 
     respostas = payload.get("respostas", {})
     nome_respondente = payload.get("nome_respondente") or parceiro.nome

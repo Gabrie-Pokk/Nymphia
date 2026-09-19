@@ -259,12 +259,19 @@ export default function PartnerDashboard({ onNavigateEmergency, onNavigateQuiz }
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <h3 style={{ fontSize: '0.98rem', margin: 0, color: 'var(--color-vinho)' }}>
-                Quiz dos Gostos da Gestante 💖
+                Quiz dos Gostos da Gestante
               </h3>
               <span className="badge-gold" style={{ fontSize: '0.68rem', padding: '1px 6px' }}>Opcional</span>
+              {!conectado && (
+                <span style={{ fontSize: '0.68rem', padding: '2px 6px', backgroundColor: '#FDEEE9', color: '#C0392B', borderRadius: '4px', fontWeight: 600 }}>
+                  Requer Vínculo
+                </span>
+              )}
             </div>
             <p className="text-muted" style={{ fontSize: '0.8rem', margin: '2px 0 0 0' }}>
-              Responda por ela ou veja o que ela escolheu para surpreendê-la com os melhores mimos!
+              {!conectado
+                ? 'Conecte-se com o código da gestante para poder responder aos gostos dela.'
+                : 'Responda por ela ou veja o que ela escolheu para surpreendê-la com os melhores mimos!'}
             </p>
           </div>
         </div>

@@ -30,10 +30,20 @@ export default function QuizGostos({ onBack }) {
     estilo_enxoval: ''
   });
 
+  const [semVinculo, setSemVinculo] = useState(false);
+
   useEffect(() => {
     const endpoint = isParceiro ? '/parceiro/quiz-gostos' : '/quiz-gostos';
     fetch(endpoint, { headers: authHeaders() })
-      .then((res) => (res.ok ? res.json() : null))
+      .then(async (res) => {
+        if (!res.ok) {
+          if (res.status === 403 && isParceiro) {
+            setSemVinculo(true);
+          }
+          return null;
+        }
+        return res.json();
+      })
       .then((data) => {
         if (data && data.preenchido) {
           setRespostas((prev) => ({ ...prev, ...data.respostas }));
@@ -54,6 +64,10 @@ export default function QuizGostos({ onBack }) {
 
   const handleSalvar = async (e) => {
     e.preventDefault();
+    if (isParceiro && semVinculo) {
+      setErro('Você precisa conectar seu perfil ao da gestante pelo código de parceiro na tela inicial para enviar as respostas.');
+      return;
+    }
     setSalvando(true);
     setSucesso('');
     setErro('');
@@ -70,7 +84,13 @@ export default function QuizGostos({ onBack }) {
         })
       });
 
-      const data = await res.json();
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        data = {};
+      }
+
       if (!res.ok) throw new Error(data.detail || 'Falha ao salvar o quiz.');
 
       setSucesso(isParceiro ? 'Quiz respondido com muito carinho pelo parceiro!' : 'Seus gostos e mimos foram salvos com sucesso!');
@@ -80,6 +100,8 @@ export default function QuizGostos({ onBack }) {
         atualizado_em: new Date().toISOString()
       });
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
     } catch (err) {
       setErro(err.message);
     } finally {
@@ -110,6 +132,31 @@ export default function QuizGostos({ onBack }) {
             : "Um espaço divertido e acolhedor para registrar seus gostos, manias, vontades e como você ama ser cuidada. O seu parceiro também pode preencher ou consultar quando quiser te surpreender!"}
         </p>
       </div>
+
+      {/* Aviso de falta de vínculo para parceiro */}
+      {isParceiro && semVinculo && (
+        <div className="card" style={{ backgroundColor: '#FDEEE9', border: '1.5px solid #C0392B', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+            <ShieldAlert size={24} color="#C0392B" style={{ flexShrink: 0, marginTop: '2px' }} />
+            <div>
+              <strong style={{ color: '#C0392B', fontSize: '0.92rem', display: 'block', marginBottom: '4px' }}>
+                Perfil de Parceiro sem Vínculo com Gestante
+              </strong>
+              <p style={{ fontSize: '0.84rem', color: '#8A2B1A', margin: 0, lineHeight: 1.4 }}>
+                Você ainda não está conectado a uma gestante. Para que suas respostas sejam salvas no prontuário dela, peça o código de parceiro à gestante e insira na tela inicial.
+              </p>
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={onBack}
+                style={{ marginTop: '10px', fontSize: '0.82rem', borderColor: '#C0392B', color: '#C0392B', padding: '6px 14px' }}
+              >
+                Voltar e Inserir Código
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Status de preenchimento */}
       {infoRespondente && (
@@ -362,15 +409,46 @@ export default function QuizGostos({ onBack }) {
           </div>
         </div>
 
+        {/* Feedback direto acima do botão de envio */}
+        {sucesso && (
+          <div role="status" style={{ padding: '14px', backgroundColor: '#E8F8F0', color: '#1E7E34', borderRadius: 'var(--radius-md)', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CheckCircle2 size={20} />
+              <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{sucesso}</span>
+            </div>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={onBack}
+              style={{ padding: '6px 14px', fontSize: '0.82rem', backgroundColor: '#27AE60', borderColor: '#27AE60', whiteSpace: 'nowrap' }}
+            >
+              Voltar ao Início
+            </button>
+          </div>
+        )}
+
+        {erro && (
+          <div role="alert" style={{ padding: '14px', backgroundColor: '#FDEDEC', color: '#C0392B', borderRadius: 'var(--radius-md)', marginBottom: '16px' }}>
+            <strong style={{ display: 'block', marginBottom: '2px' }}>Atenção:</strong>
+            <span>{erro}</span>
+          </div>
+        )}
+
         {/* Botão de Envio */}
         <div style={{ display: 'flex', gap: '12px' }}>
           <button
             type="submit"
             className="btn btn-primary"
             style={{ flex: 1, minHeight: '48px', fontSize: '0.95rem' }}
-            disabled={salvando}
+            disabled={salvando || (isParceiro && semVinculo)}
           >
-            {salvando ? 'Guardando com carinho...' : (isParceiro ? 'Salvar Quiz pelo Parceiro 💖' : 'Salvar Meus Gostos e Mimos 🌸')}
+            {salvando
+              ? 'Guardando com carinho...'
+              : (isParceiro && semVinculo)
+              ? 'Conecte-se à Gestante para Salvar'
+              : isParceiro
+              ? 'Salvar Quiz pelo Parceiro 💖'
+              : 'Salvar Meus Gostos e Mimos 🌸'}
           </button>
           <button
             type="button"
