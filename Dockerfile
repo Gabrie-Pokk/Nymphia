@@ -27,10 +27,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copia e instala dependências Python
-COPY nymphia_backend/requirements.txt ./
+# Copia e instala dependências Python de produção (leves, sem estouro de RAM no Render)
+COPY nymphia_backend/requirements-prod.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install --no-cache-dir pydantic-settings reportlab
 
 # Copia código do backend e modelos treinados
 COPY nymphia_backend/ ./nymphia_backend/
