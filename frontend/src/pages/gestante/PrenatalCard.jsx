@@ -92,9 +92,9 @@ export default function PrenatalCard({ onBack }) {
 
       {/* Histórico Familiar Relevante */}
       <div className="card">
-        <h3 style={{ fontSize: '1rem', marginBottom: '8px' }}>Histórico Familiar de Risco</h3>
+        <h3 style={{ fontSize: '1rem', marginBottom: '8px' }}>Histórico Familiar de Saúde</h3>
         {historico.length === 0 ? (
-          <p style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>Sem histórico familiar patológico registrado.</p>
+          <p style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>Sem condições familiares específicas registradas.</p>
         ) : (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
             {historico.map((h) => (

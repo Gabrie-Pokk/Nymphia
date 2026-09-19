@@ -26,6 +26,7 @@ import VinculoMedico from './pages/gestante/VinculoMedico';
 import MyDataLGPD from './pages/gestante/MyDataLGPD';
 import CommunityFeed from './pages/comunidade/CommunityFeed';
 import SubscriptionScreen from './pages/gestante/SubscriptionScreen';
+import QuizGostos from './pages/gestante/QuizGostos';
 
 // Páginas do Profissional
 import DoctorDashboard from './pages/profissional/DoctorDashboard';
@@ -213,6 +214,7 @@ export default function App() {
                 {currentPath === '/assinatura' && <SubscriptionScreen onBack={() => navigate('/')} />}
                 {currentPath === '/planos' && <SubscriptionScreen onBack={() => navigate('/')} />}
                 {currentPath === '/meus-dados' && <MyDataLGPD onBack={() => navigate('/')} />}
+                {currentPath === '/quiz-gostos' && <QuizGostos onBack={() => navigate('/')} />}
               </>
             )}
           </>
@@ -239,7 +241,15 @@ export default function App() {
         )}
 
         {user?.perfil === 'parceiro' && (
-          <PartnerDashboard onNavigateEmergency={() => navigate('/emergencia')} />
+          <>
+            {currentPath === '/' && (
+              <PartnerDashboard
+                onNavigateEmergency={() => navigate('/emergencia')}
+                onNavigateQuiz={() => navigate('/quiz-gostos')}
+              />
+            )}
+            {currentPath === '/quiz-gostos' && <QuizGostos onBack={() => navigate('/')} />}
+          </>
         )}
       </main>
 

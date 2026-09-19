@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import LotusLogo from '../components/LotusLogo';
-import { Eye, EyeOff, Lock, Mail, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, ArrowRight, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login({ onNavigateRegister, onNavigateRegisterProf, onNavigateRegisterParc }) {
@@ -11,6 +11,40 @@ export default function Login({ onNavigateRegister, onNavigateRegisterProf, onNa
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erro, setErro] = useState('');
   const [carregando, setCarregando] = useState(false);
+
+  const preencherDemo = async (tipo) => {
+    setPerfil(tipo);
+    let demoEmail = 'gestante@nymphia.com.br';
+    if (tipo === 'profissional') demoEmail = 'medico@nymphia.com.br';
+    if (tipo === 'parceiro') demoEmail = 'parceiro@nymphia.com.br';
+    const demoSenha = 'senhaMaternidade123';
+
+    setEmail(demoEmail);
+    setSenha(demoSenha);
+    setCarregando(true);
+    setErro('');
+
+    let endpoint = '/auth/gestante/login';
+    if (tipo === 'profissional') endpoint = '/auth/profissional/login';
+    if (tipo === 'parceiro') endpoint = '/auth/parceiro/login';
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: demoEmail, senha: demoSenha })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || 'Falha ao autenticar na conta demo.');
+      }
+      login(data.token, data);
+    } catch (err) {
+      setErro(err.message);
+    } finally {
+      setCarregando(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -46,7 +80,7 @@ export default function Login({ onNavigateRegister, onNavigateRegisterProf, onNa
   return (
     <div style={{ padding: '24px', maxWidth: '440px', margin: '0 auto' }}>
       {/* Brand Header */}
-      <div style={{ textAlign: 'center', marginBottom: '28px', paddingTop: '20px' }}>
+      <div style={{ textAlign: 'center', marginBottom: '22px', paddingTop: '16px' }}>
         <LotusLogo size={52} color="var(--color-vinho)" className="mx-auto" />
         <h1 style={{ fontSize: '1.75rem', marginTop: '12px', color: 'var(--color-vinho)' }}>Nymphia</h1>
         <p className="header-slogan" style={{ color: 'var(--color-rosa)', fontWeight: 600, marginTop: '2px' }}>
@@ -54,7 +88,89 @@ export default function Login({ onNavigateRegister, onNavigateRegisterProf, onNa
         </p>
       </div>
 
-      {/* Seletor de Perfil */}
+      {/* SEÇÃO DE ACESSO RÁPIDO PARA TESTADORES / DEMO (1 CLIQUE) */}
+      <div
+        className="card"
+        style={{
+          backgroundColor: '#FFF8F9',
+          border: '1.5px solid var(--color-rosa)',
+          borderRadius: 'var(--radius-md)',
+          padding: '16px',
+          marginBottom: '22px'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+          <Sparkles size={18} color="var(--color-rosa)" />
+          <h2 style={{ fontSize: '0.98rem', margin: 0, color: 'var(--color-vinho)' }}>
+            Acesso Rápido para Avaliação
+          </h2>
+          <span className="badge-gold" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>1 Clique</span>
+        </div>
+        <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '12px', lineHeight: 1.4 }}>
+          <strong>Você só precisa testar 1 perfil!</strong> Escolha qual área deseja experimentar e clique abaixo para entrar instantaneamente:
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <button
+            type="button"
+            onClick={() => preencherDemo('gestante')}
+            className="btn"
+            disabled={carregando}
+            style={{
+              backgroundColor: '#FFFFFF',
+              border: '1.5px solid var(--color-rosa)',
+              color: 'var(--color-vinho)',
+              justifyContent: 'space-between',
+              padding: '10px 14px',
+              fontSize: '0.85rem',
+              fontWeight: 600
+            }}
+          >
+            <span>🌸 1. Entrar como Gestante (Mariana)</span>
+            <span style={{ fontSize: '0.72rem', color: 'var(--color-rosa)', fontWeight: 700 }}>Testar App</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => preencherDemo('profissional')}
+            className="btn"
+            disabled={carregando}
+            style={{
+              backgroundColor: '#FFFFFF',
+              border: '1.5px solid var(--color-vinho)',
+              color: 'var(--color-vinho)',
+              justifyContent: 'space-between',
+              padding: '10px 14px',
+              fontSize: '0.85rem',
+              fontWeight: 600
+            }}
+          >
+            <span>🩺 2. Entrar como Médico (Dr. Carlos)</span>
+            <span style={{ fontSize: '0.72rem', color: 'var(--color-vinho)', fontWeight: 700 }}>Painel Clínico</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => preencherDemo('parceiro')}
+            className="btn"
+            disabled={carregando}
+            style={{
+              backgroundColor: '#FFFFFF',
+              border: '1.5px solid #27AE60',
+              color: '#1E7E34',
+              justifyContent: 'space-between',
+              padding: '10px 14px',
+              fontSize: '0.85rem',
+              fontWeight: 600
+            }}
+          >
+            <span>🤝 3. Entrar como Parceiro (Lucas)</span>
+            <span style={{ fontSize: '0.72rem', color: '#27AE60', fontWeight: 700 }}>Apoio & Quiz</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Seletor de Perfil Manual */}
       <div style={{ display: 'flex', backgroundColor: 'var(--color-rosa-claro)', padding: '4px', borderRadius: 'var(--radius-md)', marginBottom: '20px' }}>
         <button
           type="button"

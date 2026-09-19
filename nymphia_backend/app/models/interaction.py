@@ -45,3 +45,17 @@ class EventoEmergencia(Base):
     profissional_notificado = Column(Boolean, default=False, nullable=False)
 
     gestante = relationship("Gestante", back_populates="eventos_emergencia")
+
+
+class QuizGostosGestante(Base):
+    __tablename__ = "quiz_gostos_gestante"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    gestante_id = Column(String(36), ForeignKey("gestantes.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    respondido_por = Column(String(50), default="gestante", nullable=False)  # 'gestante' ou 'parceiro'
+    nome_respondente = Column(String(100), nullable=True)
+    respostas_json = Column(Text, nullable=False)
+    atualizado_em = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    gestante = relationship("Gestante")
+

@@ -1,3 +1,4 @@
+import json
 import random
 import string
 from typing import List, Dict, Any
@@ -8,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.auth import Gestante, Parceiro
 from app.models.clinical import PerfilClinico
-from app.models.interaction import EventoAgenda, EventoEmergencia
+from app.models.interaction import EventoAgenda, EventoEmergencia, QuizGostosGestante
 from app.models.relations import VinculoParceiro, LogAcesso
 from app.schemas.all_schemas import ParceiroCodigoConviteOut, ParceiroUsarCodigoRequest, EventoAgendaOut
 from app.security.jwt_auth import get_current_gestante, get_current_parceiro
@@ -184,3 +185,77 @@ def obter_emergencias_ativas(
             }
 
     return {"alerta_ativo": False}
+
+@router.get("/quiz-gostos")
+def obter_quiz_gostos_parceiro(
+    parceiro: Parceiro = Depends(get_current_parceiro),
+    db: Session = Depends(get_db)
+):
+    vinculo = db.query(VinculoParceiro).filter(
+        VinculoParceiro.parceiro_id == parceiro.id,
+        VinculoParceiro.status == "ativo"
+    ).first()
+    if not vinculo:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Nenhum vínculo ativo com gestante")
+
+    quiz = db.query(QuizGostosGestante).filter(QuizGostosGestante.gestante_id == vinculo.gestante_id).first()
+    if not quiz:
+        return {
+            "preenchido": False,
+            "respondido_por": None,
+            "nome_respondente": None,
+            "respostas": {},
+            "atualizado_em": None
+        }
+    try:
+        respostas = json.loads(quiz.respostas_json)
+    except Exception:
+        respostas = {}
+    return {
+        "preenchido": True,
+        "respondido_por": quiz.respondido_por,
+        "nome_respondente": quiz.nome_respondente,
+        "respostas": respostas,
+        "atualizado_em": quiz.atualizado_em
+    }
+
+@router.post("/quiz-gostos")
+def salvar_quiz_gostos_parceiro(
+    payload: dict,
+    parceiro: Parceiro = Depends(get_current_parceiro),
+    db: Session = Depends(get_db)
+):
+    vinculo = db.query(VinculoParceiro).filter(
+        VinculoParceiro.parceiro_id == parceiro.id,
+        VinculoParceiro.status == "ativo"
+    ).first()
+    if not vinculo:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Nenhum vínculo ativo com gestante")
+
+    respostas = payload.get("respostas", {})
+    nome_respondente = payload.get("nome_respondente") or parceiro.nome
+
+    quiz = db.query(QuizGostosGestante).filter(QuizGostosGestante.gestante_id == vinculo.gestante_id).first()
+    if not quiz:
+        quiz = QuizGostosGestante(
+            gestante_id=vinculo.gestante_id,
+            respondido_por="parceiro",
+            nome_respondente=nome_respondente,
+            respostas_json=json.dumps(respostas, ensure_ascii=False),
+            atualizado_em=datetime.utcnow()
+        )
+        db.add(quiz)
+    else:
+        quiz.respondido_por = "parceiro"
+        quiz.nome_respondente = nome_respondente
+        quiz.respostas_json = json.dumps(respostas, ensure_ascii=False)
+        quiz.atualizado_em = datetime.utcnow()
+
+    db.commit()
+    return {
+        "status": "sucesso",
+        "mensagem": "Quiz de gostos da gestante respondido pelo parceiro com sucesso!",
+        "respondido_por": "parceiro",
+        "nome_respondente": nome_respondente
+    }
+

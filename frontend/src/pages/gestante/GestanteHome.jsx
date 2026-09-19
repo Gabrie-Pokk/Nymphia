@@ -115,8 +115,52 @@ export default function GestanteHome({ onNavigate }) {
             </p>
           </div>
         </div>
-        <ChevronRight size={20} color="var(--color-text-muted)" />
-      </div>
+          <ChevronRight size={20} color="var(--color-text-muted)" />
+        </div>
+
+        {/* Quiz de Gostos & Mimos da Gestante (Opcional) */}
+        <div
+          className="card"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            cursor: 'pointer',
+            backgroundColor: '#FFF9FA',
+            border: '1.5px solid var(--color-rosa)',
+            marginBottom: '14px'
+          }}
+          onClick={() => onNavigate('/quiz-gostos')}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div
+              style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '50%',
+                backgroundColor: 'var(--color-rosa-claro)',
+                color: 'var(--color-rosa)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <Heart size={22} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <h3 style={{ fontSize: '0.98rem', margin: 0, color: 'var(--color-vinho)' }}>
+                  Quiz de Gostos & Mimos
+                </h3>
+                <span className="badge-gold" style={{ fontSize: '0.68rem', padding: '1px 6px' }}>Opcional</span>
+              </div>
+              <p className="text-muted" style={{ fontSize: '0.8rem', margin: '2px 0 0 0' }}>
+                Seus desejos, aromas e preferências (seu parceiro pode responder por você!)
+              </p>
+            </div>
+          </div>
+          <ChevronRight size={20} color="var(--color-text-muted)" />
+        </div>
 
       {/* Próximo Evento da Agenda */}
       {proximoEvento && (

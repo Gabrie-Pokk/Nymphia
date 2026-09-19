@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Heart, AlertTriangle, Calendar, Phone, ShieldCheck, CheckCircle2, Info, ArrowRight } from 'lucide-react';
 
-export default function PartnerDashboard({ onNavigateEmergency }) {
+export default function PartnerDashboard({ onNavigateEmergency, onNavigateQuiz }) {
   const { user, authHeaders } = useAuth();
   const [emergenciaAtiva, setEmergenciaAtiva] = useState(null);
   const [marcos, setMarcos] = useState(null);
@@ -225,6 +225,51 @@ export default function PartnerDashboard({ onNavigateEmergency }) {
           </div>
         </div>
       )}
+
+      {/* Quiz de Gostos & Mimos da Gestante */}
+      <div
+        className="card"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          cursor: 'pointer',
+          backgroundColor: '#FFF9FA',
+          border: '1.5px solid var(--color-rosa)',
+          marginTop: '16px',
+          marginBottom: '16px'
+        }}
+        onClick={onNavigateQuiz}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div
+            style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '50%',
+              backgroundColor: 'var(--color-rosa-claro)',
+              color: 'var(--color-rosa)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <Heart size={22} />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <h3 style={{ fontSize: '0.98rem', margin: 0, color: 'var(--color-vinho)' }}>
+                Quiz dos Gostos da Gestante 💖
+              </h3>
+              <span className="badge-gold" style={{ fontSize: '0.68rem', padding: '1px 6px' }}>Opcional</span>
+            </div>
+            <p className="text-muted" style={{ fontSize: '0.8rem', margin: '2px 0 0 0' }}>
+              Responda por ela ou veja o que ela escolheu para surpreendê-la com os melhores mimos!
+            </p>
+          </div>
+        </div>
+        <ArrowRight size={18} color="var(--color-vinho)" />
+      </div>
 
       {/* Agenda Compartilhada de Consultas e Vacinas (Premium+) */}
       <div className="card">

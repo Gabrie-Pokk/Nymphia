@@ -1,3 +1,4 @@
+import json
 from typing import List
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -6,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.auth import Gestante
 from app.models.clinical import PerfilClinico, HistoricoFamiliar
+from app.models.interaction import QuizGostosGestante
 from app.schemas.all_schemas import (
     PerfilClinicoCreate, PerfilClinicoUpdate, PerfilClinicoOut,
     HistoricoFamiliarCreate, HistoricoFamiliarOut
@@ -120,3 +122,64 @@ def remover_historico_familiar(
     db.delete(item)
     db.commit()
     return None
+
+@router.get("/quiz-gostos")
+def obter_quiz_gostos(
+    gestante: Gestante = Depends(get_current_gestante),
+    db: Session = Depends(get_db)
+):
+    quiz = db.query(QuizGostosGestante).filter(QuizGostosGestante.gestante_id == gestante.id).first()
+    if not quiz:
+        return {
+            "preenchido": False,
+            "respondido_por": None,
+            "nome_respondente": None,
+            "respostas": {},
+            "atualizado_em": None
+        }
+    try:
+        respostas = json.loads(quiz.respostas_json)
+    except Exception:
+        respostas = {}
+    return {
+        "preenchido": True,
+        "respondido_por": quiz.respondido_por,
+        "nome_respondente": quiz.nome_respondente,
+        "respostas": respostas,
+        "atualizado_em": quiz.atualizado_em
+    }
+
+@router.post("/quiz-gostos")
+def salvar_quiz_gostos(
+    payload: dict,
+    gestante: Gestante = Depends(get_current_gestante),
+    db: Session = Depends(get_db)
+):
+    respostas = payload.get("respostas", {})
+    respondido_por = payload.get("respondido_por", "gestante")
+    nome_respondente = payload.get("nome_respondente") or gestante.nome
+
+    quiz = db.query(QuizGostosGestante).filter(QuizGostosGestante.gestante_id == gestante.id).first()
+    if not quiz:
+        quiz = QuizGostosGestante(
+            gestante_id=gestante.id,
+            respondido_por=respondido_por,
+            nome_respondente=nome_respondente,
+            respostas_json=json.dumps(respostas, ensure_ascii=False),
+            atualizado_em=datetime.utcnow()
+        )
+        db.add(quiz)
+    else:
+        quiz.respondido_por = respondido_por
+        quiz.nome_respondente = nome_respondente
+        quiz.respostas_json = json.dumps(respostas, ensure_ascii=False)
+        quiz.atualizado_em = datetime.utcnow()
+
+    db.commit()
+    return {
+        "status": "sucesso",
+        "mensagem": "Quiz de gostos e mimos salvo com carinho!",
+        "respondido_por": respondido_por,
+        "nome_respondente": nome_respondente
+    }
+

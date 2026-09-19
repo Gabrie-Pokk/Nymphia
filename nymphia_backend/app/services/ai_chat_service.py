@@ -1,8 +1,13 @@
 import re
 import random
+import logging
+import requests
 from typing import Tuple, Dict, Any, List, Optional
+from app.config import settings
 from app.services.rules_engine import analyze_urgency
 from app.services.ai_text_service import classify_text_emotions
+
+logger = logging.getLogger("nymphia.ai_chat_service")
 
 # Base de Conhecimento Clínico Estruturada (FEBRASGO / Ministério da Saúde / OMS)
 CONHECIMENTO_CLINICO = {
@@ -259,14 +264,70 @@ def _gerar_resposta_dinamica_ia(texto: str, scores: Dict[str, float], active_cat
 
     return "\n\n".join(partes)
 
+SYSTEM_PROMPT_NYMPHIA = (
+    "Você é a Nymphia, assistente virtual inteligente e empática especializada em saúde materno-fetal "
+    "e acompanhamento gestacional humanizado, fundamentada nas diretrizes da FEBRASGO (Federação Brasileira "
+    "das Associações de Ginecologia e Obstetrícia) e do Ministério da Saúde do Brasil.\n\n"
+    "Suas diretrizes fundamentais:\n"
+    "1. Linguagem e Tom: Fale em português brasileiro com tom extremamente acolhedor, carinhoso, claro e tranquilizador.\n"
+    "2. Acolhimento Integral: Valide as emoções da gestante (ansiedades, dúvidas, cansaço, medos e alegrias).\n"
+    "3. Informação Educativa: Explique termos médicos de forma simples sobre desenvolvimento fetal, nutrição, exames e sinais comuns da gravidez.\n"
+    "4. Limites Éticos (CFM 2.454/2026): NUNCA faça diagnósticos médicos conclusivos, NUNCA receite ou indique doses de remédios e sempre recomende discutir dúvidas clínicas na consulta de pré-natal.\n"
+    "5. Formato: Respostas bem estruturadas, objetivas e carinhosas (2 a 4 parágrafos breves)."
+)
+
+def _consultar_gemini(texto: str, active_categories: List[str]) -> Optional[str]:
+    api_key = settings.GEMINI_API_KEY
+    if not api_key or api_key == "COLE_SUA_CHAVE_AQUI" or len(api_key.strip()) < 10:
+        return None
+
+    contexto_emocional = ""
+    if active_categories:
+        contexto_emocional = f"\n[Contexto emocional detectado pelo modelo clínico local da paciente: {', '.join(active_categories)}]"
+
+    prompt_completo = f"{texto}{contexto_emocional}"
+
+    modelos = ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"]
+    for modelo in modelos:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent?key={api_key.strip()}"
+        payload = {
+            "systemInstruction": {
+                "parts": [{"text": SYSTEM_PROMPT_NYMPHIA}]
+            },
+            "contents": [
+                {
+                    "parts": [{"text": prompt_completo}]
+                }
+            ],
+            "generationConfig": {
+                "temperature": 0.7,
+                "maxOutputTokens": 800
+            }
+        }
+        try:
+            resp = requests.post(url, json=payload, timeout=12)
+            if resp.status_code == 200:
+                data = resp.json()
+                cands = data.get("candidates", [])
+                if cands and "content" in cands[0] and "parts" in cands[0]["content"]:
+                    texto_gerado = cands[0]["content"]["parts"][0].get("text", "").strip()
+                    if texto_gerado:
+                        return texto_gerado
+            else:
+                logger.warning(f"Gemini API ({modelo}) retornou status {resp.status_code}: {resp.text[:150]}")
+        except Exception as ex:
+            logger.warning(f"Falha de conexão com Gemini ({modelo}): {ex}")
+    return None
+
 def generate_chat_response(message: str, recusa_ia: bool = False) -> Tuple[str, bool, str]:
     """
     Gera resposta conversacional inteligente e segura em múltiplos níveis:
     1. Triage de Emergência: Identifica sinais de alarme obstétrico imediatamente (sem delay de LLM).
     2. Detecção de Saudações: Responde com acolhimento caloroso e explicativo.
     3. Motor Clínico RAG FEBRASGO/MS: Responde a temas específicos com base sólida e orientações práticas.
-    4. Inferência Neural BERTimbau: Gera resposta contextualizada pelo estado emocional e físico da gestante.
-    5. Transparência CFM 2.454/2026: Todos os pareceres informativos acompanham a nota de segurança.
+    4. Consulta Gemini (se configurado): Resposta empática e clinicamente orientada por IA generativa.
+    5. Inferência Neural BERTimbau: Gera resposta contextualizada pelo estado emocional e físico (fallback local).
+    6. Transparência CFM 2.454/2026: Todos os pareceres informativos acompanham a nota de segurança.
     """
     texto_limpo = message.strip()
 
@@ -287,6 +348,12 @@ def generate_chat_response(message: str, recusa_ia: bool = False) -> Tuple[str, 
         resposta_clinica = _formatar_resposta_clinica(tema_detectado)
         return resposta_clinica + AVISO_TRANSPARENCIA_CFM, False, "base_clinica_ia"
 
-    # 4. Inferência Dinâmica BERTimbau + Contexto da Gestante
+    # 4. Consulta ao Gemini (se chave presente e sem recusa de IA pela gestante)
+    if not recusa_ia:
+        resposta_gemini = _consultar_gemini(texto_limpo, active_categories)
+        if resposta_gemini:
+            return resposta_gemini + AVISO_TRANSPARENCIA_CFM, False, "gemini_ia"
+
+    # 5. Inferência Dinâmica BERTimbau + Contexto da Gestante (Fallback local)
     resposta_dinamica = _gerar_resposta_dinamica_ia(texto_limpo, scores, active_categories)
     return resposta_dinamica + AVISO_TRANSPARENCIA_CFM, False, "bertimbau_ia"

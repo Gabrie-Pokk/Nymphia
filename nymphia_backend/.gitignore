@@ -19,3 +19,8 @@ uploads_documentos/
 # Logs
 *.log
 emergencias.log
+
+# Ambientes e credenciais
+.env
+.env.*
+

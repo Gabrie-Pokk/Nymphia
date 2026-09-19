@@ -114,7 +114,7 @@ export default function DailyCheckin({ onBack }) {
         <span className="badge-rosa" style={{ fontSize: '0.8rem' }}>Semana {semanaGestacional}</span>
       </div>
       <p className="text-muted" style={{ marginBottom: '20px' }}>
-        Registro diário analisado em tempo real pelos modelos neurais de IA (BERTimbau e SINASC).
+        Seu momento de escuta e cuidado: registre como você e seu bebê estão hoje.
       </p>
 
       {/* FEEDBACK DE RESULTADO APÓS REGISTRAR */}
@@ -142,27 +142,20 @@ export default function DailyCheckin({ onBack }) {
                 color: (resultado.alerta_sintoma_fisico && resultado.alerta_sintoma_fisico.length > 0) ? 'var(--color-vermelho)' : '#1E7E34'
               }}
             >
-              {(resultado.alerta_sintoma_fisico && resultado.alerta_sintoma_fisico.length > 0) ? "Atenção Clínica Necessária" : "Check-in Registrado com Sucesso"}
+              {(resultado.alerta_sintoma_fisico && resultado.alerta_sintoma_fisico.length > 0) ? "Orientação Médica de Cuidado" : "Check-in Registrado com Sucesso"}
             </h3>
           </div>
           <p style={{ fontSize: '0.92rem', color: '#2C181E', lineHeight: 1.4, margin: '0 0 10px 0' }}>
             {resultado.recomendacao}
           </p>
 
-          {/* Análise Neural BERTimbau */}
-          {resultado.categorias_bertimbau && Object.keys(resultado.categorias_bertimbau).length > 0 && (
-            <div style={{ background: 'rgba(255,255,255,0.7)', padding: '8px 12px', borderRadius: 8, fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <Brain size={14} color="#5C1A2A" />
-              <strong>IA BERTimbau:</strong>
-              {Object.entries(resultado.categorias_bertimbau)
-                .filter(([_, p]) => p >= 0.25)
-                .map(([cat, p]) => (
-                  <span key={cat} style={{ background: '#FDF0F2', color: '#5C1A2A', padding: '2px 6px', borderRadius: 6, fontWeight: 600 }}>
-                    {cat.replace(/_/g, ' ')}: {Math.round(p * 100)}%
-                  </span>
-                ))}
-            </div>
-          )}
+          {/* Acolhimento Emocional Positivo */}
+          <div style={{ background: 'rgba(255,255,255,0.85)', padding: '10px 14px', borderRadius: 8, fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Sparkles size={16} color="var(--color-rosa)" />
+            <span style={{ color: 'var(--color-vinho)', fontWeight: 600 }}>
+              🌸 Seu relato foi acolhido com carinho e guardado no seu histórico de bem-estar.
+            </span>
+          </div>
         </div>
       )}
 
