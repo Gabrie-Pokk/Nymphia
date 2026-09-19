@@ -28,6 +28,8 @@ logger = logging.getLogger("nymphia")
 try:
     Base.metadata.create_all(bind=engine)
     logger.info("Tabelas do banco de dados verificadas e inicializadas com sucesso.")
+    from app.seed_demo import seed_demo_accounts
+    seed_demo_accounts()
 except Exception as e:
     logger.error(f"Erro ao inicializar tabelas do banco de dados: {e}")
 
