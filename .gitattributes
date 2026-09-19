@@ -1,0 +1,8 @@
+# Git attributes para garantir que modelos e arquivos binários não sofram conversão de quebra de linha (CRLF/LF)
+*.joblib binary
+*.pkl binary
+*.pt binary
+*.bin binary
+*.onnx binary
+*.db binary
+*.sqlite3 binary
