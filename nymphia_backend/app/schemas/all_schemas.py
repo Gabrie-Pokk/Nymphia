@@ -1,7 +1,7 @@
 import re
 from datetime import datetime, date, timedelta
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator, model_validator, field_serializer
 
 # Regex para nomes: apenas letras (com acentos), espaços, apóstrofos e hífens. Proíbe números e símbolos.
 NOME_REGEX = re.compile(r"^[A-Za-zÀ-ÖØ-öø-ÿ\s'.\-]{2,100}$")
@@ -266,6 +266,14 @@ class CheckinCreate(BaseModel):
             raise ValueError("Máximo de 20 sintomas por registro.")
         return [s.strip()[:80] for s in v if s.strip()]
 
+def _serialize_datetime_utc(dt: Optional[datetime]) -> Optional[str]:
+    if dt is None:
+        return None
+    iso = dt.isoformat()
+    if dt.tzinfo is None and not iso.endswith("Z") and not ("+" in iso or iso.count("-") > 2):
+        return iso + "Z"
+    return iso
+
 class CheckinOut(BaseModel):
     id: int
     data_hora: datetime
@@ -280,6 +288,10 @@ class CheckinOut(BaseModel):
     score_anomalia: Optional[float]
     bertimbau_disponivel: bool = True
     recomendacao: str
+
+    @field_serializer("data_hora")
+    def serialize_data_hora(self, dt: datetime, _info):
+        return _serialize_datetime_utc(dt)
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -307,6 +319,10 @@ class MensagemOut(BaseModel):
     data_hora: datetime
     alerta_emergencia: bool
     autorizado_compartilhar: bool
+
+    @field_serializer("data_hora")
+    def serialize_data_hora(self, dt: datetime, _info):
+        return _serialize_datetime_utc(dt)
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -336,6 +352,10 @@ class EventoAgendaOut(BaseModel):
     concluido: bool
     recorrencia: Optional[str]
     criado_em: datetime
+
+    @field_serializer("data_hora", "criado_em")
+    def serialize_event_dates(self, dt: datetime, _info):
+        return _serialize_datetime_utc(dt)
 
     model_config = ConfigDict(from_attributes=True)
 

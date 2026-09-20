@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 import TriageDisclaimer from '../../components/TriageDisclaimer';
+import { formatDateTime } from '../../utils/dateUtils';
 import { AlertTriangle, CheckCircle, Plus, Minus, Send, Brain, Sparkles } from 'lucide-react';
 
 const HUMORES = [
@@ -337,7 +338,7 @@ export default function DailyCheckin({ onBack }) {
             <div key={h.id} className="card" style={{ padding: '14px', margin: 0 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                 <span style={{ fontWeight: 700, color: 'var(--color-vinho)', fontSize: '0.88rem' }}>
-                  {new Date(h.data_hora).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                  {formatDateTime(h.data_hora)}
                 </span>
                 <span className="badge-gold">Humor {h.humor}/5</span>
               </div>

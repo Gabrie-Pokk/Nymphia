@@ -222,11 +222,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   color: var(--color-rosa);
 }
 
-/* Botão de Emergência SAMU - 56x56 e EXCLUSIVO VERMELHO #C0392B */
+/* Botão de Emergência SAMU - 58x58 e EXCLUSIVO VERMELHO #C0392B */
+/* Posicionado a 84px para flutuar confortavelmente acima da barra de navegação inferior */
 .floating-emergency-btn {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
+  bottom: 84px;
+  right: 20px;
   z-index: 100;
   width: 58px;
   height: 58px;
@@ -250,8 +251,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 .emergency-confirm-panel {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
+  bottom: 84px;
+  right: 20px;
   z-index: 100;
   background-color: #FFFFFF;
   border: 2px solid var(--color-vermelho);
@@ -284,12 +285,23 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   color: var(--color-vinho);
 }
 
-.form-control, input, textarea, select {
+.form-control, textarea, select, input:not([type="checkbox"]):not([type="radio"]) {
   width: 100% !important;
   max-width: 100% !important;
   box-sizing: border-box !important;
   overflow-wrap: break-word !important;
   word-break: break-word !important;
+}
+
+/* Checkboxes e Radios nunca devem herdar 100% de largura */
+input[type="checkbox"], input[type="radio"] {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+  flex-shrink: 0 !important;
+  margin: 0 !important;
+  cursor: pointer;
 }
 
 .form-control {

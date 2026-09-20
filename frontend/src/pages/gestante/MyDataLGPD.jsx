@@ -134,14 +134,14 @@ export default function MyDataLGPD({ onBack }) {
           Você tem o direito de utilizar a plataforma recusando a análise automatizada por inteligência artificial.
         </p>
 
-        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', fontSize: '0.88rem' }}>
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', cursor: 'pointer', fontSize: '0.88rem' }}>
           <input
             type="checkbox"
             checked={recusaIa}
             onChange={handleToggleConsentimentoIA}
-            style={{ marginTop: '3px', width: '18px', height: '18px', accentColor: 'var(--color-rosa)' }}
+            style={{ marginTop: '3px', width: '20px', height: '20px', flexShrink: 0, accentColor: 'var(--color-rosa)' }}
           />
-          <span>
+          <span style={{ flex: 1, color: 'var(--color-text-main)', lineHeight: 1.45 }}>
             <strong>Recusar análises de IA:</strong> Se marcado, o sistema operará estritamente através das regras determinísticas baseadas em protocolos do Ministério da Saúde, desativando modelos de linguagem na conversa.
           </span>
         </label>

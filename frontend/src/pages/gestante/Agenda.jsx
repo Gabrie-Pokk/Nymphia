@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
+import { formatDateTime } from '../../utils/dateUtils';
 import { Calendar, Clock, CheckCircle2, Circle, Trash2, Plus, Bell, Syringe, Pill, Activity, Flag } from 'lucide-react';
 
 const TIPOS_EVENTO = [
@@ -133,14 +134,14 @@ export default function Agenda({ onBack }) {
 
       {/* Barra de Filtro e Teste de Alarme */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem' }}>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.88rem' }}>
           <input
             type="checkbox"
             checked={apenasFuturos}
             onChange={(e) => setApenasFuturos(e.target.checked)}
-            style={{ width: '16px', height: '16px', accentColor: 'var(--color-rosa)' }}
+            style={{ width: '18px', height: '18px', accentColor: 'var(--color-rosa)', flexShrink: 0 }}
           />
-          <span>Exibir apenas eventos futuros</span>
+          <span style={{ color: 'var(--color-text-main)' }}>Exibir apenas eventos futuros</span>
         </label>
 
         <button
@@ -250,10 +251,7 @@ export default function Agenda({ onBack }) {
           {eventos.map((ev) => {
             const tipoMeta = TIPOS_EVENTO.find((t) => t.tipo === ev.tipo) || TIPOS_EVENTO[0];
             const Icon = tipoMeta.icon;
-            const dataFmt = new Date(ev.data_hora).toLocaleString('pt-BR', {
-              dateStyle: 'short',
-              timeStyle: 'short'
-            });
+            const dataFmt = formatDateTime(ev.data_hora);
 
             return (
               <div

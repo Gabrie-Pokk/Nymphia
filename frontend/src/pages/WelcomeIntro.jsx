@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import LotusLogo from '../components/LotusLogo';
-import { Heart, Activity, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Heart, Activity, ShieldCheck, ArrowRight, ArrowLeft } from 'lucide-react';
 
 const SLIDES = [
   {
@@ -22,6 +22,10 @@ const SLIDES = [
 
 export default function WelcomeIntro({ onFinish }) {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchEnd, setTouchEnd] = useState(null);
+
+  const minSwipeDistance = 50;
 
   const handleNext = () => {
     if (currentSlide < SLIDES.length - 1) {
@@ -32,16 +36,56 @@ export default function WelcomeIntro({ onFinish }) {
     }
   };
 
+  const handlePrev = () => {
+    if (currentSlide > 0) {
+      setCurrentSlide(currentSlide - 1);
+    }
+  };
+
   const handleSkip = () => {
     localStorage.setItem('nymphia_intro_viewed', 'true');
     onFinish();
+  };
+
+  const onTouchStart = (e) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    if (isLeftSwipe) {
+      handleNext();
+    } else if (isRightSwipe) {
+      handlePrev();
+    }
   };
 
   const slide = SLIDES[currentSlide];
   const IconComponent = slide.icon;
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', padding: '24px', justifyContent: 'space-between', backgroundColor: '#FFFFFF' }}>
+    <div
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        padding: '24px',
+        justifyContent: 'space-between',
+        backgroundColor: '#FFFFFF',
+        userSelect: 'none'
+      }}
+    >
       {/* Top Bar com Logo e Pular */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -50,7 +94,7 @@ export default function WelcomeIntro({ onFinish }) {
         </div>
         <button
           onClick={handleSkip}
-          style={{ background: 'transparent', color: 'var(--color-text-muted)', border: 'none', fontWeight: 600, fontSize: '0.85rem' }}
+          style={{ background: 'transparent', color: 'var(--color-text-muted)', border: 'none', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}
         >
           Pular
         </button>
@@ -84,31 +128,49 @@ export default function WelcomeIntro({ onFinish }) {
         </p>
       </div>
 
-      {/* Footer com Indicadores e Botão Avançar */}
+      {/* Footer com Indicadores Clicáveis e Botões Voltar / Avançar */}
       <div>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '24px' }}>
           {SLIDES.map((_, idx) => (
-            <div
+            <button
               key={idx}
+              onClick={() => setCurrentSlide(idx)}
+              aria-label={`Ir para o slide ${idx + 1}`}
               style={{
-                width: currentSlide === idx ? '24px' : '8px',
-                height: '8px',
-                borderRadius: '4px',
+                width: currentSlide === idx ? '24px' : '10px',
+                height: '10px',
+                borderRadius: '5px',
                 backgroundColor: currentSlide === idx ? 'var(--color-rosa)' : 'var(--color-border)',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0,
                 transition: 'all 0.3s ease'
               }}
             />
           ))}
         </div>
 
-        <button
-          onClick={handleNext}
-          className="btn btn-primary"
-          style={{ width: '100%', minHeight: '52px', fontSize: '1.05rem' }}
-        >
-          {currentSlide === SLIDES.length - 1 ? "Começar Agora" : "Próximo"}
-          <ArrowRight size={20} />
-        </button>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          {currentSlide > 0 && (
+            <button
+              onClick={handlePrev}
+              className="btn btn-outline"
+              style={{ minHeight: '52px', minWidth: '100px', fontSize: '1rem' }}
+              aria-label="Voltar para o slide anterior"
+            >
+              <ArrowLeft size={18} /> Voltar
+            </button>
+          )}
+
+          <button
+            onClick={handleNext}
+            className="btn btn-primary"
+            style={{ flex: 1, minHeight: '52px', fontSize: '1.05rem' }}
+          >
+            {currentSlide === SLIDES.length - 1 ? "Começar Agora" : "Próximo"}
+            <ArrowRight size={20} />
+          </button>
+        </div>
       </div>
     </div>
   );

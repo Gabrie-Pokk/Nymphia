@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
+import { formatDate } from '../../utils/dateUtils';
 import { Sparkles, Heart, Coffee, Moon, Music, CheckCircle2, UserCheck, ShieldAlert, Award } from 'lucide-react';
 
 export default function QuizGostos({ onBack }) {
@@ -167,7 +168,7 @@ export default function QuizGostos({ onBack }) {
               {infoRespondente.respondido_por === 'parceiro' ? 'Respondido pelo Parceiro com Amor' : 'Preenchido pela Gestante'}
             </strong>
             <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
-              Por {infoRespondente.nome_respondente} em {new Date(infoRespondente.atualizado_em).toLocaleDateString('pt-BR')}
+              Por {infoRespondente.nome_respondente} em {formatDate(infoRespondente.atualizado_em)}
             </span>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { formatDateTime, formatTime } from '../../utils/dateUtils';
 import { Heart, AlertTriangle, Calendar, Phone, ShieldCheck, CheckCircle2, Info, ArrowRight } from 'lucide-react';
 
 export default function PartnerDashboard({ onNavigateEmergency, onNavigateQuiz }) {
@@ -121,7 +122,7 @@ export default function PartnerDashboard({ onNavigateEmergency, onNavigateQuiz }
             </h3>
           </div>
           <p style={{ fontSize: '0.92rem', color: 'var(--color-text-main)', marginBottom: '12px' }}>
-            A gestante acionou o canal de emergência às {new Date(emergenciaAtiva.data_hora).toLocaleTimeString('pt-BR')}.
+            A gestante acionou o canal de emergência às {formatTime(emergenciaAtiva.data_hora)}.
           </p>
 
           <div style={{ backgroundColor: '#FFFFFF', padding: '12px', borderRadius: 'var(--radius-md)', marginBottom: '14px', border: '1px solid var(--color-border)' }}>
@@ -302,7 +303,7 @@ export default function PartnerDashboard({ onNavigateEmergency, onNavigateQuiz }
               >
                 <strong style={{ color: 'var(--color-vinho)', display: 'block' }}>{ev.titulo}</strong>
                 <span style={{ color: 'var(--color-text-muted)', fontSize: '0.78rem' }}>
-                  {new Date(ev.data_hora).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                  {formatDateTime(ev.data_hora)}
                 </span>
               </div>
             ))}
