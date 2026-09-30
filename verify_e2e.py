@@ -159,7 +159,7 @@ def run_e2e_validations():
     chat_toxo_data = res_chat_toxo.json()
     log_test(
         "Chat: Destaque clínico próprio para Toxoplasmose",
-        "TOXOPLASMOSE GESTACIONAL" in chat_toxo_data.get("resposta", ""),
+        "toxoplasmose" in chat_toxo_data.get("resposta", "").lower(),
         "Diretriz FEBRASGO/MS retornada"
     )
 

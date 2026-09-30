@@ -41,8 +41,27 @@ def enviar_mensagem_chat(
     db.add(msg_gestante)
     db.commit()
 
-    # 2. Gera resposta segura através do serviço clínico
-    resposta_texto, is_alerta, fonte = generate_chat_response(texto, recusa_ia=gestante.recusa_ia)
+    # 2. Busca histórico recente para alimentar o contexto multi-turn da IA
+    historico_db = (
+        db.query(Mensagem)
+        .filter(Mensagem.gestante_id == gestante.id, Mensagem.id != msg_gestante.id)
+        .order_by(Mensagem.data_hora.desc())
+        .limit(6)
+        .all()
+    )
+    historico_db.reverse()
+    historico_formatado = [
+        {"role": "user" if m.papel == "gestante" else "model", "text": m.conteudo}
+        for m in historico_db
+    ]
+
+    # 3. Gera resposta conversacional real através do serviço clínico
+    resposta_texto, is_alerta, fonte = generate_chat_response(
+        message=texto,
+        recusa_ia=gestante.recusa_ia,
+        historico=historico_formatado,
+        nome_gestante=gestante.nome
+    )
 
     # 3. Salva a resposta da IA
     msg_ia = Mensagem(

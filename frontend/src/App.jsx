@@ -27,6 +27,7 @@ import MyDataLGPD from './pages/gestante/MyDataLGPD';
 import CommunityFeed from './pages/comunidade/CommunityFeed';
 import SubscriptionScreen from './pages/gestante/SubscriptionScreen';
 import QuizGostos from './pages/gestante/QuizGostos';
+import BodyVision from './pages/gestante/BodyVision';
 
 // Páginas do Profissional
 import DoctorDashboard from './pages/profissional/DoctorDashboard';
@@ -215,6 +216,7 @@ export default function App() {
                 {currentPath === '/planos' && <SubscriptionScreen onBack={() => navigate('/')} />}
                 {currentPath === '/meus-dados' && <MyDataLGPD onBack={() => navigate('/')} />}
                 {currentPath === '/quiz-gostos' && <QuizGostos onBack={() => navigate('/')} />}
+                {currentPath === '/visao-corporal' && <BodyVision onBack={() => navigate('/')} />}
               </>
             )}
           </>

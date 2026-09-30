@@ -32,6 +32,8 @@ def criar_evento_agenda(
     db.refresh(evento)
     return evento
 
+from sqlalchemy import or_, and_
+
 @router.get("/eventos", response_model=List[EventoAgendaOut])
 def listar_eventos_agenda(
     apenas_futuros: bool = Query(True, description="Filtro padrão: apenas eventos futuros"),
@@ -40,17 +42,29 @@ def listar_eventos_agenda(
 ):
     """
     Lista eventos da gestante ordenados por timestamp real.
-    Se apenas_futuros=True, eventos passados são omitidos.
+    Se apenas_futuros=True, exibe eventos futuros OU alarmes/medicações recorrentes ativas.
     """
     query = db.query(EventoAgenda).filter(EventoAgenda.gestante_id == gestante.id)
     
     if apenas_futuros:
         now = datetime.utcnow()
-        query = query.filter(EventoAgenda.data_hora >= now)
+        query = query.filter(
+            or_(
+                EventoAgenda.data_hora >= now,
+                and_(
+                    EventoAgenda.concluido.is_(False),
+                    or_(
+                        EventoAgenda.recorrencia.isnot(None),
+                        EventoAgenda.tipo.in_(["medicacao", "alarme"])
+                    )
+                )
+            )
+        )
 
     # Ordenação por data_hora cronológica ascendente
     eventos = query.order_by(EventoAgenda.data_hora.asc()).all()
     return eventos
+
 
 @router.patch("/eventos/{id}/concluir", response_model=EventoAgendaOut)
 def concluir_evento_agenda(

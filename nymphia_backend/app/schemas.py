@@ -174,10 +174,11 @@ class GestanteVinculada(BaseModel):
 
 
 class EventoCriar(BaseModel):
-    tipo: str = Field(..., description="consulta | medicacao | vacina | exame | marco")
+    tipo: str = Field(..., description="consulta | medicacao | vacina | exame | marco | alarme")
     titulo: str = Field(..., min_length=1, max_length=200)
     data_hora: str = Field(..., description="ISO 8601, ex: 2026-10-01T09:00:00")
     notas: str = Field("", max_length=1000)
+    recorrencia: Optional[str] = None
 
 
 class EventoResposta(BaseModel):
@@ -187,3 +188,5 @@ class EventoResposta(BaseModel):
     data_hora: str
     notas: str
     concluido: bool
+    recorrencia: Optional[str] = None
+

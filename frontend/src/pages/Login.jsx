@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import LotusLogo from '../components/LotusLogo';
+import LotusLogo, { NymphiaBrandName } from '../components/LotusLogo';
 import { Eye, EyeOff, Lock, Mail, ArrowRight, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -81,9 +81,11 @@ export default function Login({ onNavigateRegister, onNavigateRegisterProf, onNa
     <div style={{ padding: '24px', maxWidth: '440px', margin: '0 auto' }}>
       {/* Brand Header */}
       <div style={{ textAlign: 'center', marginBottom: '22px', paddingTop: '16px' }}>
-        <LotusLogo size={52} color="var(--color-vinho)" className="mx-auto" />
-        <h1 style={{ fontSize: '1.75rem', marginTop: '12px', color: 'var(--color-vinho)' }}>Nymphia</h1>
-        <p className="header-slogan" style={{ color: 'var(--color-rosa)', fontWeight: 600, marginTop: '2px' }}>
+        <LotusLogo size={68} className="mx-auto" />
+        <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'center' }}>
+          <NymphiaBrandName height={34} />
+        </div>
+        <p className="header-slogan" style={{ color: 'var(--color-rosa)', fontWeight: 600, marginTop: '4px' }}>
           Cada batimento importa.
         </p>
       </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Calendar, MessageSquare, Users, CheckCircle, Activity, Heart, Shield, FileText, Camera, Bluetooth, ChevronRight, AlertCircle, Link } from 'lucide-react';
+import { Calendar, MessageSquare, Users, CheckCircle, Activity, Heart, Shield, FileText, Camera, Bluetooth, ChevronRight, AlertCircle, Link, Eye } from 'lucide-react';
 import TriageDisclaimer from '../../components/TriageDisclaimer';
 
 export default function GestanteHome({ onNavigate }) {
@@ -200,12 +200,67 @@ export default function GestanteHome({ onNavigate }) {
         </div>
       )}
 
+      {/* Visão Corporal & Postura IA em Tempo Real (Destaque) */}
+      <div
+        className="card"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          cursor: 'pointer',
+          background: 'linear-gradient(135deg, #FFF5F7 0%, #FDE4EB 100%)',
+          border: '1.5px solid var(--color-rosa)',
+          boxShadow: 'var(--shadow-sm)',
+          marginBottom: '14px'
+        }}
+        onClick={() => onNavigate('/visao-corporal')}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div
+            style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '50%',
+              backgroundColor: 'var(--color-vinho)',
+              color: '#FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 10px rgba(92, 26, 42, 0.25)'
+            }}
+          >
+            <Eye size={22} />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <h3 style={{ fontSize: '0.98rem', margin: 0, color: 'var(--color-vinho)' }}>
+                Visão Corporal & Postura IA
+              </h3>
+              <span className="badge-gold" style={{ fontSize: '0.68rem', padding: '1px 6px' }}>Tempo Real</span>
+            </div>
+            <p className="text-muted" style={{ fontSize: '0.8rem', margin: '2px 0 0 0' }}>
+              Biofeedback postural com câmera, alívio lombar e exercícios guiados
+            </p>
+          </div>
+        </div>
+        <ChevronRight size={20} color="var(--color-vinho)" />
+      </div>
+
       {/* Ações e Módulos Rápidos */}
       <h3 style={{ marginTop: '24px', marginBottom: '12px', fontSize: '1.05rem' }}>
         Acompanhamento & Tecnologias
       </h3>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        <button
+          className="btn btn-outline"
+          style={{ flexDirection: 'column', height: '96px', padding: '12px', textAlign: 'center', border: '1.5px solid var(--color-rosa)', backgroundColor: '#FFFDFD' }}
+          onClick={() => onNavigate('/visao-corporal')}
+        >
+          <Eye size={26} color="var(--color-rosa)" />
+          <span style={{ fontSize: '0.85rem', marginTop: '6px', fontWeight: 600, color: 'var(--color-vinho)' }}>Visão Corporal IA</span>
+        </button>
+
         <button
           className="btn btn-outline"
           style={{ flexDirection: 'column', height: '96px', padding: '12px', textAlign: 'center' }}

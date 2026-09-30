@@ -1,5 +1,7 @@
 import os
 import re
+import difflib
+import unicodedata
 import logging
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
@@ -26,15 +28,98 @@ _bert_estado = {
     "modelo": None,
 }
 
-EMOTION_KEYWORDS = {
-    "ansiedade": [r"ansios", r"angusti", r"nervos", r"preocupad", r"inquiet", r"afli", r"coração acelerado"],
-    "tristeza_desanimo": [r"trist", r"chor", r"desanim", r"deprim", r"abatid", r"desolad", r"sem vontade", r"sem energia"],
-    "estresse_sobrecarga": [r"estress", r"cansad", r"esgotad", r"sobrecarreg", r"irritad", r"não aguento mais", r"pressão demais"],
-    "medo_inseguranca": [r"medo", r"pavor", r"assustad", r"insegur", r"temor", r"com receio"],
-    "bem_estar": [r"bem", r"otim", r"feliz", r"alegr", r"tranquil", r"animad", r"calm", r"paz", r"tudo certo", r"grata"],
-    "sintoma_fisico": [r"dor", r"sangrament", r"nause", r"enjoo", r"tontur", r"incha", r"colic", r"queima", r"azia", r"falta de ar", r"visão", r"mexer"]
-}
+def remover_acentos(texto: str) -> str:
+    """Remove diacríticos e acentos da língua portuguesa."""
+    nfkd = unicodedata.normalize('NFKD', texto)
+    return u"".join([c for c in nfkd if not unicodedata.combining(c)])
 
+def normalizar_grafia_ptbr(texto: str) -> str:
+    """
+    Normaliza erros ortográficos comuns, variações fonéticas e gírias
+    usadas por gestantes no Brasil (ex: 'enjouo' -> 'enjoo', 'mau' -> 'mal', 'bariga' -> 'barriga').
+    """
+    if not texto:
+        return ""
+    
+    t = remover_acentos(texto.lower().strip())
+
+    # Reduz repetições exageradas de caracteres (ex: 'enjoooo' -> 'enjoo')
+    t = re.sub(r'([a-z])\1{2,}', r'\1\1', t)
+
+    # 1. Variações fonéticas de enjoo e náuseas
+    t = re.sub(r'\benjouo\b', 'enjoo', t)
+    t = re.sub(r'\benjoada\b', 'enjoo', t)
+    t = re.sub(r'\benjoando\b', 'enjoo', t)
+    t = re.sub(r'\benjoo[us]?\b', 'enjoo', t)
+    t = re.sub(r'\bnauze[as]?\b', 'nausea', t)
+    t = re.sub(r'\banseia\b', 'ansia', t)
+    t = re.sub(r'\bancia\b', 'ansia', t)
+
+    # 2. Variações de mal / mau estar ("sentindo mau" -> "sentindo mal")
+    t = re.sub(r'\b(sentindo|passando|estou|to|tô|ficando|corpo)\s+mau\b', r'\1 mal', t)
+    t = re.sub(r'\bme\s+sinto\s+mau\b', 'me sinto mal', t)
+    t = re.sub(r'\bto\s+mal\b', 'estou mal', t)
+
+    # 3. Variações anatômicas e de dores
+    t = re.sub(r'\bduendo\b', 'doendo', t)
+    t = re.sub(r'\bbariga\b', 'barriga', t)
+    t = re.sub(r'\bmecher\b', 'mexer', t)
+    t = re.sub(r'\bmecheu\b', 'mexeu', t)
+    t = re.sub(r'\binxad[ao]s?\b', 'inchado', t)
+    t = re.sub(r'\bprecao\b', 'pressao', t)
+    t = re.sub(r'\bcolic[as]?\b', 'colica', t)
+    t = re.sub(r'\bvomitei\b', 'vomito', t)
+    t = re.sub(r'\bvomitando\b', 'vomito', t)
+    t = re.sub(r'\bremedio[s]?\b', 'medicamento', t)
+    t = re.sub(r'\bramedio[s]?\b', 'medicamento', t)
+
+    return t
+
+def termo_contido_fuzzy(texto_normalizado: str, termos_referencia: List[str], limiar: float = 0.82) -> bool:
+    """
+    Verifica se o texto contém algum dos termos de referência, tolerando
+    pequenos erros de digitação (distância de Levenshtein/similaridade de sequência).
+    """
+    palavras = re.findall(r'[a-z]+', texto_normalizado)
+    for ref in termos_referencia:
+        ref_norm = remover_acentos(ref.lower())
+        # 1. Match direto como substring
+        if ref_norm in texto_normalizado:
+            return True
+        # 2. Match difuso por palavra
+        for p in palavras:
+            if len(p) >= 4 and len(ref_norm) >= 4:
+                sim = difflib.SequenceMatcher(None, p, ref_norm).ratio()
+                if sim >= limiar:
+                    return True
+    return False
+
+EMOTION_KEYWORDS = {
+    "ansiedade": [
+        "ansios", "angusti", "nervos", "preocupad", "inquiet", "afli", "coracao acelerado", 
+        "panico", "palpitacao", "crise", "agoniada"
+    ],
+    "tristeza_desanimo": [
+        "trist", "chor", "desanim", "deprim", "abatid", "desolad", "sem vontade", "sem energia",
+        "pra baixo", "angustia", "vontade de sumir", "desesper"
+    ],
+    "estresse_sobrecarga": [
+        "estress", "cansad", "esgotad", "sobrecarreg", "irritad", "nao aguento mais", "pressao demais",
+        "sem paciencia", "exaust"
+    ],
+    "medo_inseguranca": [
+        "medo", "pavor", "assustad", "insegur", "temor", "com receio", "perigo", "sera que e normal"
+    ],
+    "sintoma_fisico": [
+        "dor", "sangrament", "nausea", "enjoo", "tontur", "incha", "colica", "queima", "azia",
+        "falta de ar", "visao", "mexer", "vomito", "sentindo mal", "passando mal", "indispost",
+        "fraca", "moleza", "febre", "dor de cabeca", "lombar", "estomago"
+    ],
+    "bem_estar": [
+        "me sinto otima", "muito bem", "estou bem", "feliz", "alegr", "tranquil", "animad",
+        "calm", "paz", "tudo certo", "grata", "maravilhosa", "dia maravilhoso"
+    ]
+}
 
 def carregar_bertimbau():
     """Tenta carregar o modelo BERTimbau ajustado localmente."""
@@ -67,9 +152,8 @@ def bertimbau_disponivel() -> bool:
 
 def classify_text_emotions(text: str) -> Tuple[Dict[str, float], List[str]]:
     """
-    Classificador de conteúdo emocional e sintomas do check-in diário.
-    Utiliza BERTimbau treinado se disponível; caso contrário, utiliza
-    motor regex determinístico com rotulagem FEBRASGO.
+    Classificador de conteúdo emocional e sintomas com tolerância ortográfica
+    e margem de erro na escrita da gestante.
     """
     if not text:
         return {}, []
@@ -89,20 +173,31 @@ def classify_text_emotions(text: str) -> Tuple[Dict[str, float], List[str]]:
             scores = {cat: round(float(p), 3) for cat, p in zip(BERTIMBAU_CATEGORIAS, probs)}
             active = [cat for cat, p in scores.items() if p >= 0.35]
             if not active:
-                active = ["bem_estar" if scores.get("bem_estar", 0) > 0.2 else "neutro"]
+                active = ["neutro"]
             return scores, active
         except Exception as e:
-            logger.warning(f"Falha na inferência do BERTimbau ({e}), usando motor de regras.")
+            logger.warning(f"Falha na inferência do BERTimbau ({e}), usando motor de regras difusas.")
 
-    # 2. Fallback determinístico baseado em padrões de palavras-chave
-    text_lower = text.lower()
+    # 2. Motor determinístico enriquecido com tolerância a erros e ortografia fonética
+    text_normalizado = normalizar_grafia_ptbr(text)
     scores: Dict[str, float] = {}
     active_categories: List[str] = []
 
+    # Checa negações de bem-estar (ex: "não estou bem", "nada bem", "mal")
+    tem_negacao_bem_estar = bool(re.search(r'\b(nao|nada|nem um pouco)\s+(estou|to|me sinto)?\s*bem\b', text_normalizado))
+    tem_mal_estar = bool(re.search(r'\b(mal|ruim|pessim[ao]|indispost[ao]|frac[ao]|moleza)\b', text_normalizado))
+
     for category, patterns in EMOTION_KEYWORDS.items():
+        if category == "bem_estar" and (tem_negacao_bem_estar or tem_mal_estar):
+            scores[category] = 0.05
+            continue
+
         matches = 0
         for pattern in patterns:
-            if re.search(pattern, text_lower):
+            pat_norm = remover_acentos(pattern.lower())
+            if re.search(pat_norm, text_normalizado):
+                matches += 1
+            elif termo_contido_fuzzy(text_normalizado, [pat_norm], limiar=0.82):
                 matches += 1
 
         if matches > 0:
@@ -112,9 +207,15 @@ def classify_text_emotions(text: str) -> Tuple[Dict[str, float], List[str]]:
         else:
             scores[category] = 0.05
 
-    if not active_categories or (len(active_categories) == 1 and "bem_estar" in active_categories):
-        scores["bem_estar"] = 0.80
-        if "bem_estar" not in active_categories:
-            active_categories.append("bem_estar")
+    # Se a gestante relatou mal-estar expresso e sintoma_fisico não pontuou, garante ativação
+    if tem_mal_estar and "sintoma_fisico" not in active_categories:
+        scores["sintoma_fisico"] = 0.75
+        active_categories.append("sintoma_fisico")
+
+    # CRUCIAL: Se nada pontuou, o estado é neutro/dúvida — NUNCA forçar "bem_estar" automaticamente!
+    if not active_categories:
+        scores["bem_estar"] = 0.05
+        active_categories = ["neutro"]
 
     return scores, active_categories
+

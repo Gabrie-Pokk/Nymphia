@@ -328,11 +328,12 @@ class MensagemOut(BaseModel):
 
 # --- Agenda Schemas ---
 class EventoAgendaCreate(BaseModel):
-    tipo: str = Field(..., pattern="^(consulta|medicacao|vacina|exame|marco)$")
+    tipo: str = Field(..., pattern="^(consulta|medicacao|vacina|exame|marco|alarme)$")
     titulo: str = Field(..., min_length=2, max_length=100)
     data_hora: datetime
     notas: Optional[str] = Field("", max_length=500)
     recorrencia: Optional[str] = Field(None, max_length=30)
+
 
     @field_validator("titulo")
     @classmethod

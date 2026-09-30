@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import LotusLogo from '../components/LotusLogo';
+import LotusLogo, { NymphiaBrandName } from '../components/LotusLogo';
 import { Heart, Activity, ShieldCheck, ArrowRight, ArrowLeft } from 'lucide-react';
 
 const SLIDES = [
@@ -89,8 +89,8 @@ export default function WelcomeIntro({ onFinish }) {
       {/* Top Bar com Logo e Pular */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <LotusLogo size={28} color="var(--color-vinho)" />
-          <span style={{ fontWeight: 700, color: 'var(--color-vinho)', fontSize: '1.1rem' }}>Nymphia</span>
+          <LotusLogo size={28} />
+          <NymphiaBrandName height={22} />
         </div>
         <button
           onClick={handleSkip}

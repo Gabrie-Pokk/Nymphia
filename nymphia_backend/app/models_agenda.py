@@ -13,6 +13,7 @@ class EventoAgenda(Base):
     data_hora = Column(DateTime(timezone=True), nullable=False, index=True)
     notas = Column(String, default="")
     concluido = Column(Boolean, default=False)
+    recorrencia = Column(String, nullable=True)
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
 
     def as_dict(self):
@@ -23,4 +24,6 @@ class EventoAgenda(Base):
             "data_hora": self.data_hora.isoformat() if self.data_hora else None,
             "notas": self.notas,
             "concluido": self.concluido,
+            "recorrencia": self.recorrencia,
         }
+

@@ -214,7 +214,7 @@ def test_conversa_urgencia_imediata_e_persistencia(client):
         "texto": "Tenho dúvidas sobre como prevenir toxoplasmose e os gatos"
     }, headers=headers)
     assert res_toxo.status_code == 200
-    assert "TOXOPLASMOSE GESTACIONAL" in res_toxo.json()["resposta"]
+    assert "toxoplasmose" in res_toxo.json()["resposta"].lower()
 
     # 3. Histórico persiste
     res_hist = client.get("/conversa/historico", headers=headers)

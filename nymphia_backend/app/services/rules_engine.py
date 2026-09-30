@@ -1,17 +1,18 @@
 import re
 from typing import List, Tuple
 
-# Pre-compiled urgency patterns (accents handled or stripped)
+# Pre-compiled urgency patterns (accents handled or stripped, typo-resilient)
 URGENCY_PATTERNS = [
     (r"(sangra|sangue|hemorragia)", "Sangramento genital ativo"),
     (r"(dor.*cabec.*(forte|intensa|insuportavel)|cefaleia.*(forte|intensa)|escotoma|pontos.*brilhante|visao.*(turva|embacada))", "Sinais neurológicos / suspeita de pré-eclâmpsia grave"),
     (r"(dor.*(estomago|boca do estomago|barra|epigastr))", "Dor epigástrica / em barra (alerta pré-eclâmpsia)"),
-    (r"(bolsa.*romp|perda.*liquido|liquido.*(escorr|escorrendo|saindo))", "Ruptura de membranas / amniorrexe prematura"),
-    (r"(bebe.*(nao|parou).*mex|pouco.*movimento|parou.*mexer|sem.*movimento)", "Diminuição ou ausência de movimentação fetal"),
+    (r"(bolsa.*(romp|estour|estor|fur)|perda.*liquido|liquido.*(escorr|escorrendo|saindo|vazando))", "Ruptura de membranas / amniorrexe prematura"),
+    (r"(bebe.*(nao|parou).*(mex|mech)|pouco.*movimento|parou.*(mexer|mecher)|sem.*movimento)", "Diminuição ou ausência de movimentação fetal"),
     (r"(febre.*(alta|38|39)|calafrio.*intenso)", "Pirexia / suspeita de infecção aguda"),
-    (r"(pressao.*(14|15|16|17|18|alta|muito alta))", "Pico hipertensivo"),
+    (r"(press[aã]o|pre[çc][aã]o).*(14|15|16|17|18|alta|muito alta)", "Pico hipertensivo"),
     (r"(convuls|desmai|perda.*conscienc)", "Crise convulsiva / síncope")
 ]
+
 
 # Exclusões seguras para termos que contêm 'sangue' em contexto não hemorrágico
 EXCLUSOES_SANGUE = [

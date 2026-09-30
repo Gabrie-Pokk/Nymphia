@@ -2,15 +2,30 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 import TriageDisclaimer from '../../components/TriageDisclaimer';
-import { Send, Share2, Check, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Send, Share2, Check, AlertTriangle, ShieldCheck, Volume2, VolumeX, Sliders, Sparkles } from 'lucide-react';
 import LotusLogo from '../../components/LotusLogo';
+import VoiceSettingsModal from '../../components/VoiceSettingsModal';
+import {
+  speakNymphia,
+  stopNymphiaVoice,
+  getVoicePreferences,
+  isNymphiaSpeaking
+} from '../../utils/voiceService';
 
 export default function AiChat({ onBack }) {
   const { authHeaders } = useAuth();
   const [mensagens, setMensagens] = useState([]);
   const [inputTexto, setInputTexto] = useState('');
   const [carregando, setCarregando] = useState(false);
+  const [modalVozAberto, setModalVozAberto] = useState(false);
+  const [speakingMsgId, setSpeakingMsgId] = useState(null);
   const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      stopNymphiaVoice();
+    };
+  }, []);
 
   const carregarHistorico = async () => {
     try {
@@ -57,10 +72,11 @@ export default function AiChat({ onBack }) {
       });
       const data = await res.json();
       if (res.ok) {
+        const iaMsgId = Date.now() + 1;
         setMensagens((prev) => [
           ...prev,
           {
-            id: Date.now() + 1,
+            id: iaMsgId,
             papel: 'ia',
             conteudo: data.resposta,
             data_hora: new Date().toISOString(),
@@ -68,10 +84,34 @@ export default function AiChat({ onBack }) {
             autorizado_compartilhar: false
           }
         ]);
+
+        // Reprodução por voz automática se habilitada nas preferências
+        const prefs = getVoicePreferences();
+        if (prefs.autoFalarChat && data.resposta) {
+          setSpeakingMsgId(iaMsgId);
+          speakNymphia(data.resposta, {
+            onEnd: () => setSpeakingMsgId(null),
+            onError: () => setSpeakingMsgId(null)
+          });
+        }
       }
     } catch (err) {
     } finally {
       setCarregando(false);
+    }
+  };
+
+  const handleToggleVoz = (msgId, texto) => {
+    if (speakingMsgId === msgId) {
+      stopNymphiaVoice();
+      setSpeakingMsgId(null);
+    } else {
+      stopNymphiaVoice();
+      setSpeakingMsgId(msgId);
+      speakNymphia(texto, {
+        onEnd: () => setSpeakingMsgId(null),
+        onError: () => setSpeakingMsgId(null)
+      });
     }
   };
 
@@ -93,14 +133,67 @@ export default function AiChat({ onBack }) {
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
       <BackButton onClick={onBack} label="Voltar para Início" />
 
-      {/* Header do Chat */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid var(--color-border)' }}>
-        <LotusLogo size={32} color="var(--color-rosa)" />
-        <div>
-          <h2 style={{ fontSize: '1.15rem', margin: 0, color: 'var(--color-vinho)' }}>Assistente Clínica Nymphia</h2>
-          <p className="text-muted" style={{ fontSize: '0.78rem', margin: '2px 0 0' }}>
-            Apoio contínuo e acolhimento fundamentado em protocolos FEBRASGO e Ministério da Saúde
-          </p>
+      {/* Header do Chat com Botão de Configuração de Voz */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', paddingBottom: '12px', borderBottom: '1px solid var(--color-border)', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <LotusLogo size={32} color="var(--color-rosa)" />
+          <div>
+            <h2 style={{ fontSize: '1.15rem', margin: 0, color: 'var(--color-vinho)' }}>Assistente Clínica Nymphia</h2>
+            <p className="text-muted" style={{ fontSize: '0.78rem', margin: '2px 0 0' }}>
+              Apoio contínuo e acolhimento fundamentado em protocolos FEBRASGO e Ministério da Saúde
+            </p>
+          </div>
+        </div>
+
+        {/* Controles de Voz da IA */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {speakingMsgId && (
+            <button
+              onClick={() => {
+                stopNymphiaVoice();
+                setSpeakingMsgId(null);
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '6px 12px',
+                borderRadius: '20px',
+                border: '1px solid #E74C3C',
+                backgroundColor: '#FDEDEC',
+                color: '#C0392B',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              <VolumeX size={14} />
+              <span>Parar Áudio</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => setModalVozAberto(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              borderRadius: '20px',
+              border: '1px solid var(--color-border)',
+              backgroundColor: 'var(--color-rosa-claro)',
+              color: 'var(--color-vinho)',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              boxShadow: 'var(--shadow-sm)'
+            }}
+            title="Personalizar voz, timbre, velocidade e persona da Nymphia"
+          >
+            <Volume2 size={15} color="var(--color-rosa)" />
+            <span>Voz da IA</span>
+            <Sliders size={13} style={{ opacity: 0.6 }} />
+          </button>
         </div>
       </div>
 
@@ -171,9 +264,45 @@ export default function AiChat({ onBack }) {
                   {msg.conteudo}
                 </div>
 
-                {/* Ações da Mensagem: Autorizar compartilhamento com o médico */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                {/* Ações da Mensagem: Áudio da Nymphia e Autorizar compartilhamento */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', fontSize: '0.72rem', color: 'var(--color-text-muted)', flexWrap: 'wrap' }}>
                   <span>{new Date(msg.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+
+                  {!isGestante && (
+                    <button
+                      type="button"
+                      onClick={() => handleToggleVoz(msg.id, msg.conteudo)}
+                      style={{
+                        background: speakingMsgId === msg.id ? 'var(--color-rosa)' : 'rgba(219, 112, 147, 0.12)',
+                        border: '1px solid var(--color-rosa)',
+                        borderRadius: '12px',
+                        color: speakingMsgId === msg.id ? '#FFFFFF' : 'var(--color-vinho)',
+                        padding: '2px 8px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        fontSize: '0.72rem',
+                        fontWeight: 600,
+                        minHeight: '22px',
+                        transition: 'all 0.2s ease'
+                      }}
+                      title={speakingMsgId === msg.id ? "Parar leitura de voz" : "Ouvir resposta com a voz da Nymphia"}
+                    >
+                      {speakingMsgId === msg.id ? (
+                        <>
+                          <VolumeX size={12} />
+                          <span>Parar</span>
+                        </>
+                      ) : (
+                        <>
+                          <Volume2 size={12} />
+                          <span>Ouvir Nymphia</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+
                   {msg.autorizado_compartilhar ? (
                     <span style={{ color: '#27AE60', display: 'flex', alignItems: 'center', gap: '2px' }}>
                       <Check size={12} /> Compartilhado com médico
@@ -195,7 +324,7 @@ export default function AiChat({ onBack }) {
                       }}
                       title="Autorizar o médico vinculado a visualizar este trecho"
                     >
-                      <Share2 size={12} /> Autorizar compartilhamento
+                      <Share2 size={12} /> Compartilhar
                     </button>
                   )}
                 </div>
@@ -227,6 +356,13 @@ export default function AiChat({ onBack }) {
           <Send size={18} />
         </button>
       </form>
+
+      {/* Modal de Personalização de Voz da Nymphia */}
+      <VoiceSettingsModal
+        isOpen={modalVozAberto}
+        onClose={() => setModalVozAberto(false)}
+        onSaved={() => {}}
+      />
     </div>
   );
 }

@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     NYMPHIA_SECRET_KEY: str = "nymphia_super_secret_production_ready_key_change_me_in_prod_12345"
     NYMPHIA_S3_BUCKET: str = "nymphia-clinical-records"
     GEMINI_API_KEY: Optional[str] = None
+    GROQ_API_KEY: Optional[str] = None
+    OPENAI_API_KEY: Optional[str] = None
+    OPENROUTER_API_KEY: Optional[str] = None
     ENVIRONMENT: str = "development"
     
     # JWT algorithm and expiration

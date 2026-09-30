@@ -5,11 +5,12 @@ import { formatDateTime } from '../../utils/dateUtils';
 import { Calendar, Clock, CheckCircle2, Circle, Trash2, Plus, Bell, Syringe, Pill, Activity, Flag } from 'lucide-react';
 
 const TIPOS_EVENTO = [
-  { tipo: 'consulta', label: 'Consulta Pré-Natal', icon: Calendar },
-  { tipo: 'medicacao', label: 'Medicação / Suplemento', icon: Pill },
-  { tipo: 'vacina', label: 'Vacina', icon: Syringe },
-  { tipo: 'exame', label: 'Exame de Laboratório/USG', icon: Activity },
-  { tipo: 'marco', label: 'Marco Gestacional', icon: Flag }
+  { tipo: 'medicacao', label: 'Medicação / Suplemento', icon: Pill, semDataObrigatoria: true },
+  { tipo: 'alarme', label: 'Alarme / Lembrete Diário', icon: Bell, semDataObrigatoria: true },
+  { tipo: 'consulta', label: 'Consulta Pré-Natal', icon: Calendar, semDataObrigatoria: false },
+  { tipo: 'vacina', label: 'Vacina', icon: Syringe, semDataObrigatoria: false },
+  { tipo: 'exame', label: 'Exame de Laboratório/USG', icon: Activity, semDataObrigatoria: false },
+  { tipo: 'marco', label: 'Marco Gestacional', icon: Flag, semDataObrigatoria: false }
 ];
 
 export default function Agenda({ onBack }) {
@@ -18,12 +19,17 @@ export default function Agenda({ onBack }) {
   const [apenasFuturos, setApenasFuturos] = useState(true);
   const [mostrarModalCriar, setMostrarModalCriar] = useState(false);
 
-  const [tipo, setTipo] = useState('consulta');
+  const [tipo, setTipo] = useState('medicacao');
   const [titulo, setTitulo] = useState('');
+  const [horario, setHorario] = useState('08:00');
   const [dataHora, setDataHora] = useState('');
+  const [definirDataInicio, setDefinirDataInicio] = useState(false);
+  const [dataInicio, setDataInicio] = useState('');
   const [notas, setNotas] = useState('');
-  const [recorrencia, setRecorrencia] = useState('');
+  const [recorrencia, setRecorrencia] = useState('diaria');
   const [carregando, setCarregando] = useState(false);
+
+  const tipoMetaAtual = TIPOS_EVENTO.find((t) => t.tipo === tipo) || TIPOS_EVENTO[0];
 
   const carregarEventos = async () => {
     try {
@@ -41,8 +47,16 @@ export default function Agenda({ onBack }) {
     carregarEventos();
   }, [apenasFuturos]);
 
+  const handleMudarTipo = (novoTipo) => {
+    setTipo(novoTipo);
+    const meta = TIPOS_EVENTO.find((t) => t.tipo === novoTipo);
+    if (meta?.semDataObrigatoria) {
+      if (!recorrencia) setRecorrencia('diaria');
+      if (!horario) setHorario('08:00');
+    }
+  };
+
   const handleConcluir = async (id) => {
-    // Atualização otimista
     setEventos((prev) =>
       prev.map((ev) => (ev.id === id ? { ...ev, concluido: !ev.concluido } : ev))
     );
@@ -53,7 +67,7 @@ export default function Agenda({ onBack }) {
         headers: authHeaders()
       });
     } catch (err) {
-      carregarEventos(); // Reverte se falhar
+      carregarEventos();
     }
   };
 
@@ -71,7 +85,31 @@ export default function Agenda({ onBack }) {
 
   const handleCriarEvento = async (e) => {
     e.preventDefault();
-    if (!titulo || !dataHora) return;
+    if (!titulo.trim()) return;
+
+    let isoFinal = '';
+
+    if (tipoMetaAtual.semDataObrigatoria) {
+      if (!horario) return;
+      const [hh, mm] = horario.split(':').map(Number);
+
+      if (definirDataInicio && dataInicio) {
+        const [ano, mes, dia] = dataInicio.split('-').map(Number);
+        const d = new Date(ano, mes - 1, dia, hh, mm, 0);
+        isoFinal = d.toISOString();
+      } else {
+        const d = new Date();
+        d.setHours(hh, mm, 0, 0);
+        // Se o horário de hoje já passou, agenda para a próxima ocorrência
+        if (d.getTime() < Date.now()) {
+          d.setDate(d.getDate() + 1);
+        }
+        isoFinal = d.toISOString();
+      }
+    } else {
+      if (!dataHora) return;
+      isoFinal = new Date(dataHora).toISOString();
+    }
 
     setCarregando(true);
     try {
@@ -80,18 +118,21 @@ export default function Agenda({ onBack }) {
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({
           tipo,
-          titulo,
-          data_hora: new Date(dataHora).toISOString(),
-          notas,
-          recorrencia: recorrencia || null
+          titulo: titulo.trim(),
+          data_hora: isoFinal,
+          notas: notas.trim(),
+          recorrencia: tipoMetaAtual.semDataObrigatoria ? (recorrencia || 'diaria') : (recorrencia || null)
         })
       });
 
       if (res.ok) {
         setTitulo('');
         setDataHora('');
+        setHorario('08:00');
         setNotas('');
-        setRecorrencia('');
+        setDefinirDataInicio(false);
+        setDataInicio('');
+        setRecorrencia('diaria');
         setMostrarModalCriar(false);
         carregarEventos();
       }
@@ -104,17 +145,36 @@ export default function Agenda({ onBack }) {
   // Tocar alarme sonoro de teste
   const testarAlarme = () => {
     try {
-      // Audio synthesis beep
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start();
       osc.stop(ctx.currentTime + 0.4);
     } catch (e) {}
+  };
+
+  const formatarHorarioEvento = (ev) => {
+    if (ev.tipo === 'medicacao' || ev.tipo === 'alarme' || ev.recorrencia) {
+      try {
+        const d = new Date(ev.data_hora);
+        const horaStr = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const recTraduzida = {
+          diaria: 'Diária',
+          '8_8h': 'A cada 8h',
+          '12_12h': 'A cada 12h',
+          '6_6h': 'A cada 6h',
+          uma_vez: 'Único'
+        }[ev.recorrencia] || ev.recorrencia || 'Diário';
+        return `⏰ Às ${horaStr} • ${recTraduzida}`;
+      } catch (err) {
+        return formatDateTime(ev.data_hora);
+      }
+    }
+    return formatDateTime(ev.data_hora);
   };
 
   return (
@@ -128,7 +188,7 @@ export default function Agenda({ onBack }) {
           onClick={() => setMostrarModalCriar(true)}
           style={{ minHeight: '40px', padding: '8px 14px', fontSize: '0.85rem' }}
         >
-          <Plus size={16} /> Novo Evento
+          <Plus size={16} /> Novo Evento / Alarme
         </button>
       </div>
 
@@ -141,7 +201,7 @@ export default function Agenda({ onBack }) {
             onChange={(e) => setApenasFuturos(e.target.checked)}
             style={{ width: '18px', height: '18px', accentColor: 'var(--color-rosa)', flexShrink: 0 }}
           />
-          <span style={{ color: 'var(--color-text-main)' }}>Exibir apenas eventos futuros</span>
+          <span style={{ color: 'var(--color-text-main)' }}>Exibir apenas futuros / ativos</span>
         </label>
 
         <button
@@ -157,11 +217,13 @@ export default function Agenda({ onBack }) {
       {/* Modal de Criação de Evento */}
       {mostrarModalCriar && (
         <div className="card" style={{ border: '2px solid var(--color-rosa)', marginBottom: '20px' }}>
-          <h3 style={{ fontSize: '1.05rem', marginBottom: '12px' }}>Adicionar à Agenda</h3>
+          <h3 style={{ fontSize: '1.05rem', marginBottom: '12px' }}>
+            {tipoMetaAtual.semDataObrigatoria ? 'Adicionar Alarme de Rotina' : 'Adicionar à Agenda'}
+          </h3>
           <form onSubmit={handleCriarEvento}>
             <div className="form-group">
-              <label>Tipo de Evento</label>
-              <select className="form-control" value={tipo} onChange={(e) => setTipo(e.target.value)}>
+              <label>Tipo</label>
+              <select className="form-control" value={tipo} onChange={(e) => handleMudarTipo(e.target.value)}>
                 {TIPOS_EVENTO.map((t) => (
                   <option key={t.tipo} value={t.tipo}>{t.label}</option>
                 ))}
@@ -169,46 +231,119 @@ export default function Agenda({ onBack }) {
             </div>
 
             <div className="form-group">
-              <label>Título do Evento</label>
+              <label>Nome / Título</label>
               <input
                 type="text"
                 className="form-control"
-                placeholder="Ex: Consulta Pré-Natal 24 semanas"
+                placeholder={tipo === 'medicacao' ? 'Ex: Ácido Fólico ou Sulfato Ferroso' : tipo === 'alarme' ? 'Ex: Beber 500ml de água / Pausa de repouso' : 'Ex: Consulta Pré-Natal 24 semanas'}
                 value={titulo}
                 onChange={(e) => setTitulo(e.target.value)}
                 required
               />
             </div>
 
-            <div className="form-group">
-              <label>Data e Horário</label>
-              <input
-                type="datetime-local"
-                className="form-control"
-                value={dataHora}
-                onChange={(e) => setDataHora(e.target.value)}
-                required
-              />
-            </div>
+            {/* SE FOR MEDICAÇÃO OU ALARME: NÃO EXIGE FALAR O DIA! */}
+            {tipoMetaAtual.semDataObrigatoria ? (
+              <>
+                <div className="form-group">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <label style={{ margin: 0 }}>Horário do Alarme</label>
+                    <span style={{ fontSize: '0.76rem', color: '#27AE60', fontWeight: 600 }}>
+                      ⚡ Agendamento ágil (sem precisar escolher dia)
+                    </span>
+                  </div>
+                  <input
+                    type="time"
+                    className="form-control"
+                    value={horario}
+                    onChange={(e) => setHorario(e.target.value)}
+                    required
+                    style={{ fontSize: '1.1rem', fontWeight: 600, padding: '8px 12px' }}
+                  />
 
-            {tipo === 'medicacao' && (
+                  {/* Atalhos rápidos de 1 clique */}
+                  <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
+                    {[
+                      { rotulo: 'Manhã (08:00)', h: '08:00' },
+                      { rotulo: 'Almoço (12:00)', h: '12:00' },
+                      { rotulo: 'Tarde (14:00)', h: '14:00' },
+                      { rotulo: 'Noite (20:00)', h: '20:00' },
+                      { rotulo: 'Dormir (22:00)', h: '22:00' }
+                    ].map((at) => (
+                      <button
+                        key={at.h}
+                        type="button"
+                        onClick={() => setHorario(at.h)}
+                        style={{
+                          fontSize: '0.75rem',
+                          padding: '3px 8px',
+                          borderRadius: '12px',
+                          border: horario === at.h ? '1px solid var(--color-rosa)' : '1px solid var(--color-border)',
+                          background: horario === at.h ? 'rgba(233, 30, 99, 0.12)' : 'transparent',
+                          color: horario === at.h ? 'var(--color-vinho)' : 'var(--color-text-muted)',
+                          cursor: 'pointer',
+                          fontWeight: horario === at.h ? 700 : 400
+                        }}
+                      >
+                        {at.rotulo}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Frequência</label>
+                  <select className="form-control" value={recorrencia} onChange={(e) => setRecorrencia(e.target.value)}>
+                    <option value="diaria">Diária (todos os dias)</option>
+                    <option value="8_8h">A cada 8 horas (3x ao dia)</option>
+                    <option value="12_12h">A cada 12 horas (2x ao dia)</option>
+                    <option value="6_6h">A cada 6 horas (4x ao dia)</option>
+                    <option value="uma_vez">Apenas uma vez (próximo horário)</option>
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: '14px', background: '#FBF9FA', padding: '8px 12px', borderRadius: '8px' }}>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
+                    <input
+                      type="checkbox"
+                      checked={definirDataInicio}
+                      onChange={(e) => setDefinirDataInicio(e.target.checked)}
+                      style={{ accentColor: 'var(--color-rosa)', width: '16px', height: '16px' }}
+                    />
+                    <span>Deseja fixar um dia de início específico? (Opcional)</span>
+                  </label>
+                  {definirDataInicio && (
+                    <div style={{ marginTop: '8px' }}>
+                      <input
+                        type="date"
+                        className="form-control"
+                        value={dataInicio}
+                        onChange={(e) => setDataInicio(e.target.value)}
+                      />
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              /* EVENTOS QUE PRECISAM DE DATA NO CALENDÁRIO */
               <div className="form-group">
-                <label>Recorrência (Opcional)</label>
-                <select className="form-control" value={recorrencia} onChange={(e) => setRecorrencia(e.target.value)}>
-                  <option value="">Apenas uma vez</option>
-                  <option value="diaria">Diária</option>
-                  <option value="8_8h">A cada 8 horas</option>
-                  <option value="12_12h">A cada 12 horas</option>
-                </select>
+                <label>Data e Horário</label>
+                <input
+                  type="datetime-local"
+                  className="form-control"
+                  value={dataHora}
+                  onChange={(e) => setDataHora(e.target.value)}
+                  required
+                />
               </div>
             )}
 
             <div className="form-group">
-              <label>Observações</label>
+              <label>Observações (Opcional)</label>
               <input
                 type="text"
                 className="form-control"
-                placeholder="Ex: Levar resultados de exames de sangue"
+                placeholder="Ex: Tomar após o almoço / Levar carteirinha"
                 value={notas}
                 onChange={(e) => setNotas(e.target.value)}
               />
@@ -229,12 +364,13 @@ export default function Agenda({ onBack }) {
                 style={{ flex: 1 }}
                 disabled={carregando}
               >
-                {carregando ? 'Salvando...' : 'Salvar Evento'}
+                {carregando ? 'Salvando...' : 'Salvar Alarme / Evento'}
               </button>
             </div>
           </form>
         </div>
       )}
+
 
       {/* Lista de Eventos */}
       {eventos.length === 0 ? (
@@ -282,12 +418,17 @@ export default function Agenda({ onBack }) {
                       <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-rosa)', textTransform: 'capitalize' }}>
                         {tipoMeta.label}
                       </span>
+                      {(ev.tipo === 'medicacao' || ev.tipo === 'alarme' || ev.recorrencia) && (
+                        <span style={{ fontSize: '0.70rem', background: 'rgba(39, 174, 96, 0.12)', color: '#27AE60', padding: '1px 6px', borderRadius: '10px', fontWeight: 600 }}>
+                          Rotina
+                        </span>
+                      )}
                     </div>
                     <h4 style={{ fontSize: '0.95rem', margin: '2px 0', textDecoration: ev.concluido ? 'line-through' : 'none' }}>
                       {ev.titulo}
                     </h4>
                     <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Clock size={12} /> {dataFmt} {ev.recorrencia ? `• Recorrência: ${ev.recorrencia}` : ''}
+                      <Clock size={12} /> {formatarHorarioEvento(ev)}
                     </p>
                     {ev.notas && (
                       <p style={{ fontSize: '0.78rem', color: 'var(--color-text-main)', marginTop: '2px' }}>

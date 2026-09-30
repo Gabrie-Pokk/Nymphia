@@ -9,7 +9,7 @@ from app.models_agenda import EventoAgenda
 from app.schemas import EventoCriar, EventoResposta
 
 router = APIRouter()
-TIPOS_VALIDOS = {"consulta", "medicacao", "vacina", "exame", "marco"}
+TIPOS_VALIDOS = {"consulta", "medicacao", "vacina", "exame", "marco", "alarme"}
 
 
 @router.post("/agenda/eventos", response_model=EventoResposta)
@@ -22,13 +22,20 @@ def criar_evento(payload: EventoCriar, gestante_id: str = Depends(exigir_gestant
         raise HTTPException(400, "data_hora precisa estar em formato ISO 8601, ex: 2026-10-01T09:00:00")
 
     evento = EventoAgenda(
-        gestante_id=gestante_id, tipo=payload.tipo, titulo=payload.titulo,
-        data_hora=data_hora, notas=payload.notas,
+        gestante_id=gestante_id,
+        tipo=payload.tipo,
+        titulo=payload.titulo,
+        data_hora=data_hora,
+        notas=payload.notas,
+        recorrencia=payload.recorrencia,
     )
     db.add(evento)
     db.commit()
     db.refresh(evento)
     return EventoResposta(**evento.as_dict())
+
+
+from sqlalchemy import or_, and_
 
 
 @router.get("/agenda/eventos", response_model=list[EventoResposta])
@@ -40,9 +47,23 @@ def listar_eventos(
     query = db.query(EventoAgenda).filter(EventoAgenda.gestante_id == gestante_id)
     if apenas_futuros:
         agora = datetime.now(timezone.utc).replace(tzinfo=None)
-        query = query.filter(EventoAgenda.data_hora >= agora)
+        # Eventos futuros OU alarmes/medicações recorrentes ainda ativos
+        query = query.filter(
+            or_(
+                EventoAgenda.data_hora >= agora,
+                and_(
+                    EventoAgenda.concluido.is_(False),
+                    or_(
+                        EventoAgenda.recorrencia.isnot(None),
+                        EventoAgenda.tipo.in_(["medicacao", "alarme"])
+                    )
+                )
+            )
+        )
     eventos = query.order_by(EventoAgenda.data_hora.asc()).all()
     return [EventoResposta(**e.as_dict()) for e in eventos]
+
+
 
 
 @router.patch("/agenda/eventos/{evento_id}/concluir", response_model=EventoResposta)
