@@ -38,17 +38,19 @@ except Exception as e:
 # Pré-carregamento dos modelos de Machine Learning (Random Forest & Isolation Forest)
 carregar_modelos_ml()
 
-# Carregamento do BERTimbau em thread separada para não bloquear o startup nem estourar memória
-import threading
+# Carregamento do BERTimbau controlado para respeitar limite de 512MB RAM em nuvem gratuita
+if os.environ.get("NYMPHIA_CARREGAR_BERTIMBAU", "0") in ("1", "true", "True"):
+    import threading
+    def _iniciar_bertimbau_background():
+        logger.info("Disparando thread em segundo plano para download/carregamento do BERTimbau...")
+        try:
+            carregar_bertimbau()
+        except Exception as e:
+            logger.warning(f"Exceção na thread do BERTimbau: {e}")
 
-def _iniciar_bertimbau_background():
-    logger.info("Disparando thread em segundo plano para download/carregamento do BERTimbau...")
-    try:
-        carregar_bertimbau()
-    except Exception as e:
-        logger.warning(f"Exceção na thread do BERTimbau: {e}")
-
-threading.Thread(target=_iniciar_bertimbau_background, daemon=True, name="bertimbau-worker").start()
+    threading.Thread(target=_iniciar_bertimbau_background, daemon=True, name="bertimbau-worker").start()
+else:
+    logger.info("BERTimbau desativado no startup inicial para estabilidade de memória RAM (<512MB). Motor determinístico FEBRASGO ativo.")
 
 app = FastAPI(
     title="Nymphia — Inteligência Artificial Obstétrica",

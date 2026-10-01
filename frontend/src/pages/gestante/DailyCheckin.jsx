@@ -28,7 +28,7 @@ const SINTOMAS_DISPONIVEIS = [
 ];
 
 export default function DailyCheckin({ onBack }) {
-  const { authHeaders } = useAuth();
+  const { authHeaders, user } = useAuth();
   const [humor, setHumor] = useState(4);
   const [descricao, setDescricao] = useState('');
   const [sintomas, setSintomas] = useState([]);
@@ -111,11 +111,13 @@ export default function DailyCheckin({ onBack }) {
     <div>
       <BackButton onClick={onBack} label="Voltar para Início" />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-        <h2>Check-in Diário de Bem-Estar</h2>
+        <h2>{user?.perfil === 'parceiro' ? 'Check-in pelo Parceiro' : 'Check-in Diário de Bem-Estar'}</h2>
         <span className="badge-rosa" style={{ fontSize: '0.8rem' }}>Semana {semanaGestacional}</span>
       </div>
       <p className="text-muted" style={{ marginBottom: '20px' }}>
-        Seu momento de escuta e cuidado: registre como você e seu bebê estão hoje.
+        {user?.perfil === 'parceiro'
+          ? 'Você está registrando o check-in diário para apoiar sua parceira. Todas as orientações clínicas são calculadas em tempo real.'
+          : 'Seu momento de escuta e cuidado: registre como você e seu bebê estão hoje.'}
       </p>
 
       {/* FEEDBACK DE RESULTADO APÓS REGISTRAR */}

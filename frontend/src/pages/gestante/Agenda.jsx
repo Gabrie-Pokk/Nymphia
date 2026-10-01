@@ -14,7 +14,7 @@ const TIPOS_EVENTO = [
 ];
 
 export default function Agenda({ onBack }) {
-  const { authHeaders } = useAuth();
+  const { authHeaders, user } = useAuth();
   const [eventos, setEventos] = useState([]);
   const [apenasFuturos, setApenasFuturos] = useState(true);
   const [mostrarModalCriar, setMostrarModalCriar] = useState(false);
@@ -191,6 +191,29 @@ export default function Agenda({ onBack }) {
           <Plus size={16} /> Novo Evento / Alarme
         </button>
       </div>
+
+      {/* Banner de permissão quando no Modo Parceiro */}
+      {user?.perfil === 'parceiro' && (
+        <div
+          style={{
+            backgroundColor: '#F4FBF7',
+            border: '1.5px solid #27AE60',
+            borderRadius: 'var(--radius-md)',
+            padding: '10px 14px',
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '0.85rem',
+            color: '#1E7E34'
+          }}
+        >
+          <CheckCircle2 size={18} />
+          <span>
+            <strong>Modo Parceiro Ativo:</strong> Você pode adicionar novos compromissos, marcar como realizados e gerenciar a agenda da sua parceira.
+          </span>
+        </div>
+      )}
 
       {/* Barra de Filtro e Teste de Alarme */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>

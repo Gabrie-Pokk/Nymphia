@@ -38,7 +38,7 @@ import GenerateInvite from './pages/profissional/GenerateInvite';
 // Páginas do Parceiro
 import PartnerDashboard from './pages/parceiro/PartnerDashboard';
 
-import { Home, Activity, MessageSquare, Calendar, Shield, LogOut } from 'lucide-react';
+import { Home, Activity, MessageSquare, Calendar, Shield, LogOut, Heart } from 'lucide-react';
 
 const SUBROTAS_GESTANTE = [
   '/checkin', '/conversa', '/agenda', '/prenatal-card', '/exames',
@@ -52,11 +52,11 @@ const SUBROTAS_PROFISSIONAL = [
 ];
 
 const SUBROTAS_PARCEIRO = [
-  '/quiz-gostos'
+  '/quiz-gostos', '/agenda', '/checkin'
 ];
 
 export default function App() {
-  const { user, isAuthenticated, logout, authHeaders } = useAuth();
+  const { user, isAuthenticated, logout, authHeaders, login } = useAuth();
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname || '/');
   const [introViewed, setIntroViewed] = useState(() => localStorage.getItem('nymphia_intro_viewed') === 'true');
   const [onboardingCompleto, setOnboardingCompleto] = useState(false);
@@ -208,7 +208,77 @@ export default function App() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {user?.perfil === 'gestante' && (
+            <button
+              onClick={async () => {
+                try {
+                  const res = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: 'parceiro@nymphia.com.br', senha: 'senhaMaternidade123' })
+                  });
+                  const d = await res.json();
+                  if (d.token) {
+                    login(d.token, d);
+                    navigate('/');
+                  }
+                } catch (e) {}
+              }}
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.22)',
+                border: '1px solid rgba(255,255,255,0.4)',
+                borderRadius: 'var(--radius-full)',
+                color: '#FFFFFF',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                padding: '4px 10px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+              title="Alternar para visualização de Parceiro (Lucas)"
+            >
+              🤝 Ir p/ Parceiro
+            </button>
+          )}
+
+          {user?.perfil === 'parceiro' && (
+            <button
+              onClick={async () => {
+                try {
+                  const res = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: 'gestante@nymphia.com.br', senha: 'senhaMaternidade123' })
+                  });
+                  const d = await res.json();
+                  if (d.token) {
+                    login(d.token, d);
+                    navigate('/');
+                  }
+                } catch (e) {}
+              }}
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.22)',
+                border: '1px solid rgba(255,255,255,0.4)',
+                borderRadius: 'var(--radius-full)',
+                color: '#FFFFFF',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                padding: '4px 10px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+              title="Alternar para visualização da Gestante (Mariana)"
+            >
+              🌸 Ir p/ Gestante
+            </button>
+          )}
+
           <span style={{ fontSize: '0.78rem', backgroundColor: 'rgba(255,255,255,0.2)', padding: '3px 8px', borderRadius: 'var(--radius-full)', textTransform: 'capitalize' }}>
             {user?.perfil}
           </span>
@@ -293,9 +363,13 @@ export default function App() {
               <PartnerDashboard
                 onNavigateEmergency={() => navigate('/emergencia')}
                 onNavigateQuiz={() => navigate('/quiz-gostos')}
+                onNavigateCheckin={() => navigate('/checkin')}
+                onNavigateAgenda={() => navigate('/agenda')}
               />
             )}
             {currentPath === '/quiz-gostos' && <QuizGostos onBack={() => navigate('/')} />}
+            {currentPath === '/checkin' && <DailyCheckin onBack={() => navigate('/')} />}
+            {currentPath === '/agenda' && <Agenda onBack={() => navigate('/')} />}
           </>
         )}
       </main>
@@ -342,6 +416,44 @@ export default function App() {
           >
             <Shield size={20} />
             <span>LGPD</span>
+          </button>
+        </nav>
+      )}
+
+      {/* Barra de Navegação Inferior para Parceiro */}
+      {user?.perfil === 'parceiro' && (
+        <nav className="bottom-nav" aria-label="Navegação do Parceiro">
+          <button
+            className={`nav-item ${currentPath === '/' ? 'active' : ''}`}
+            onClick={() => navigate('/')}
+            style={{ background: 'transparent', border: 'none' }}
+          >
+            <Home size={20} />
+            <span>Início</span>
+          </button>
+          <button
+            className={`nav-item ${currentPath === '/checkin' ? 'active' : ''}`}
+            onClick={() => navigate('/checkin')}
+            style={{ background: 'transparent', border: 'none' }}
+          >
+            <Activity size={20} />
+            <span>Check-in</span>
+          </button>
+          <button
+            className={`nav-item ${currentPath === '/agenda' ? 'active' : ''}`}
+            onClick={() => navigate('/agenda')}
+            style={{ background: 'transparent', border: 'none' }}
+          >
+            <Calendar size={20} />
+            <span>Agenda</span>
+          </button>
+          <button
+            className={`nav-item ${currentPath === '/quiz-gostos' ? 'active' : ''}`}
+            onClick={() => navigate('/quiz-gostos')}
+            style={{ background: 'transparent', border: 'none' }}
+          >
+            <Heart size={20} />
+            <span>Mimos</span>
           </button>
         </nav>
       )}

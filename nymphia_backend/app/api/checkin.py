@@ -1,19 +1,47 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.auth import Gestante
+from app.models.auth import Gestante, Parceiro
 from app.models.clinical import CheckinRegistro
+from app.models.relations import LogAcesso
 from app.schemas.all_schemas import (
     CheckinAnalisarRequest, CheckinCreate, CheckinOut
 )
-from app.security.jwt_auth import get_current_gestante
+from app.security.jwt_auth import get_current_user_payload
 from app.services.rules_engine import analyze_urgency
 from app.services.ai_text_service import classify_text_emotions
 
 router = APIRouter(prefix="/checkin", tags=["Check-in Diário"])
+
+def get_checkin_user_context(
+    payload: dict = Depends(get_current_user_payload),
+    db: Session = Depends(get_db)
+) -> Tuple[str, Optional[str], Optional[str]]:
+    """
+    Retorna (gestante_id, parceiro_id, nome_parceiro) permitindo que tanto
+    a gestante quanto o parceiro vinculado possam registrar o check-in.
+    """
+    perfil = payload.get("perfil")
+    sub = payload.get("sub")
+
+    if perfil == "gestante":
+        return (sub, None, None)
+    elif perfil == "parceiro":
+        parceiro = db.query(Parceiro).filter_by(id=sub).first()
+        if not parceiro:
+            raise HTTPException(status_code=401, detail="Parceiro não encontrado")
+        from app.api.parceiro import obter_vinculo_parceiro
+        vinculo = obter_vinculo_parceiro(parceiro, db)
+        return (vinculo.gestante_id, parceiro.id, parceiro.nome)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso restrito a gestantes e parceiros vinculados"
+        )
+
 
 @router.post("/analisar")
 def analisar_checkin_preview(payload: CheckinAnalisarRequest):
@@ -33,19 +61,28 @@ def analisar_checkin_preview(payload: CheckinAnalisarRequest):
 @router.post("/registrar", response_model=CheckinOut, status_code=status.HTTP_201_CREATED)
 def registrar_checkin(
     payload: CheckinCreate,
-    gestante: Gestante = Depends(get_current_gestante),
+    ctx: Tuple[str, Optional[str], Optional[str]] = Depends(get_checkin_user_context),
     db: Session = Depends(get_db)
 ):
     """
     Analisa e persiste o check-in com DATA E HORA DO SERVIDOR (nunca do dispositivo).
+    Suporta registro direto pela gestante ou em nome dela pelo parceiro vinculado.
     Se houver alerta de urgência física, a resposta destaca a orientação de emergência.
     """
-    # 1. Análise determinística de urgência (regras)
-    combined_text = f"{payload.descricao or ''} {' '.join(payload.sintomas)}"
+    gestante_id, parceiro_id, parceiro_nome = ctx
+
+    descricao_texto = (payload.descricao or "").strip()
+    if parceiro_nome:
+        tag_parceiro = f"[Check-in registrado pelo parceiro {parceiro_nome}]"
+        if tag_parceiro not in descricao_texto:
+            descricao_texto = f"{tag_parceiro}: {descricao_texto}" if descricao_texto else tag_parceiro
+
+    # 1. Análise determinística de urgência (regras FEBRASGO)
+    combined_text = f"{descricao_texto} {' '.join(payload.sintomas)}"
     is_urgent, alertas_regras, orientacao_regras = analyze_urgency(combined_text)
 
     # 2. Análise emocional (BERTimbau / heurística)
-    scores_bertimbau, categorias_emocionais = classify_text_emotions(payload.descricao or "")
+    scores_bertimbau, categorias_emocionais = classify_text_emotions(descricao_texto)
 
     # 3. Formatar recomendação
     if is_urgent:
@@ -53,23 +90,24 @@ def registrar_checkin(
     elif "sintoma_fisico" in categorias_emocionais or len(payload.sintomas) > 0:
         sintomas_txt = ", ".join(payload.sintomas) if payload.sintomas else "desconforto relatado"
         recomendacao = (
-            f"Registramos seus sintomas ({sintomas_txt}). Mantenha-se hidratada e em repouso. "
+            f"Registramos os sintomas ({sintomas_txt}). Mantenha-se hidratada e em repouso. "
             f"Se a intensidade aumentar ou se surgirem sinais de alerta, contate seu obstetra ou dirija-se à maternidade."
         )
     elif "ansiedade" in categorias_emocionais or "tristeza" in categorias_emocionais:
         recomendacao = (
-            "Percebemos que seu dia pode estar exigindo mais de você emocionalmente. Respire fundo, "
-            "tome um momento para você e, se desejar, converse com nossa assistente de apoio na aba de Conversa."
+            "Percebemos que o dia de hoje pode estar exigindo mais emocionalmente. "
+            "Respire fundo, tire momentos de descanso e compartilhe com sua rede de apoio."
         )
     else:
-        recomendacao = "Excelente! Seu check-in diário foi concluído com sucesso. Continue cuidando de você e do seu bebê."
+        autor = f"pelo parceiro {parceiro_nome}" if parceiro_nome else "com sucesso"
+        recomendacao = f"Excelente! Check-in diário concluído {autor}. Continue cuidando da saúde e do bebê."
 
     # 4. Gravar com timestamp do SERVIDOR
     novo_checkin = CheckinRegistro(
-        gestante_id=gestante.id,
+        gestante_id=gestante_id,
         data_hora=datetime.utcnow(),  # Timestamp garantido pelo servidor
         humor=payload.humor,
-        descricao=payload.descricao,
+        descricao=descricao_texto,
         sintomas=payload.sintomas,
         movimentos_bebe=payload.movimentos_bebe,
         semana_gestacional=payload.semana_gestacional,
@@ -79,6 +117,16 @@ def registrar_checkin(
         score_anomalia=0.65 if is_urgent else 0.05
     )
     db.add(novo_checkin)
+
+    if parceiro_id:
+        db.add(LogAcesso(
+            gestante_id=gestante_id,
+            acessado_por_id=parceiro_id,
+            acessado_por_tipo="parceiro",
+            recurso="checkin_registro_proxy_parceiro",
+            data_hora=datetime.utcnow()
+        ))
+
     db.commit()
     db.refresh(novo_checkin)
 
@@ -101,16 +149,17 @@ def registrar_checkin(
 @router.get("/historico", response_model=List[CheckinOut])
 def listar_historico_checkin(
     limite: int = Query(90, ge=1, le=365),
-    gestante: Gestante = Depends(get_current_gestante),
+    ctx: Tuple[str, Optional[str], Optional[str]] = Depends(get_checkin_user_context),
     db: Session = Depends(get_db)
 ):
     """
     Retorna histórico ordenado do mais recente para o mais antigo.
-    Gestante acessa EXCLUSIVAMENTE os seus próprios check-ins.
+    Gestante e seu parceiro vinculado acessam os check-ins da gestante.
     """
+    gestante_id, _, _ = ctx
     checkins = (
         db.query(CheckinRegistro)
-        .filter(CheckinRegistro.gestante_id == gestante.id)
+        .filter(CheckinRegistro.gestante_id == gestante_id)
         .order_by(CheckinRegistro.data_hora.desc())
         .limit(limite)
         .all()

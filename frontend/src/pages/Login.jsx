@@ -24,17 +24,28 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateRe
     setCarregando(true);
     setErro('');
 
-    let endpoint = '/auth/gestante/login';
-    if (tipo === 'profissional') endpoint = '/auth/profissional/login';
-    if (tipo === 'parceiro') endpoint = '/auth/parceiro/login';
-
     try {
-      const res = await fetch(endpoint, {
+      // 1. Tenta login unificado
+      let res = await fetch('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: demoEmail, senha: demoSenha })
       });
-      const data = await res.json();
+      let data = await res.json();
+
+      // 2. Se falhar, tenta rota específica do perfil
+      if (!res.ok) {
+        let epFallback = '/auth/gestante/login';
+        if (tipo === 'profissional') epFallback = '/auth/profissional/login';
+        if (tipo === 'parceiro') epFallback = '/auth/parceiro/login';
+        res = await fetch(epFallback, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: demoEmail, senha: demoSenha })
+        });
+        data = await res.json();
+      }
+
       if (!res.ok) {
         throw new Error(data.detail || 'Falha ao autenticar na conta demo.');
       }
@@ -56,20 +67,48 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateRe
     }
 
     setCarregando(true);
-    let endpoint = '/auth/gestante/login';
-    if (perfil === 'profissional') endpoint = '/auth/profissional/login';
-    if (perfil === 'parceiro') endpoint = '/auth/parceiro/login';
+    const emailLimpo = email.trim().toLowerCase();
 
     try {
-      const res = await fetch(endpoint, {
+      // 1. Tenta login unificado que detecta o perfil automaticamente
+      let res = await fetch('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, senha })
+        body: JSON.stringify({ email: emailLimpo, senha })
       });
-      const data = await res.json();
+      let data = await res.json();
+
+      // 2. Se a rota unificada não estiver disponível ou retornar erro, tenta rota selecionada
       if (!res.ok) {
-        throw new Error(data.detail || 'Falha ao autenticar.');
+        let endpoint = '/auth/gestante/login';
+        if (perfil === 'profissional') endpoint = '/auth/profissional/login';
+        if (perfil === 'parceiro') endpoint = '/auth/parceiro/login';
+
+        res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: emailLimpo, senha })
+        });
+        data = await res.json();
       }
+
+      // 3. Se ainda falhar e perfil estava como gestante, tenta parceiro automaticamente
+      if (!res.ok && perfil === 'gestante') {
+        const resParc = await fetch('/auth/parceiro/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: emailLimpo, senha })
+        });
+        if (resParc.ok) {
+          res = resParc;
+          data = await resParc.json();
+        }
+      }
+
+      if (!res.ok) {
+        throw new Error(data.detail || 'Falha ao autenticar. Verifique seu e-mail e senha.');
+      }
+
       login(data.token, data);
       if (onLoginSuccess) onLoginSuccess();
     } catch (err) {

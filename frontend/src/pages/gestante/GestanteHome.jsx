@@ -4,7 +4,7 @@ import { Calendar, MessageSquare, Users, CheckCircle, Activity, Heart, Shield, F
 import TriageDisclaimer from '../../components/TriageDisclaimer';
 
 export default function GestanteHome({ onNavigate }) {
-  const { user, authHeaders } = useAuth();
+  const { user, authHeaders, login } = useAuth();
   const [perfil, setPerfil] = useState(null);
   const [checkinHoje, setCheckinHoje] = useState(false);
   const [proximoEvento, setProximoEvento] = useState(null);
@@ -160,6 +160,80 @@ export default function GestanteHome({ onNavigate }) {
             </div>
           </div>
           <ChevronRight size={20} color="var(--color-text-muted)" />
+        </div>
+
+        {/* Card do Modo Parceiro & Rede de Apoio */}
+        <div
+          className="card"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            backgroundColor: '#F4FBF7',
+            border: '1.5px solid #27AE60',
+            marginBottom: '14px',
+            padding: '14px'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div
+              style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '50%',
+                backgroundColor: '#E8F8F0',
+                color: '#1E7E34',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <Users size={22} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <h3 style={{ fontSize: '0.98rem', margin: 0, color: '#1E7E34' }}>
+                  Modo Parceiro Conectado
+                </h3>
+                <span style={{ fontSize: '0.68rem', padding: '2px 6px', backgroundColor: '#E8F8F0', color: '#1E7E34', borderRadius: '4px', fontWeight: 700 }}>
+                  Lucas Mendes
+                </span>
+              </div>
+              <p className="text-muted" style={{ fontSize: '0.8rem', margin: '2px 0 0 0' }}>
+                Ele pode fazer check-ins por você e gerenciar sua agenda de consultas.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={async () => {
+              try {
+                const res = await fetch('/auth/login', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ email: 'parceiro@nymphia.com.br', senha: 'senhaMaternidade123' })
+                });
+                const d = await res.json();
+                if (d.token) {
+                  login(d.token, d);
+                  window.location.href = '/';
+                }
+              } catch (e) {}
+            }}
+            className="btn"
+            style={{
+              backgroundColor: '#1E7E34',
+              color: '#FFFFFF',
+              fontSize: '0.78rem',
+              padding: '8px 12px',
+              borderRadius: 'var(--radius-sm)',
+              fontWeight: 600,
+              whiteSpace: 'nowrap'
+            }}
+            title="Alternar para ver o app como parceiro"
+          >
+            🤝 Ver Parceiro
+          </button>
         </div>
 
       {/* Próximo Evento da Agenda */}

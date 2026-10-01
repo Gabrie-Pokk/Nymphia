@@ -58,6 +58,54 @@ def login_gestante(payload: GestanteLogin, db: Session = Depends(get_db)):
         recusa_ia=gestante.recusa_ia
     )
 
+# --- LOGIN UNIFICADO AUTOMÁTICO (RESOLVE AUTOMATICAMENTE GESTANTE, PARCEIRO OU PROFISSIONAL) ---
+@router.post("/login", response_model=AuthResponse)
+def login_unificado(payload: GestanteLogin, db: Session = Depends(get_db)):
+    email_clean = payload.email.strip().lower()
+
+    # 1. Tenta como Gestante
+    gestante = db.query(Gestante).filter(Gestante.email == email_clean).first()
+    if gestante and verify_password(payload.senha, gestante.senha_hash):
+        token = create_access_token(data={"sub": gestante.id, "perfil": "gestante"})
+        return AuthResponse(
+            token=token,
+            perfil="gestante",
+            id=gestante.id,
+            nome=gestante.nome,
+            recusa_ia=gestante.recusa_ia
+        )
+
+    # 2. Tenta como Parceiro
+    parceiro = db.query(Parceiro).filter(Parceiro.email == email_clean).first()
+    if parceiro and verify_password(payload.senha, parceiro.senha_hash):
+        token = create_access_token(data={"sub": parceiro.id, "perfil": "parceiro"})
+        return AuthResponse(
+            token=token,
+            perfil="parceiro",
+            id=parceiro.id,
+            nome=parceiro.nome
+        )
+
+    # 3. Tenta como Profissional
+    prof = db.query(Profissional).filter(Profissional.email == email_clean).first()
+    if prof and verify_password(payload.senha, prof.senha_hash):
+        if prof.status_verificacao == "rejeitado":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cadastro profissional rejeitado pela moderação médica"
+            )
+        token = create_access_token(data={"sub": prof.id, "perfil": "profissional"})
+        return AuthResponse(
+            token=token,
+            perfil="profissional",
+            id=prof.id,
+            nome=prof.nome,
+            status_verificacao=prof.status_verificacao
+        )
+
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="E-mail ou senha incorretos")
+
+
 # --- PROFISSIONAL ---
 @router.post("/profissional/cadastro", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
 def cadastrar_profissional(payload: ProfissionalRegister, db: Session = Depends(get_db)):

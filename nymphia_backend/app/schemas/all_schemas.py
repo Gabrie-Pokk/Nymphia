@@ -287,7 +287,7 @@ class CheckinOut(BaseModel):
     alerta_sintoma_fisico: List[str]
     score_anomalia: Optional[float]
     bertimbau_disponivel: bool = True
-    recomendacao: str
+    recomendacao: Optional[str] = "Registro histórico salvo."
 
     @field_serializer("data_hora")
     def serialize_data_hora(self, dt: datetime, _info):
