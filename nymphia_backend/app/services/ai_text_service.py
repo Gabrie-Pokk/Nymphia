@@ -26,6 +26,7 @@ _bert_estado = {
     "disponivel": False,
     "tokenizer": None,
     "modelo": None,
+    "diagnostico": "nao_inicializado",
 }
 
 def remover_acentos(texto: str) -> str:
@@ -121,9 +122,12 @@ EMOTION_KEYWORDS = {
     ]
 }
 
-def carregar_bertimbau():
+def carregar_bertimbau(forcar: bool = False):
     """Tenta carregar o modelo BERTimbau ajustado localmente ou baixa via URL."""
-    if _bert_estado["tentado"]:
+    global _bert_estado
+    if _bert_estado["disponivel"] and not forcar:
+        return
+    if _bert_estado["tentado"] and not forcar:
         return
 
     _bert_estado["tentado"] = True
@@ -131,12 +135,16 @@ def carregar_bertimbau():
     # 1. Garante que os pesos foram baixados ou descompactados no disco
     try:
         from app.services.model_downloader import garantir_bertimbau_presente
-        garantir_bertimbau_presente()
+        sucesso_download = garantir_bertimbau_presente()
+        if not sucesso_download:
+            _bert_estado["diagnostico"] = "falha_download_pesos_drive"
     except Exception as e:
         logger.warning(f"Verificação de download do BERTimbau retornou: {e}")
+        _bert_estado["diagnostico"] = f"erro_downloader: {e}"
 
     if not BERTIMBAU_DIR.exists():
         logger.info(f"Pasta do BERTimbau não encontrada em {BERTIMBAU_DIR}. Operando com motor de regras regex.")
+        _bert_estado["diagnostico"] = f"pasta_inexistente: {BERTIMBAU_DIR}"
         return
 
     try:
@@ -152,20 +160,29 @@ def carregar_bertimbau():
                 raw_model, {torch.nn.Linear}, dtype=torch.qint8
             )
             logger.info("Quantização dinâmica int8 aplicada ao BERTimbau (inferência leve em CPU).")
+            _bert_estado["diagnostico"] = "ativo_quantizado_int8_cpu"
         except Exception as q_err:
             logger.warning(f"Quantização dinâmica int8 não pôde ser aplicada ({q_err}); usando modelo original.")
             _bert_estado["modelo"] = raw_model
+            _bert_estado["diagnostico"] = f"ativo_fp32_sem_quantizacao: {q_err}"
 
         _bert_estado["modelo"].eval()
         _bert_estado["disponivel"] = True
         logger.info("BERTimbau carregado com sucesso para inferência em CPU.")
     except Exception as e:
+        _bert_estado["diagnostico"] = f"falha_carregamento: {e}"
         logger.warning(f"Não foi possível inicializar BERTimbau ({e}). Usando fallback de regras determinísticas.")
 
 
-def bertimbau_disponivel() -> bool:
-    carregar_bertimbau()
+def bertimbau_disponivel(recarregar: bool = False) -> bool:
+    if recarregar or not _bert_estado["disponivel"]:
+        carregar_bertimbau(forcar=recarregar)
     return _bert_estado["disponivel"]
+
+
+def bertimbau_diagnostico() -> str:
+    return _bert_estado.get("diagnostico", "desconhecido")
+
 
 
 def classify_text_emotions(text: str) -> Tuple[Dict[str, float], List[str]]:

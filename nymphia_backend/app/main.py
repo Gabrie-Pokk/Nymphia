@@ -40,7 +40,7 @@ carregar_bertimbau()
 app = FastAPI(
     title="Nymphia — Inteligência Artificial Obstétrica",
     description="Start-up de IA em saúde materno-fetal: 'Cada batimento importa.'",
-    version="2.1.0-2027ready"
+    version="2.3.0-2027ready"
 )
 
 # CORS liberado para qualquer origem (mobile PWA, web, rede local)
