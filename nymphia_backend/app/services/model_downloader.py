@@ -5,9 +5,8 @@ via Google Drive, Dropbox ou URL direta (S3, GitHub Releases) no startup do cont
 """
 import os
 import re
+import ssl
 import shutil
-import tarfile
-import zipfile
 import logging
 import urllib.request
 from pathlib import Path
@@ -18,148 +17,116 @@ _BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
 MODELOS_DIR = Path(os.environ.get("NYMPHIA_MODELOS_DIR", str(_BACKEND_DIR / "modelos")))
 BERTIMBAU_DIR = MODELOS_DIR / "bertimbau_nymphia" / "modelo_final"
 
-
-def extrair_google_drive_id(url: str) -> str:
-    """Extrai o ID do arquivo de diversos formatos de links de compartilhamento do Google Drive."""
-    padroes = [
-        r'/file/d/([a-zA-Z0-9_-]+)',
-        r'id=([a-zA-Z0-9_-]+)',
-        r'/d/([a-zA-Z0-9_-]+)'
-    ]
-    for p in padroes:
-        m = re.search(p, url)
-        if m:
-            return m.group(1)
-    return ""
+# Arquivos do modelo BERTimbau ajustado na taxonomia de 6 categorias clínicas (Nymphia)
+DEFAULT_BERTIMBAU_FILES = {
+    "config.json": "1PnS0dHMrzJqwrYypuNgpOCbCQb8Mom4c",
+    "tokenizer_config.json": "1xC8hHBH0fss7EvEXcQ4C_-4b3S1DG4X7",
+    "tokenizer.json": "1qn7SSYIYIWzUktvSqWmVrDJJLqDuWUVf",
+    "model.safetensors": "1KE4XynMZTGGWIgJyT00MJjF6RegiEnFf",
+}
 
 
-def baixar_google_drive(file_id: str, destino: Path):
-    """Baixa arquivos grandes do Google Drive contornando o token de confirmação de vírus."""
+def _get_ssl_context():
+    """Gera contexto SSL tolerante a certificados intermediários."""
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    return ctx
+
+
+def baixar_arquivo_google_drive(file_id: str, destino: Path):
+    """
+    Baixa arquivos do Google Drive suportando arquivos grandes com
+    página de confirmação de vírus (download_warning / download anyway).
+    """
+    ctx = _get_ssl_context()
     url_base = f"https://drive.google.com/uc?export=download&id={file_id}"
     req = urllib.request.Request(
         url_base,
         headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     )
-    
-    with urllib.request.urlopen(req, timeout=120) as resp:
-        # Verifica se há cookie de confirmação para arquivos grandes (>100MB)
-        cookies = resp.headers.get("Set-Cookie", "")
-        confirm_token = None
-        for c in cookies.split(";"):
-            if "download_warning" in c:
-                parts = c.split("=")
-                if len(parts) > 1:
-                    confirm_token = parts[1].strip()
-                    break
 
-        if confirm_token:
-            url_confirmada = f"{url_base}&confirm={confirm_token}"
-            req_confirm = urllib.request.Request(
-                url_confirmada,
-                headers={"User-Agent": "Mozilla/5.0", "Cookie": cookies}
-            )
-            with urllib.request.urlopen(req_confirm, timeout=300) as resp_final:
-                with open(destino, "wb") as f:
-                    shutil.copyfileobj(resp_final, f)
-        else:
+    with urllib.request.urlopen(req, context=ctx, timeout=60) as resp:
+        content_type = resp.headers.get("Content-Type", "")
+        # Se veio como octet-stream ou json direto
+        if "text/html" not in content_type:
             with open(destino, "wb") as f:
                 shutil.copyfileobj(resp, f)
+            return
 
+        # Veio página HTML de confirmação de tamanho grande
+        html = resp.read().decode("utf-8", errors="ignore")
 
-def descompactar_arquivo(arquivo_zip_ou_tar: Path, destino_dir: Path):
-    """Descompacta .zip ou .tar.gz no diretório de destino preservando a estrutura."""
-    destino_dir.mkdir(parents=True, exist_ok=True)
-    nome = arquivo_zip_ou_tar.name.lower()
-    
-    if nome.endswith(".zip"):
-        with zipfile.ZipFile(arquivo_zip_ou_tar, 'r') as z:
-            z.extractall(destino_dir)
-    elif nome.endswith((".tar.gz", ".tgz", ".tar")):
-        with tarfile.open(arquivo_zip_ou_tar, 'r:*') as t:
-            t.extractall(destino_dir)
-    else:
-        # Se for um único arquivo de pesos (ex: safetensors ou bin direto)
-        shutil.copy(arquivo_zip_ou_tar, destino_dir / arquivo_zip_ou_tar.name)
+    # Extrai o token de confirmação ou uuid do formulário
+    uuid_match = re.search(r'name="uuid"\s+value="([^"]+)"', html)
+    uuid_val = uuid_match.group(1) if uuid_match else ""
 
-    # Se a descompactação gerou uma subpasta aninhada, ajusta os arquivos para a raiz de modelo_final
-    subpastas = [p for p in destino_dir.iterdir() if p.is_dir()]
-    if len(subpastas) == 1 and not (destino_dir / "config.json").exists():
-        sub = subpastas[0]
-        for item in sub.iterdir():
-            shutil.move(str(item), str(destino_dir / item.name))
-        try:
-            sub.rmdir()
-        except Exception:
-            pass
+    confirm_match = re.search(r'name="confirm"\s+value="([^"]+)"', html)
+    confirm_val = confirm_match.group(1) if confirm_match else "t"
+
+    url_download = (
+        f"https://drive.usercontent.google.com/download?id={file_id}"
+        f"&export=download&confirm={confirm_val}&uuid={uuid_val}"
+    )
+
+    req2 = urllib.request.Request(
+        url_download,
+        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    )
+
+    with urllib.request.urlopen(req2, context=ctx, timeout=300) as resp2:
+        total_esperado = int(resp2.headers.get("Content-Length", 0))
+        with open(destino, "wb") as f:
+            while True:
+                chunk = resp2.read(4 * 1024 * 1024)
+                if not chunk:
+                    break
+                f.write(chunk)
+
+    if total_esperado > 0 and destino.stat().st_size != total_esperado:
+        raise IOError(
+            f"Tamanho inconsistente para {destino.name}: baixou {destino.stat().st_size} de {total_esperado} bytes esperados."
+        )
 
 
 def bertimbau_instalado() -> bool:
     """Verifica se os arquivos essenciais do BERTimbau estão presentes no disco."""
     if not BERTIMBAU_DIR.exists():
         return False
-    
-    arquivos = [f.name for f in BERTIMBAU_DIR.glob("*")]
-    tem_config = "config.json" in arquivos
-    tem_pesos = any(
-        f.endswith((".safetensors", ".bin", ".pt", ".onnx"))
-        for f in arquivos
-    )
+
+    tem_config = (BERTIMBAU_DIR / "config.json").exists()
+    tem_pesos = (BERTIMBAU_DIR / "model.safetensors").exists() or (BERTIMBAU_DIR / "pytorch_model.bin").exists()
     return tem_config and tem_pesos
 
 
-def garantir_bertimbau_presente():
+def garantir_bertimbau_presente() -> bool:
     """
-    Executado no startup: se o modelo não existir localmente, tenta baixar
-    a partir da variável de ambiente NYMPHIA_BERTIMBAU_URL.
+    Garante a presença dos pesos do BERTimbau no diretório do modelo.
+    Se não existirem, faz o download automático dos arquivos individuais
+    a partir do repositório Google Drive configurado.
     """
     if bertimbau_instalado():
         logger.info(f"BERTimbau já presente em {BERTIMBAU_DIR}.")
         return True
 
-    download_url = os.environ.get("NYMPHIA_BERTIMBAU_URL", "").strip()
-    if not download_url:
-        logger.info(
-            "NYMPHIA_BERTIMBAU_URL não configurada. Operando em modo gracioso com regras determinísticas."
-        )
-        return False
+    BERTIMBAU_DIR.mkdir(parents=True, exist_ok=True)
+    logger.info("Pesos do BERTimbau não localizados localmente. Iniciando download do Drive...")
 
-    logger.info(f"Baixando pesos do BERTimbau a partir da URL configurada...")
-    temp_download = MODELOS_DIR / "temp_bertimbau_download.bin"
-    MODELOS_DIR.mkdir(parents=True, exist_ok=True)
+    sucesso_total = True
+    for nome_arquivo, file_id in DEFAULT_BERTIMBAU_FILES.items():
+        destino = BERTIMBAU_DIR / nome_arquivo
+        if destino.exists() and destino.stat().st_size > 0:
+            continue
 
-    try:
-        drive_id = extrair_google_drive_id(download_url)
-        if drive_id:
-            logger.info(f"Detectado link Google Drive (ID: {drive_id}). Iniciando download...")
-            baixar_google_drive(drive_id, temp_download)
-        else:
-            logger.info(f"Iniciando download HTTP direto...")
-            req = urllib.request.Request(
-                download_url,
-                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-            )
-            with urllib.request.urlopen(req, timeout=300) as resp, open(temp_download, "wb") as f:
-                shutil.copyfileobj(resp, f)
+        logger.info(f"Baixando {nome_arquivo} (ID: {file_id})...")
+        try:
+            baixar_arquivo_google_drive(file_id, destino)
+            tamanho_mb = destino.stat().st_size / (1024 * 1024)
+            logger.info(f"{nome_arquivo} baixado com sucesso ({tamanho_mb:.1f} MB).")
+        except Exception as e:
+            logger.error(f"Falha ao baixar {nome_arquivo}: {e}")
+            if destino.exists():
+                destino.unlink()
+            sucesso_total = False
 
-        tamanho_mb = temp_download.stat().st_size / (1024 * 1024)
-        logger.info(f"Download concluído: {tamanho_mb:.1f} MB. Descompactando...")
-        descompactar_arquivo(temp_download, BERTIMBAU_DIR)
-
-        if bertimbau_instalado():
-            logger.info(f"BERTimbau instalado com sucesso em {BERTIMBAU_DIR}!")
-            return True
-        else:
-            logger.warning(
-                f"Arquivo descompactado em {BERTIMBAU_DIR}, mas 'config.json' ou pesos não foram localizados."
-            )
-            return False
-
-    except Exception as e:
-        logger.error(f"Erro ao baixar/instalar BERTimbau da nuvem: {e}")
-        return False
-    finally:
-        if temp_download.exists():
-            try:
-                temp_download.unlink()
-            except Exception:
-                pass
+    return bertimbau_instalado()
