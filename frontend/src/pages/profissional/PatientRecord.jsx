@@ -140,6 +140,12 @@ export default function PatientRecord({ patientId, onBack }) {
             </div>
           ))}
         </div>
+
+        {riscos_calculados?.aviso_legal && (
+          <div style={{ marginTop: '12px', padding: '10px 12px', backgroundColor: '#FFFBEB', borderRadius: 'var(--radius-sm)', border: '1px solid #FDE68A', fontSize: '0.74rem', color: '#92400E', lineHeight: '1.4' }}>
+            <strong>Nota Jurídico-Clínica:</strong> {riscos_calculados.aviso_legal}
+          </div>
+        )}
       </div>
 
       {/* Histórico Recente de Check-ins */}
