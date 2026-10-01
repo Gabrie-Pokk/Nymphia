@@ -201,7 +201,7 @@ O endpoint oficial de monitoramento contínuo em tempo real (`https://nymphia-pl
 {
   "status": "online",
   "sistema": "Nymphia Backend",
-  "versao": "2.1.0-2027ready",
+  "versao": "2.3.0-2027ready",
   "modelos_rf_disponiveis": [
     "bem_estar_fetal",
     "malformacao",
@@ -212,6 +212,7 @@ O endpoint oficial de monitoramento contínuo em tempo real (`https://nymphia-pl
   ],
   "isolation_forest_disponivel": true,
   "bertimbau_disponivel": true,
+  "bertimbau_status": "ativo_quantizado_int8_cpu",
   "sistema_regras_urgencia": "ativo_deterministico_febrasgo",
   "degradacao_graciosa": true
 }
