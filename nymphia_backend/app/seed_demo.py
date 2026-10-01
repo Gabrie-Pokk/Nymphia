@@ -7,7 +7,7 @@ import logging
 from datetime import datetime, timedelta
 from app.database import engine, SessionLocal, Base
 from app.models.auth import Gestante, Profissional, Parceiro
-from app.models.clinical import PerfilClinico, HistoricoFamiliar
+from app.models.clinical import PerfilClinico, HistoricoFamiliar, RegistroAntropometrico
 from app.models.relations import Vinculo, VinculoParceiro
 from app.models.interaction import EventoAgenda
 from app.auth import hash_senha
@@ -37,7 +37,7 @@ def seed_demo_accounts():
             gestante.nome = "Mariana Costa"
             db.commit()
 
-        # Perfil Clínico da Gestante
+        # Perfil Clínico da Gestante (com Antropometria Base)
         perfil = db.query(PerfilClinico).filter_by(gestante_id=gestante.id).first()
         dum_data = (datetime.utcnow() - timedelta(days=24 * 7)).date()
         dpp_data = (datetime.utcnow() + timedelta(days=16 * 7)).date()
@@ -53,6 +53,8 @@ def seed_demo_accounts():
                 perdas_gestacionais=0,
                 dum=dum_data,
                 dpp=dpp_data,
+                altura_cm=165.0,
+                peso_pre_gestacional=62.0,
                 maternidade_nome="Hospital e Maternidade Santa Joana",
                 maternidade_endereco="R. Dr. Eduardo Amaro, 225 - Paraíso, São Paulo - SP",
                 maternidade_telefone="(11) 5080-6000"
@@ -62,7 +64,50 @@ def seed_demo_accounts():
             perfil.dum = dum_data
             perfil.dpp = dpp_data
             perfil.maternidade_nome = "Hospital e Maternidade Santa Joana"
+            if not perfil.altura_cm:
+                perfil.altura_cm = 165.0
+            if not perfil.peso_pre_gestacional:
+                perfil.peso_pre_gestacional = 62.0
         db.commit()
+
+        # Histórico Antropométrico da Gestante Demo (Curva de Atalah e Altura Uterina)
+        num_regs = db.query(RegistroAntropometrico).filter_by(gestante_id=gestante.id).count()
+        if num_regs == 0:
+            reg1 = RegistroAntropometrico(
+                gestante_id=gestante.id,
+                data_registro=(datetime.utcnow() - timedelta(days=12 * 7)).date(),
+                semana_gestacional=12,
+                peso_atual_kg=63.1,
+                altura_uterina_cm=12.0,
+                circunferencia_abdominal_cm=78.0,
+                pressao_arterial="110x70",
+                edema="ausente",
+                observacoes="1º trimestre tranquilo, sem queixas."
+            )
+            reg2 = RegistroAntropometrico(
+                gestante_id=gestante.id,
+                data_registro=(datetime.utcnow() - timedelta(days=6 * 7)).date(),
+                semana_gestacional=18,
+                peso_atual_kg=65.2,
+                altura_uterina_cm=17.5,
+                circunferencia_abdominal_cm=84.0,
+                pressao_arterial="115x75",
+                edema="ausente",
+                observacoes="Início dos movimentos fetais perceptíveis."
+            )
+            reg3 = RegistroAntropometrico(
+                gestante_id=gestante.id,
+                data_registro=datetime.utcnow().date(),
+                semana_gestacional=24,
+                peso_atual_kg=67.4,
+                altura_uterina_cm=23.0,
+                circunferencia_abdominal_cm=90.0,
+                pressao_arterial="120x80",
+                edema="ausente",
+                observacoes="Consulta com Dr. Carlos. Curva de Atalah adequada e altura uterina no percentil ideal."
+            )
+            db.add_all([reg1, reg2, reg3])
+            db.commit()
 
         # 2. Médico Demo
         medico = db.query(Profissional).filter_by(email="medico@nymphia.com.br").first()

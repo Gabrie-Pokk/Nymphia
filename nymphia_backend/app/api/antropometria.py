@@ -1,5 +1,5 @@
 from typing import List, Optional
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -128,11 +128,22 @@ def atualizar_dados_base(
     """
     perfil = db.query(PerfilClinico).filter(PerfilClinico.gestante_id == gestante.id).first()
     if not perfil:
-        raise HTTPException(status_code=404, detail="Perfil clínico não encontrado. Realize o onboarding primeiro.")
-
-    perfil.altura_cm = payload.altura_cm
-    perfil.peso_pre_gestacional = payload.peso_pre_gestacional
+        dum_padrao = (datetime.utcnow() - timedelta(days=24 * 7)).date()
+        dpp_padrao = (datetime.utcnow() + timedelta(days=16 * 7)).date()
+        perfil = PerfilClinico(
+            gestante_id=gestante.id,
+            idade=28,
+            dum=dum_padrao,
+            dpp=dpp_padrao,
+            altura_cm=payload.altura_cm,
+            peso_pre_gestacional=payload.peso_pre_gestacional
+        )
+        db.add(perfil)
+    else:
+        perfil.altura_cm = payload.altura_cm
+        perfil.peso_pre_gestacional = payload.peso_pre_gestacional
     db.commit()
+    db.refresh(perfil)
 
     return {"status": "sucesso", "altura_cm": perfil.altura_cm, "peso_pre_gestacional": perfil.peso_pre_gestacional}
 

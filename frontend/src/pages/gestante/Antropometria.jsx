@@ -22,10 +22,11 @@ import {
 } from 'lucide-react';
 
 export default function Antropometria({ onBack }) {
-  const { authHeaders } = useAuth();
+  const { authHeaders, logout } = useAuth();
   const [painel, setPainel] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
+  const [sessaoExpirada, setSessaoExpirada] = useState(false);
   const [sucessoMsg, setSucessoMsg] = useState('');
 
   // Modais e formulários
@@ -51,8 +52,15 @@ export default function Antropometria({ onBack }) {
   const carregarDados = async () => {
     setCarregando(true);
     setErro('');
+    setSessaoExpirada(false);
     try {
-      const res = await fetch('/antropometria/painel', { headers: authHeaders() });
+      const headers = authHeaders ? authHeaders() : {};
+      const res = await fetch('/antropometria/painel', { headers });
+      if (res.status === 401) {
+        setSessaoExpirada(true);
+        setErro('Sua sessão expirou ou não está autenticada. Por favor, faça login novamente para visualizar seus dados.');
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         setPainel(data);
@@ -62,10 +70,11 @@ export default function Antropometria({ onBack }) {
         if (data.altura_cm) setFormAltura(data.altura_cm);
         if (data.peso_pre_gestacional) setFormPesoPre(data.peso_pre_gestacional);
       } else {
-        throw new Error('Não foi possível carregar os dados de antropometria.');
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Não foi possível carregar os dados de antropometria.');
       }
     } catch (err) {
-      setErro('Erro de conexão ao carregar painel antropométrico.');
+      setErro(err.message || 'Erro de conexão ao carregar painel antropométrico.');
     } finally {
       setCarregando(false);
     }
@@ -199,9 +208,28 @@ export default function Antropometria({ onBack }) {
 
       {erro && (
         <div className="card" style={{ backgroundColor: '#FDEDEC', border: '1px solid #E74C3C', color: '#922B21', marginBottom: '16px' }}>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <AlertTriangle size={20} />
-            <span style={{ fontSize: '0.88rem' }}>{erro}</span>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <AlertTriangle size={20} style={{ flexShrink: 0 }} />
+              <span style={{ fontSize: '0.88rem' }}>{erro}</span>
+            </div>
+            {sessaoExpirada ? (
+              <button
+                onClick={() => { if (logout) logout(); window.location.href = '/login'; }}
+                className="btn btn-primary"
+                style={{ fontSize: '0.82rem', padding: '6px 14px', whiteSpace: 'nowrap' }}
+              >
+                Fazer Login Novamente
+              </button>
+            ) : (
+              <button
+                onClick={carregarDados}
+                className="btn"
+                style={{ fontSize: '0.82rem', padding: '4px 12px', border: '1px solid #E74C3C', color: '#922B21', backgroundColor: '#FFFFFF', cursor: 'pointer', borderRadius: 'var(--radius-sm)' }}
+              >
+                Tentar Novamente
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -311,7 +339,7 @@ export default function Antropometria({ onBack }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <TrendingUp size={20} color="var(--color-vinho)" />
             <h3 style={{ margin: 0, fontSize: '1.02rem', color: 'var(--color-vinho)' }}>
-              Evolução na {painel?.semana_gestacional_atual}ª Semana
+              Evolução {painel?.semana_gestacional_atual ? `na ${painel.semana_gestacional_atual}ª Semana` : 'Gestacional'}
             </h3>
           </div>
           <button
@@ -327,7 +355,7 @@ export default function Antropometria({ onBack }) {
           <div style={{ padding: '12px', backgroundColor: '#FAF6F7', borderRadius: 'var(--radius-md)', border: '1px solid #F0E6E8' }}>
             <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', display: 'block' }}>Último Peso Medido</span>
             <strong style={{ fontSize: '1.35rem', color: 'var(--color-vinho)' }}>
-              {pesoAtual ? `${pesoAtual} kg` : 'Sem registros'}
+              {typeof pesoAtual === 'number' ? `${pesoAtual.toFixed(1)} kg` : (pesoAtual ? `${pesoAtual} kg` : 'Sem registros')}
             </strong>
             {imcAtual && (
               <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
@@ -338,10 +366,12 @@ export default function Antropometria({ onBack }) {
 
           <div style={{ padding: '12px', backgroundColor: '#FAF6F7', borderRadius: 'var(--radius-md)', border: '1px solid #F0E6E8' }}>
             <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', display: 'block' }}>Ganho de Peso Total</span>
-            <strong style={{ fontSize: '1.35rem', color: ganhoAcumulado >= 0 ? '#27AE60' : '#E67E22' }}>
-              {ganhoAcumulado !== null ? `${ganhoAcumulado > 0 ? '+' : ''}${ganhoAcumulado} kg` : '--'}
+            <strong style={{ fontSize: '1.35rem', color: (typeof ganhoAcumulado === 'number' && ganhoAcumulado >= 0) ? '#27AE60' : '#E67E22' }}>
+              {(typeof ganhoAcumulado === 'number' && !isNaN(ganhoAcumulado))
+                ? `${ganhoAcumulado > 0 ? '+' : ''}${ganhoAcumulado.toFixed(1)} kg`
+                : '--'}
             </strong>
-            {classPre && ganhoAcumulado !== null && (
+            {classPre && typeof ganhoAcumulado === 'number' && !isNaN(ganhoAcumulado) && (
               <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
                 Meta: {classPre.ganho_total_min} a {classPre.ganho_total_max} kg
               </span>
