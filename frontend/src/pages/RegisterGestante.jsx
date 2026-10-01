@@ -6,7 +6,7 @@ import BackButton from '../components/BackButton';
 
 const NOME_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ\s'.-]{2,100}$/;
 
-export default function RegisterGestante({ onBackToLogin }) {
+export default function RegisterGestante({ onBackToLogin, onRegisterSuccess }) {
   const { login } = useAuth();
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
@@ -51,6 +51,7 @@ export default function RegisterGestante({ onBackToLogin }) {
         throw new Error(data.detail || 'Falha ao cadastrar gestante.');
       }
       login(data.token, data);
+      if (onRegisterSuccess) onRegisterSuccess();
     } catch (err) {
       setErro(err.message);
     } finally {

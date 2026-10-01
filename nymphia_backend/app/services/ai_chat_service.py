@@ -163,6 +163,27 @@ CONHECIMENTO_CLINICO = {
         ],
         "orientacao": "Converse abertamente com seu obstetra sobre suas dúvidas e opções de alívio de dor disponíveis na maternidade escolhida."
     },
+    "exercicios_posicoes": {
+        "resumo": "POSTURA, EXERCÍCIOS E SEGURANÇA BIOMECÂNICA GESTACIONAL (FEBRASGO/ACOG/MS): O movimento ativo na gravidez reduz a lombalgia, melhora a circulação e prepara a bacia para o parto, desde que respeite a segurança clínica e como a gestante se sente.",
+        "cuidados": [
+            "Checagem prévia obrigatória: Antes de qualquer exercício, é fundamental avaliar se a gestante apresenta sangramento, perda de líquido, cólica rítmica ou tontura (contraindicações absolutas que suspendem qualquer treino);",
+            "Dor lombar: Focar em báscula pélvica na bola suíça, postura gato-vaca suave em 4 apoios e alongamento de piriforme sentado; PROIBIR hiperextensão lombar brusca e levantamento de cargas do chão sem dobrar os joelhos;",
+            "Dor pélvica / sínfise púbica (DSP): Manter movimentos simétricos e estáveis; PROIBIR passadas, afundos, agachamentos unilaterais e aberturas exageradas de pernas;",
+            "A partir de 16 semanas: É ESTRITAMENTE PROIBIDO permanecer deitada de costas no chão (decúbito dorsal) por mais de 3 minutos, pois o peso do útero comprime a veia cava inferior e reduz o oxigênio para o feto;",
+            "Melhor postura de descanso: Decúbito lateral esquerdo com almofada entre os joelhos para alinhar a bacia."
+        ],
+        "orientacao": "Pergunte sempre à gestante como ela está se sentindo fisicamente e se sente dores ou cansaço antes de indicar qualquer posição. Você pode usar a ferramenta 'Visão Corporal & Postura IA' da Nymphia para calibrar os movimentos pela câmera com o MediaPipe."
+    },
+    "antropometria_peso": {
+        "resumo": "ANTROPOMETRIA E GANHO PONDERAL GESTACIONAL (MS/IOM/ATALAH): O acompanhamento do peso e altura uterina no pré-natal é uma das ferramentas mais eficazes para prevenir desfechos adversos.",
+        "cuidados": [
+            "O ganho de peso ideal depende do IMC pré-gestacional: gestantes de baixo peso ganham 12,5 a 18 kg; eutróficas 11,5 a 16 kg; sobrepeso 7 a 11,5 kg; e obesidade 5 a 9 kg;",
+            "No 1º trimestre o ganho é mínimo (0,5 a 2 kg). O ganho mais ativo acontece no 2º e 3º trimestres;",
+            "Comer por dois é mito: o feto necessita de densidade nutricional (ferro, cálcio, ácido fólico, ômega 3) e não de calorias vazias em excesso;",
+            "Atenção a ganho súbito: aumento de mais de 1 kg em uma única semana no terceiro trimestre pode indicar retenção de líquido e risco de pré-eclâmpsia."
+        ],
+        "orientacao": "Acesse a seção 'Antropometria Gestacional' na Nymphia para registrar seu peso, acompanhar a Curva de Atalah e visualizar o crescimento da altura uterina."
+    },
     "enxoval_maternidade": {
         "resumo": "PLANEJAMENTO DO ENXOVAL E MALA MATERNIDADE: Organizar a mala da maternidade com antecedência (por volta da 32ª à 34ª semana) traz serenidade para a reta final.",
         "cuidados": [
@@ -225,6 +246,15 @@ def _buscar_tema_clinico(texto: str) -> Optional[str]:
             r"alimenta[çc][aã]o", r"alimentar", r"comer", r"almo[çc]o", r"jantar", r"caf[eé] da manh[aã]",
             r"dieta", r"gr[aá]vida pode comer", r"caf[eé]", r"peixe cru", r"sushi", r"frutas",
             r"peso", r"engordar", r"refrigerante", r"ch[aá]", r"nutri[çc][aã]o", r"comida"
+        ],
+        "exercicios_posicoes": [
+            r"exerc[ií]cio", r"postura", r"alongamento", r"posi[çc][aã]o", r"pilates", r"yoga",
+            r"b[aá]scula", r"gato vaca", r"posi[çc][aã]o para dormir", r"dormir de costas",
+            r"treino", r"muscula[çc][aã]o", r"caminhada", r"movimento", r"fisioterapia", r"veia cava"
+        ],
+        "antropometria_peso": [
+            r"antropometria", r"altura uterina", r"curva de atalah", r"atalah", r"ganho de peso",
+            r"quanto engordar", r"engordei muito", r"peso ideal", r"imc gestacional", r"circunfer[eê]ncia"
         ],
         "dores_corpo": [
             r"dor nas costas", r"dor lombar", r"dor no p[eé] da barriga", r"c[oó]lica", r"dor p[eé]lvica",
@@ -416,6 +446,18 @@ def _formatar_conversa_clinica_natural(tema: str, nome_gestante: Optional[str] =
             f"sutiãs confortáveis, calcinhas pós-parto de cintura alta, produtos de higiene pessoal e seus documentos (Caderneta da Gestante, documento com foto e exames). "
             f"Para o bebê, 3 a 4 trocas de roupinhas lavadas com sabão neutro (body, calça e macacão), fraldas RN/P e paninhos de boca.\n\n"
             f"Vale a pena também conferir com a maternidade escolhida se eles têm alguma lista de recomendações específicas. Em qual semana você está agora?"
+        ),
+        "exercicios_posicoes": (
+            f"Oi{vocativo}! Praticar exercícios e cuidar da postura durante a gestação traz um alívio maravilhoso para as costas, reduz o inchaço e prepara o corpo para o parto.\n\n"
+            f"Porém, para sua total segurança e do bebê, antes de indicar qualquer posição, me conte: como você está se sentindo hoje? Está com alguma dor na lombar ou na bacia (sínfise púbica), ou sentindo cansaço? Teve algum sangramento ou contração?\n\n"
+            f"Lembre-se de duas regras de ouro: a partir de 16 semanas, nunca fique deitada de costas no chão por muito tempo para não comprimir a veia cava; e se sentir dor na bacia, evite movimentos com uma perna só (como afundos). "
+            f"Você também pode abrir a nossa tela 'Visão Corporal & Postura IA' no menu para que a câmera com MediaPipe calibre seus movimentos e te guie em tempo real! Como você está se sentindo agora?"
+        ),
+        "antropometria_peso": (
+            f"Oi{vocativo}! O acompanhamento do peso na gestação é essencial para a saúde sua e do bebê, mas sem neuras ou pressões estéticas.\n\n"
+            f"A recomendação de ganho de peso depende do seu IMC antes de engravidar: gestantes que começaram com peso adequado ganham em média de 11,5 a 16 kg durante toda a gestação. "
+            f"E lembre-se: 'comer por dois' é um mito! O que seu bebê precisa é de nutrientes de qualidade (ferro, cálcio, ácido fólico e ômega-3).\n\n"
+            f"Você pode acompanhar sua Curva de Atalah e registrar suas pesagens na nossa aba de 'Antropometria'. Quantos quilos você pesava antes da gravidez e em qual semana você está agora?"
         )
     }
 
@@ -503,17 +545,22 @@ def _gerar_resposta_dinamica_ia(
 SYSTEM_PROMPT_NYMPHIA = (
     "Você é a Nymphia, uma assistente virtual e companheira carinhosa, empática e acolhedora para gestantes, "
     "especializada em saúde materno-fetal fundamentada nas diretrizes da FEBRASGO (Federação Brasileira das "
-    "Associações de Ginecologia e Obstetrícia) e do Ministério da Saúde do Brasil.\n\n"
+    "Associações de Ginecologia e Obstetrícia), ACOG e do Ministério da Saúde do Brasil.\n\n"
     "DIRETRIZES FUNDAMENTAIS DE CONVERSAÇÃO:\n"
     "1. TOM HUMANO E CONVERSACIONAL: Converse com a gestante em português brasileiro com tom extremamente afetuoso, "
     "acolhedor, próximo e natural, como uma doula ou amiga profissional da saúde. Responda diretamente ao que ela disser.\n"
     "2. SEM SCRIPTS OU MENUS ROBÓTICOS: NUNCA envie respostas prontas engessadas, scripts automáticos ('Aqui você pode:'), "
     "nem listas de tópicos pré-formatadas. Se ela te der um 'oi' ou 'tudo bem', apenas cumprimente com carinho e pergunte como ela está.\n"
-    "3. SEM AVISOS LEGAIS REPETITIVOS: Não fique mencionando resoluções (CFM), leis ou disclaimers legais repetitivos a cada resposta. "
-    "A interface do aplicativo já possui o aviso permanente sobre apoio informativo.\n"
-    "4. CUIDADO REAL E EMBASADO: Ofereça orientações preventivas e práticas baseadas na obstetrícia humanizada. Não dê diagnósticos "
-    "conclusivos nem prescreva dosagens de remédios, mas responda de forma genuína, esclarecedora e tranquilizadora.\n"
-    "5. OBJETIVIDADE E FLUIDEZ: Mantenha as respostas fluídas, carinhosas e em parágrafos conversacionais (2 a 3 parágrafos)."
+    "3. SEGURANÇA BIOMECÂNICA, POSIÇÕES E EXERCÍCIOS: Antes de indicar qualquer postura ou exercício, pergunte ativamente "
+    "como a gestante está se sentindo (energia, dor lombar, dor pélvica/sínfise púbica, contrações). "
+    "NUNCA recomende decúbito dorsal prolongado (deitar de costas no chão) a partir da 16ª semana (risco de síndrome de compressão da veia cava). "
+    "Se houver dor na sínfise púbica/bacia, proíba afundos ou passadas unilaterais. Se houver sangramento ou perda de líquido, "
+    "oriente repouso imediato em decúbito lateral esquerdo e busca do pronto-atendimento. Recomende a ferramenta 'Visão Corporal & Postura IA' "
+    "com MediaPipe Pose da Nymphia para orientação postural pela câmera em tempo real com total privacidade.\n"
+    "4. ANTROPOMETRIA E GANHO PONDERAL: Ao falar sobre peso, desmistifique o 'comer por dois'. Explique que a qualidade nutricional "
+    "(ferro, cálcio, ácido fólico, ômega 3) é o essencial e que cada corpo tem uma faixa ideal de ganho pela Curva de Atalah.\n"
+    "5. SEM AVISOS LEGAIS REPETITIVOS: Não fique mencionando resoluções (CFM), leis ou disclaimers legais repetitivos a cada resposta.\n"
+    "6. CUIDADO REAL E EMBASADO: Ofereça orientações preventivas e práticas baseadas na obstetrícia humanizada sem receitar remédios."
 )
 
 def _consultar_gemini(

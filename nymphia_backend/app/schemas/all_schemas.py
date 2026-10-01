@@ -611,3 +611,67 @@ class SimularWebhookRequest(BaseModel):
     usuario_id: Optional[str] = None
     subscription_id: Optional[str] = None
     status: str = Field("approved", pattern="^(approved|rejected|failed|cancelled)$")
+
+
+# --- Antropometria & Segurança de Movimento ---
+class RegistroAntropometricoCreate(BaseModel):
+    semana_gestacional: int = Field(..., ge=1, le=44)
+    peso_atual_kg: float = Field(..., ge=30.0, le=250.0)
+    data_registro: Optional[date] = None
+    altura_uterina_cm: Optional[float] = Field(None, ge=5.0, le=60.0)
+    circunferencia_abdominal_cm: Optional[float] = Field(None, ge=40.0, le=200.0)
+    pressao_arterial: Optional[str] = None
+    edema: Optional[str] = Field("ausente", pattern="^(ausente|\+/4\+|\+\+/4\+|\+\+\+/4\+|\+\+\+\+/4\+)$")
+    observacoes: Optional[str] = None
+
+class RegistroAntropometricoOut(BaseModel):
+    id: int
+    data_registro: date
+    semana_gestacional: int
+    peso_atual_kg: float
+    altura_uterina_cm: Optional[float] = None
+    circunferencia_abdominal_cm: Optional[float] = None
+    pressao_arterial: Optional[str] = None
+    edema: Optional[str] = None
+    observacoes: Optional[str] = None
+    criado_em: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class PerfilAntropometricoUpdate(BaseModel):
+    altura_cm: float = Field(..., ge=100.0, le=220.0)
+    peso_pre_gestacional: float = Field(..., ge=30.0, le=220.0)
+
+class PainelAntropometriaResponse(BaseModel):
+    altura_cm: Optional[float] = None
+    peso_pre_gestacional: Optional[float] = None
+    imc_pre_gestacional: Optional[float] = None
+    classificacao_pre_gestacional: Optional[Dict[str, Any]] = None
+    peso_atual_kg: Optional[float] = None
+    ganho_peso_acumulado_kg: Optional[float] = None
+    imc_atual: Optional[float] = None
+    semana_gestacional_atual: int
+    avaliacao_atalah: Optional[Dict[str, Any]] = None
+    avaliacao_altura_uterina: Optional[Dict[str, Any]] = None
+    historico_registros: List[RegistroAntropometricoOut] = Field(default_factory=list)
+    guia_educativo: Dict[str, Any]
+    alerta_ganho_subito: bool = False
+    mensagem_alerta: Optional[str] = None
+
+class SegurancaMovimentoRequest(BaseModel):
+    disposicao: str = Field("disposta", pattern="^(disposta|leve_cansaco|exausta)$")
+    queixas: List[str] = Field(default_factory=list)
+    sinais_alerta: List[str] = Field(default_factory=list)
+    semana_gestacional: Optional[int] = 24
+
+class SegurancaMovimentoResponse(BaseModel):
+    apta_exercicio: bool
+    status_clinico: str
+    nivel_risco: str
+    cor_alerta: str
+    mensagem_ia: str
+    exercicios_permitidos: List[Dict[str, Any]] = Field(default_factory=list)
+    exercicios_proibidos: List[str] = Field(default_factory=list)
+    orientacoes_especificas: List[str] = Field(default_factory=list)
+    posicao_descanso_ideal: Optional[str] = None
+

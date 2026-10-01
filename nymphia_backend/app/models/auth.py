@@ -28,6 +28,7 @@ class Gestante(Base):
     logs_acesso = relationship("LogAcesso", back_populates="gestante", cascade="all, delete-orphan")
     medicoes = relationship("MedicaoDispositivo", back_populates="gestante", cascade="all, delete-orphan")
     observacoes_medicas = relationship("ObservacaoProfissional", back_populates="gestante", cascade="all, delete-orphan")
+    registros_antropometricos = relationship("RegistroAntropometrico", back_populates="gestante", cascade="all, delete-orphan")
 
 
 class Profissional(Base):

@@ -28,6 +28,7 @@ import CommunityFeed from './pages/comunidade/CommunityFeed';
 import SubscriptionScreen from './pages/gestante/SubscriptionScreen';
 import QuizGostos from './pages/gestante/QuizGostos';
 import BodyVision from './pages/gestante/BodyVision';
+import Antropometria from './pages/gestante/Antropometria';
 
 // Páginas do Profissional
 import DoctorDashboard from './pages/profissional/DoctorDashboard';
@@ -38,6 +39,21 @@ import GenerateInvite from './pages/profissional/GenerateInvite';
 import PartnerDashboard from './pages/parceiro/PartnerDashboard';
 
 import { Home, Activity, MessageSquare, Calendar, Shield, LogOut } from 'lucide-react';
+
+const SUBROTAS_GESTANTE = [
+  '/checkin', '/conversa', '/agenda', '/prenatal-card', '/exames',
+  '/diario-visual', '/dispositivos', '/vinculo-medico', '/comunidade',
+  '/assinatura', '/planos', '/meus-dados', '/quiz-gostos',
+  '/visao-corporal', '/antropometria'
+];
+
+const SUBROTAS_PROFISSIONAL = [
+  '/paciente', '/convite'
+];
+
+const SUBROTAS_PARCEIRO = [
+  '/quiz-gostos'
+];
 
 export default function App() {
   const { user, isAuthenticated, logout, authHeaders } = useAuth();
@@ -61,6 +77,22 @@ export default function App() {
     setCurrentPath(path);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // Se o usuário estiver autenticado e em rota pública de login/cadastro, redireciona imediatamente para a tela inicial '/'
+  useEffect(() => {
+    if (isAuthenticated) {
+      const rotasPublicas = [
+        '/login',
+        '/cadastro-gestante',
+        '/cadastro-profissional',
+        '/cadastro-parceiro',
+        '/welcome'
+      ];
+      if (rotasPublicas.includes(currentPath) || !currentPath || currentPath === '') {
+        navigate('/');
+      }
+    }
+  }, [isAuthenticated, currentPath]);
 
   // Verifica se gestante já completou onboarding clínico
   useEffect(() => {
@@ -111,7 +143,10 @@ export default function App() {
       return (
         <div className="app-container">
           <PWAInstallPrompt />
-          <RegisterGestante onBackToLogin={() => navigate('/login')} />
+          <RegisterGestante
+            onBackToLogin={() => navigate('/login')}
+            onRegisterSuccess={() => navigate('/')}
+          />
           <FloatingEmergencyButton currentPath={currentPath} onNavigateEmergency={() => navigate('/emergencia')} />
         </div>
       );
@@ -121,7 +156,10 @@ export default function App() {
       return (
         <div className="app-container">
           <PWAInstallPrompt />
-          <RegisterProfissional onBackToLogin={() => navigate('/login')} />
+          <RegisterProfissional
+            onBackToLogin={() => navigate('/login')}
+            onRegisterSuccess={() => navigate('/')}
+          />
           <FloatingEmergencyButton currentPath={currentPath} onNavigateEmergency={() => navigate('/emergencia')} />
         </div>
       );
@@ -131,7 +169,10 @@ export default function App() {
       return (
         <div className="app-container">
           <PWAInstallPrompt />
-          <RegisterParceiro onBackToLogin={() => navigate('/login')} />
+          <RegisterParceiro
+            onBackToLogin={() => navigate('/login')}
+            onRegisterSuccess={() => navigate('/')}
+          />
           <FloatingEmergencyButton currentPath={currentPath} onNavigateEmergency={() => navigate('/emergencia')} />
         </div>
       );
@@ -141,6 +182,7 @@ export default function App() {
       <div className="app-container">
         <PWAInstallPrompt />
         <Login
+          onLoginSuccess={() => navigate('/')}
           onNavigateRegister={() => navigate('/cadastro-gestante')}
           onNavigateRegisterProf={() => navigate('/cadastro-profissional')}
           onNavigateRegisterParc={() => navigate('/cadastro-parceiro')}
@@ -202,7 +244,9 @@ export default function App() {
               <OnboardingClinico onCompleted={() => setOnboardingCompleto(true)} />
             ) : (
               <>
-                {currentPath === '/' && <GestanteHome onNavigate={navigate} />}
+                {(currentPath === '/' || !SUBROTAS_GESTANTE.includes(currentPath)) && (
+                  <GestanteHome onNavigate={navigate} />
+                )}
                 {currentPath === '/checkin' && <DailyCheckin onBack={() => navigate('/')} />}
                 {currentPath === '/conversa' && <AiChat onBack={() => navigate('/')} />}
                 {currentPath === '/agenda' && <Agenda onBack={() => navigate('/')} />}
@@ -217,6 +261,7 @@ export default function App() {
                 {currentPath === '/meus-dados' && <MyDataLGPD onBack={() => navigate('/')} />}
                 {currentPath === '/quiz-gostos' && <QuizGostos onBack={() => navigate('/')} />}
                 {currentPath === '/visao-corporal' && <BodyVision onBack={() => navigate('/')} />}
+                {currentPath === '/antropometria' && <Antropometria onBack={() => navigate('/')} />}
               </>
             )}
           </>
@@ -224,7 +269,7 @@ export default function App() {
 
         {user?.perfil === 'profissional' && (
           <>
-            {currentPath === '/' && (
+            {(currentPath === '/' || !SUBROTAS_PROFISSIONAL.includes(currentPath)) && (
               <DoctorDashboard
                 onSelectPatient={(id) => {
                   setSelectedPatientId(id);
@@ -244,7 +289,7 @@ export default function App() {
 
         {user?.perfil === 'parceiro' && (
           <>
-            {currentPath === '/' && (
+            {(currentPath === '/' || !SUBROTAS_PARCEIRO.includes(currentPath)) && (
               <PartnerDashboard
                 onNavigateEmergency={() => navigate('/emergencia')}
                 onNavigateQuiz={() => navigate('/quiz-gostos')}

@@ -314,6 +314,8 @@ export default function CommunityFeed({ onBack }) {
               type="button"
               className={isSelected ? 'btn btn-vinho' : 'btn btn-outline'}
               style={{
+                flex: '0 0 auto',
+                flexShrink: 0,
                 whiteSpace: 'nowrap',
                 minHeight: '38px',
                 fontSize: '0.82rem',

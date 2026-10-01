@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Calendar, MessageSquare, Users, CheckCircle, Activity, Heart, Shield, FileText, Camera, Bluetooth, ChevronRight, AlertCircle, Link, Eye } from 'lucide-react';
+import { Calendar, MessageSquare, Users, CheckCircle, Activity, Heart, Shield, FileText, Camera, Bluetooth, ChevronRight, AlertCircle, Link, Eye, Scale } from 'lucide-react';
 import TriageDisclaimer from '../../components/TriageDisclaimer';
 
 export default function GestanteHome({ onNavigate }) {
@@ -246,12 +246,66 @@ export default function GestanteHome({ onNavigate }) {
         <ChevronRight size={20} color="var(--color-vinho)" />
       </div>
 
+      {/* Antropometria & Ganho de Peso Gestacional (Destaque) */}
+      <div
+        className="card"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          cursor: 'pointer',
+          background: 'linear-gradient(135deg, #FFF9F5 0%, #FEEFE6 100%)',
+          border: '1.5px solid #F39C12',
+          boxShadow: 'var(--shadow-sm)',
+          marginBottom: '14px'
+        }}
+        onClick={() => onNavigate('/antropometria')}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div
+            style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '50%',
+              backgroundColor: '#D35400',
+              color: '#FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 10px rgba(211, 84, 0, 0.25)'
+            }}
+          >
+            <Scale size={22} />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <h3 style={{ fontSize: '0.98rem', margin: 0, color: '#873600' }}>
+                Antropometria & Curva de Peso
+              </h3>
+              <span className="badge-gold" style={{ fontSize: '0.68rem', padding: '1px 6px' }}>Atalah & AU</span>
+            </div>
+            <p className="text-muted" style={{ fontSize: '0.8rem', margin: '2px 0 0 0' }}>
+              Curvas gestacionais, ganho ponderal, altura uterina e guia alimentar
+            </p>
+          </div>
+        </div>
+        <ChevronRight size={20} color="#873600" />
+      </div>
+
       {/* Ações e Módulos Rápidos */}
       <h3 style={{ marginTop: '24px', marginBottom: '12px', fontSize: '1.05rem' }}>
         Acompanhamento & Tecnologias
       </h3>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        <button
+          className="btn btn-outline"
+          style={{ flexDirection: 'column', height: '96px', padding: '12px', textAlign: 'center', border: '1.5px solid #F39C12', backgroundColor: '#FFFAF5' }}
+          onClick={() => onNavigate('/antropometria')}
+        >
+          <Scale size={26} color="#D35400" />
+          <span style={{ fontSize: '0.85rem', marginTop: '6px', fontWeight: 600, color: '#873600' }}>Antropometria & Peso</span>
+        </button>
         <button
           className="btn btn-outline"
           style={{ flexDirection: 'column', height: '96px', padding: '12px', textAlign: 'center', border: '1.5px solid var(--color-rosa)', backgroundColor: '#FFFDFD' }}

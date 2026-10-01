@@ -9,6 +9,7 @@ import {
   Volume2,
   VolumeX,
   ShieldCheck,
+  ShieldAlert,
   CheckCircle2,
   AlertCircle,
   Play,
@@ -19,7 +20,10 @@ import {
   Maximize2,
   Sliders,
   RefreshCw,
-  Award
+  Award,
+  Heart,
+  XCircle,
+  HelpCircle
 } from 'lucide-react';
 import {
   speakNymphia,
@@ -36,6 +40,14 @@ export default function BodyVision({ onBack }) {
   const [carregandoIA, setCarregandoIA] = useState(false);
   const [erroCamera, setErroCamera] = useState(null);
   const [facingMode, setFacingMode] = useState('user'); // user | environment
+
+  // Check-in de Sensações & Segurança Biomecânica da IA
+  const [modalCheckinAberto, setModalCheckinAberto] = useState(false);
+  const [disposicao, setDisposicao] = useState('disposta'); // 'disposta' | 'leve_cansaco' | 'exausta'
+  const [queixas, setQueixas] = useState([]); // ['dor_lombar', 'dor_pelvica', 'ciatico', 'pernas_inchadas', 'azia']
+  const [sinaisAlerta, setSinaisAlerta] = useState([]); // ['sangramento', 'perda_liquido', 'contracoes', 'tontura']
+  const [triagemResultado, setTriagemResultado] = useState(null);
+  const [salvandoTriagem, setSalvandoTriagem] = useState(false);
 
   // Métricas do Biofeedback em Tempo Real
   const [posturaScore, setPosturaScore] = useState(95);
@@ -105,8 +117,71 @@ export default function BodyVision({ onBack }) {
     return false;
   };
 
+  // Avaliação Clínica de Sensações e Movimento
+  const avaliarSensacoesEConfigurarIA = async (novaDisposicao = disposicao, novasQueixas = queixas, novosSinais = sinaisAlerta) => {
+    setSalvandoTriagem(true);
+    try {
+      const res = await fetch('/antropometria/avaliar-movimento', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          disposicao: novaDisposicao,
+          queixas: novasQueixas,
+          sinais_alerta: novosSinais
+        })
+      });
+
+      let dados = null;
+      if (res.ok) {
+        dados = await res.json();
+      } else {
+        // Fallback local determinístico de segurança obstétrica
+        const temAlerta = novosSinais.length > 0;
+        dados = {
+          apta_exercicio: !temAlerta,
+          status_clinico: temAlerta ? "CONTRAINDICACAO_ABSOLUTA" : "APTA_COM_ADAPTACOES",
+          nivel_risco: temAlerta ? "alto" : "baixo",
+          cor_alerta: temAlerta ? "#C0392B" : "#27AE60",
+          mensagem_ia: temAlerta
+            ? "Atenção médica: você relatou sinais de alerta. Exercícios suspensos. Procure a maternidade."
+            : "Exercícios adaptados para o seu bem-estar hoje.",
+          exercicios_permitidos: [],
+          exercicios_proibidos: temAlerta ? ["Qualquer exercício físico"] : ["Decúbito dorsal prolongado após 16 semanas"],
+          orientacoes_especificas: []
+        };
+      }
+
+      setTriagemResultado(dados);
+      if (!dados.apta_exercicio) {
+        pararCamera();
+      }
+
+      // Ajusta modo padrão se a paciente tiver dor lombar
+      if (novasQueixas.includes('dor_lombar')) {
+        setModo('bascula');
+      } else if (novaDisposicao === 'exausta') {
+        setModo('respiracao');
+      }
+
+      falarInstrucao(dados.mensagem_ia, true);
+    } catch (e) {
+    } finally {
+      setSalvandoTriagem(false);
+      setModalCheckinAberto(false);
+    }
+  };
+
+  useEffect(() => {
+    // Executa triagem inicial padrão silenciosa
+    avaliarSensacoesEConfigurarIA('disposta', [], []);
+  }, []);
+
   // Iniciar Câmera Real
   const iniciarCamera = async (novoFacingMode = facingMode) => {
+    if (triagemResultado && !triagemResultado.apta_exercicio) {
+      falarInstrucao("Exercícios suspensos por motivos de segurança médica. Procure sua equipe de pré-natal.", true);
+      return;
+    }
     setErroCamera(null);
     setCarregandoIA(true);
     setModoDemo(false);
@@ -690,6 +765,103 @@ export default function BodyVision({ onBack }) {
 
       <TriageDisclaimer />
 
+      {/* Banner de Transparência da IA (Google MediaPipe Pose) */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '8px 12px',
+          backgroundColor: '#F5F0FF',
+          border: '1px solid #D1C4E9',
+          borderRadius: 'var(--radius-md)',
+          marginBottom: '12px',
+          fontSize: '0.78rem',
+          color: '#4A148C'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Sparkles size={16} color="#7E57C2" />
+          <span><strong>IA de Visão Computacional:</strong> Google MediaPipe Pose executado 100% no seu dispositivo (Edge AI sem envio de vídeo para a nuvem).</span>
+        </div>
+      </div>
+
+      {/* Card: Check-in de Sensações & O Que a IA Recomenda/Proíbe */}
+      <div
+        className="card"
+        style={{
+          borderLeft: `5px solid ${triagemResultado?.apta_exercicio ? '#27AE60' : '#C0392B'}`,
+          backgroundColor: triagemResultado?.apta_exercicio ? '#FFFFFF' : '#FFF5F5',
+          marginBottom: '14px',
+          padding: '14px'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {triagemResultado?.apta_exercicio ? (
+              <ShieldCheck size={20} color="#27AE60" />
+            ) : (
+              <ShieldAlert size={20} color="#C0392B" />
+            )}
+            <h3 style={{ margin: 0, fontSize: '0.98rem', color: 'var(--color-vinho)' }}>
+              Triagem de Sensações & Segurança Biomecânica
+            </h3>
+          </div>
+          <button
+            onClick={() => setModalCheckinAberto(true)}
+            className="btn btn-outline"
+            style={{
+              fontSize: '0.76rem',
+              padding: '4px 10px',
+              borderRadius: 'var(--radius-full)',
+              color: 'var(--color-vinho)',
+              borderColor: 'var(--color-rosa)'
+            }}
+          >
+            Como você se sente?
+          </button>
+        </div>
+
+        <p style={{ margin: '0 0 10px 0', fontSize: '0.84rem', color: 'var(--color-text)', lineHeight: '1.4' }}>
+          {triagemResultado?.mensagem_ia || "Diga à IA como você está se sentindo para que ela filtre exercícios seguros e bloqueie posturas contraindicadas."}
+        </p>
+
+        {/* Resumo do que fazer e o que não fazer */}
+        {triagemResultado?.apta_exercicio ? (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px', fontSize: '0.8rem' }}>
+            {triagemResultado.exercicios_proibidos && triagemResultado.exercicios_proibidos.length > 0 && (
+              <div style={{ backgroundColor: '#FFF0F2', padding: '8px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid #FFD1D8' }}>
+                <strong style={{ color: '#C0392B', display: 'block', marginBottom: '2px' }}>
+                  🚫 Contraindicações e O que EVITAR hoje:
+                </strong>
+                <ul style={{ margin: 0, paddingLeft: '18px', color: '#7E1D2D' }}>
+                  {triagemResultado.exercicios_proibidos.map((p, idx) => (
+                    <li key={idx}>{p}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {triagemResultado.exercicios_permitidos && triagemResultado.exercicios_permitidos.length > 0 && (
+              <div style={{ backgroundColor: '#F0FAF4', padding: '8px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid #C3E6CB' }}>
+                <strong style={{ color: '#27AE60', display: 'block', marginBottom: '2px' }}>
+                  ✅ Exercícios Recomendados para Você Hoje:
+                </strong>
+                <ul style={{ margin: 0, paddingLeft: '18px', color: '#155724' }}>
+                  {triagemResultado.exercicios_permitidos.map((rec, idx) => (
+                    <li key={idx}><strong>{rec.titulo}:</strong> {rec.beneficio}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ padding: '10px', backgroundColor: '#FADBD8', borderRadius: 'var(--radius-sm)', color: '#78281F' }}>
+            <strong>Sinais de Alerta Detectados:</strong> Exercícios e esforço físico suspensos. Procure atendimento médico obstétrico imediatamente.
+          </div>
+        )}
+      </div>
+
       {/* Seletor de Modo de Movimento / Exercício */}
       <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '14px' }}>
         {[
@@ -707,6 +879,8 @@ export default function BodyVision({ onBack }) {
             }}
             className={`btn ${modo === item.id ? 'btn-primary' : 'btn-outline'}`}
             style={{
+              flex: '0 0 auto',
+              flexShrink: 0,
               padding: '8px 16px',
               fontSize: '0.84rem',
               whiteSpace: 'nowrap',
@@ -1099,6 +1273,146 @@ export default function BodyVision({ onBack }) {
           </p>
         </div>
       </div>
+
+      {/* Modal de Check-in de Sensações da Gestante */}
+      {modalCheckinAberto && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '16px'
+          }}
+        >
+          <div className="card" style={{ maxWidth: '440px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+            <h3 style={{ margin: '0 0 6px 0', color: 'var(--color-vinho)' }}>
+              Como você está se sentindo agora?
+            </h3>
+            <p className="text-muted" style={{ fontSize: '0.82rem', margin: '0 0 14px 0' }}>
+              A IA de visão biomecânica usa suas respostas para autorizar movimentos benéficos e proibir posições que causem sobrecarga.
+            </p>
+
+            {/* Pergunta 1: Nível de Disposição */}
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ fontSize: '0.84rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                1. Qual é o seu nível de energia hoje?
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                {[
+                  { id: 'disposta', label: '😊 Disposta' },
+                  { id: 'leve_cansaco', label: '😐 Pouco Cansada' },
+                  { id: 'exausta', label: '😫 Exausta' }
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setDisposicao(item.id)}
+                    className={`btn ${disposicao === item.id ? 'btn-primary' : 'btn-outline'}`}
+                    style={{ fontSize: '0.78rem', padding: '8px 4px' }}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Pergunta 2: Dores e Desconfortos Ativos */}
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ fontSize: '0.84rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                2. Sente algum desconforto no corpo?
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                {[
+                  { id: 'dor_lombar', label: 'Dor na Lombar' },
+                  { id: 'dor_pelvica', label: 'Dor na Bacia / Sínfise' },
+                  { id: 'ciatico', label: 'Dor Ciática' },
+                  { id: 'pernas_inchadas', label: 'Pernas Pesadas / Inchaço' },
+                  { id: 'azia', label: 'Azia / Refluxo' }
+                ].map((item) => {
+                  const selecionado = queixas.includes(item.id);
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        if (selecionado) {
+                          setQueixas(queixas.filter((q) => q !== item.id));
+                        } else {
+                          setQueixas([...queixas, item.id]);
+                        }
+                      }}
+                      className={`btn ${selecionado ? 'btn-primary' : 'btn-outline'}`}
+                      style={{ fontSize: '0.76rem', padding: '6px 8px', textAlign: 'left' }}
+                    >
+                      {selecionado ? '✓ ' : '+ '} {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Pergunta 3: Sinais de Alerta (Segurança Médica) */}
+            <div style={{ marginBottom: '16px', padding: '10px', backgroundColor: '#FFF5F5', borderRadius: 'var(--radius-sm)', border: '1px solid #FFD1D8' }}>
+              <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#C0392B', display: 'block', marginBottom: '6px' }}>
+                3. Algum destes sinais de emergência hoje?
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {[
+                  { id: 'sangramento', label: 'Sangramento vaginal' },
+                  { id: 'perda_liquido', label: 'Perda contínua de líquido' },
+                  { id: 'contracoes', label: 'Contrações rítmicas e dolorosas' },
+                  { id: 'tontura', label: 'Tontura forte ou falta de ar em repouso' }
+                ].map((item) => {
+                  const marcado = sinaisAlerta.includes(item.id);
+                  return (
+                    <label key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: '#7E1D2D', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={marcado}
+                        onChange={() => {
+                          if (marcado) {
+                            setSinaisAlerta(sinaisAlerta.filter((s) => s !== item.id));
+                          } else {
+                            setSinaisAlerta([...sinaisAlerta, item.id]);
+                          }
+                        }}
+                      />
+                      <span>{item.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setModalCheckinAberto(false)}
+                className="btn btn-secondary"
+                style={{ fontSize: '0.85rem' }}
+              >
+                Fechar
+              </button>
+              <button
+                type="button"
+                disabled={salvandoTriagem}
+                onClick={() => avaliarSensacoesEConfigurarIA(disposicao, queixas, sinaisAlerta)}
+                className="btn btn-primary"
+                style={{ fontSize: '0.85rem' }}
+              >
+                {salvandoTriagem ? 'Calibrando...' : 'Calibrar IA com Meu Estado'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de Configuração de Voz */}
       <VoiceSettingsModal

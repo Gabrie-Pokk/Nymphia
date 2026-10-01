@@ -1,9 +1,62 @@
 import React, { useState } from 'react';
-import { Calendar, Heart, Shield, Plus, Trash2, ArrowRight, ArrowLeft, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Calendar, Heart, Shield, Plus, Trash2, ArrowRight, ArrowLeft, CheckCircle2, AlertTriangle, Building2, MapPin } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import TriageDisclaimer from '../../components/TriageDisclaimer';
 
 const TELEFONE_REGEX = /^(?:19[0-9]|\(?\d{2}\)?\s?\d{4,5}-?\d{4})$/;
+
+const MATERNIDADES_REFERENCIA = [
+  {
+    nome: 'Maternidade Leonor Mendes de Barros (SUS)',
+    rotulo_curto: 'Leonor Mendes de Barros',
+    tipo: 'SUS',
+    cidade: 'São Paulo - SP',
+    endereco: 'Av. Celso Garcia, 2477 - Belenzinho, São Paulo - SP',
+    tel: '(11) 2694-8000',
+    lat: -23.5385,
+    lng: -46.5927
+  },
+  {
+    nome: 'Hospital e Maternidade Santa Joana',
+    rotulo_curto: 'Santa Joana',
+    tipo: 'Privado / Convênio',
+    cidade: 'São Paulo - SP',
+    endereco: 'Rua Dr. Eduardo Amaro, 225 - Paraíso, São Paulo - SP',
+    tel: '(11) 5080-6000',
+    lat: -23.5786,
+    lng: -46.6433
+  },
+  {
+    nome: 'Hospital Maternidade Pro Matre Paulista',
+    rotulo_curto: 'Pro Matre Paulista',
+    tipo: 'Privado / Convênio',
+    cidade: 'São Paulo - SP',
+    endereco: 'Al. Joaquim Eugênio de Lima, 383 - Bela Vista, São Paulo - SP',
+    tel: '(11) 3269-2233',
+    lat: -23.5672,
+    lng: -46.6508
+  },
+  {
+    nome: 'Hospital das Clínicas da FMUSP (SUS)',
+    rotulo_curto: 'HC FMUSP',
+    tipo: 'SUS',
+    cidade: 'São Paulo - SP',
+    endereco: 'Av. Dr. Enéas Carvalho de Aguiar, 255 - Cerqueira César, São Paulo - SP',
+    tel: '(11) 2661-0000',
+    lat: -23.5574,
+    lng: -46.6713
+  },
+  {
+    nome: 'Maternidade Darcy Vargas (SUS)',
+    rotulo_curto: 'Darcy Vargas',
+    tipo: 'SUS',
+    cidade: 'Joinville - SC',
+    endereco: 'Rua São José Operário, 305 - Anita Garibaldi, Joinville - SC',
+    tel: '(47) 3461-5700',
+    lat: -26.3045,
+    lng: -48.8487
+  }
+];
 
 export default function OnboardingClinico({ onCompleted }) {
   const { authHeaders } = useAuth();
@@ -572,35 +625,96 @@ export default function OnboardingClinico({ onCompleted }) {
           </p>
 
           
-          {/* Busca e Mapeamento de Maternidade (Google Maps Assistido) */}
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', color: 'var(--color-vinho)', marginBottom: '6px' }}>
+          {/* Busca e Mapeamento de Maternidade (Seleção Rápida e Confiável) */}
+          <div style={{ marginBottom: '18px' }}>
+            <label htmlFor="select-maternidade-rapida" style={{ display: 'block', fontWeight: 600, fontSize: '0.88rem', color: 'var(--color-vinho)', marginBottom: '6px' }}>
               📍 Seleção Rápida de Maternidades de Referência:
             </label>
-            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '6px' }}>
-              {[
-                { nome: 'Hospital e Maternidade Santa Joana', endereco: 'Rua Dr. Eduardo Amaro, 225 - Paraíso, São Paulo - SP', tel: '1150806000', lat: -23.5786, lng: -46.6433 },
-                { nome: 'Hospital Maternidade Pro Matre Paulista', endereco: 'Al. Joaquim Eugênio de Lima, 383 - Bela Vista, São Paulo - SP', tel: '1132692233', lat: -23.5672, lng: -46.6508 },
-                { nome: 'Maternidade Leonor Mendes de Barros (SUS)', endereco: 'Av. Celso Garcia, 2477 - Belenzinho, São Paulo - SP', tel: '1126948000', lat: -23.5385, lng: -46.5927 },
-                { nome: 'Hospital das Clínicas da FMUSP (SUS)', endereco: 'Av. Dr. Enéas Carvalho de Aguiar, 255 - Cerqueira César, SP', tel: '1126610000', lat: -23.5574, lng: -46.6713 },
-                { nome: 'Maternidade Darcy Vargas (SUS)', endereco: 'Rua São José Operário, 305 - Joinville - SC', tel: '4734615700', lat: -26.3045, lng: -48.8487 }
-              ].map((m, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  className="btn btn-outline"
-                  style={{ fontSize: '0.76rem', whiteSpace: 'nowrap', padding: '6px 10px', minHeight: '32px' }}
-                  onClick={() => {
-                    updateField('maternidade_nome', m.nome);
-                    updateField('maternidade_endereco', m.endereco);
-                    updateField('maternidade_telefone', m.tel);
-                    updateField('maternidade_latitude', m.lat);
-                    updateField('maternidade_longitude', m.lng);
-                  }}
-                >
-                  📍 {m.nome.split(' ')[0]} {m.nome.split(' ')[1] || ''}
-                </button>
+            <select
+              id="select-maternidade-rapida"
+              className="form-control"
+              value={formState.maternidade_nome || ''}
+              onChange={(e) => {
+                const sel = MATERNIDADES_REFERENCIA.find((m) => m.nome === e.target.value);
+                if (sel) {
+                  updateField('maternidade_nome', sel.nome);
+                  updateField('maternidade_endereco', sel.endereco);
+                  updateField('maternidade_telefone', sel.tel);
+                  updateField('maternidade_latitude', sel.lat);
+                  updateField('maternidade_longitude', sel.lng);
+                }
+              }}
+              style={{ marginBottom: '10px' }}
+            >
+              <option value="">-- Toque para escolher uma maternidade ou preencha abaixo --</option>
+              {MATERNIDADES_REFERENCIA.map((m, idx) => (
+                <option key={idx} value={m.nome}>
+                  [{m.tipo}] {m.nome} ({m.cidade})
+                </option>
               ))}
+            </select>
+
+            {/* Chips de Acesso Rápido com prevenção total de sobreposição */}
+            <div
+              style={{
+                display: 'flex',
+                gap: '8px',
+                overflowX: 'auto',
+                WebkitOverflowScrolling: 'touch',
+                paddingBottom: '6px',
+                width: '100%',
+                maxWidth: '100%'
+              }}
+            >
+              {MATERNIDADES_REFERENCIA.map((m, idx) => {
+                const isSelected = formState.maternidade_nome === m.nome;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    className={isSelected ? 'btn btn-vinho' : 'btn btn-outline'}
+                    style={{
+                      flex: '0 0 auto',
+                      flexShrink: 0,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      fontSize: '0.78rem',
+                      whiteSpace: 'nowrap',
+                      padding: '6px 14px',
+                      minHeight: '36px',
+                      borderRadius: 'var(--radius-full)',
+                      fontWeight: isSelected ? 700 : 500,
+                      boxShadow: isSelected ? 'var(--shadow-sm)' : 'none',
+                      backgroundColor: isSelected ? 'var(--color-vinho)' : '#FFFFFF',
+                      color: isSelected ? '#FFFFFF' : 'var(--color-vinho)',
+                      border: isSelected ? '1.5px solid var(--color-vinho)' : '1px solid var(--color-border)',
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => {
+                      updateField('maternidade_nome', m.nome);
+                      updateField('maternidade_endereco', m.endereco);
+                      updateField('maternidade_telefone', m.tel);
+                      updateField('maternidade_latitude', m.lat);
+                      updateField('maternidade_longitude', m.lng);
+                    }}
+                  >
+                    <span>📍</span>
+                    <span>{m.rotulo_curto}</span>
+                    <span
+                      style={{
+                        fontSize: '0.68rem',
+                        padding: '1px 6px',
+                        borderRadius: 'var(--radius-full)',
+                        backgroundColor: isSelected ? 'rgba(255,255,255,0.2)' : 'var(--color-rosa-claro)',
+                        color: isSelected ? '#FFFFFF' : 'var(--color-rosa)'
+                      }}
+                    >
+                      {m.tipo}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 

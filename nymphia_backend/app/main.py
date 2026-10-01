@@ -12,7 +12,7 @@ from app.api import (
     health, auth, perfil, checkin, conversa,
     agenda, vinculo, exames, risco, emergencia,
     parceiro, comunidade, dispositivos,
-    governance, lgpd, legacy, assinaturas
+    governance, lgpd, legacy, assinaturas, antropometria
 )
 from app.services.ai_risk_service import carregar_modelos_ml
 from app.services.ai_text_service import carregar_bertimbau
@@ -73,6 +73,7 @@ app.include_router(dispositivos.router)
 app.include_router(governance.router)
 app.include_router(lgpd.router)
 app.include_router(legacy.router)
+app.include_router(antropometria.router)
 
 # Tratamento Global de Exceções (Degradação Graciosa)
 @app.exception_handler(Exception)

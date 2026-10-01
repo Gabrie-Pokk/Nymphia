@@ -434,3 +434,21 @@ textarea.form-control {
 .nav-item:hover {
   color: var(--color-vinho);
 }
+
+/* Prevenção Global contra esmagamento e sobreposição de textos em carrosséis/chips */
+[style*="overflow-x: auto"],
+[style*="overflowX: auto"],
+.horizontal-scroll {
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: thin;
+}
+
+[style*="overflow-x: auto"] > button,
+[style*="overflow-x: auto"] > .btn,
+[style*="overflowX: auto"] > button,
+[style*="overflowX: auto"] > .btn,
+.horizontal-scroll > button,
+.horizontal-scroll > .btn {
+  flex: 0 0 auto !important;
+  flex-shrink: 0 !important;
+}

@@ -3,7 +3,7 @@ import LotusLogo, { NymphiaBrandName } from '../components/LotusLogo';
 import { Eye, EyeOff, Lock, Mail, ArrowRight, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-export default function Login({ onNavigateRegister, onNavigateRegisterProf, onNavigateRegisterParc }) {
+export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateRegisterProf, onNavigateRegisterParc }) {
   const { login } = useAuth();
   const [perfil, setPerfil] = useState('gestante'); // gestante | profissional | parceiro
   const [email, setEmail] = useState('');
@@ -39,6 +39,7 @@ export default function Login({ onNavigateRegister, onNavigateRegisterProf, onNa
         throw new Error(data.detail || 'Falha ao autenticar na conta demo.');
       }
       login(data.token, data);
+      if (onLoginSuccess) onLoginSuccess();
     } catch (err) {
       setErro(err.message);
     } finally {
@@ -70,6 +71,7 @@ export default function Login({ onNavigateRegister, onNavigateRegisterProf, onNa
         throw new Error(data.detail || 'Falha ao autenticar.');
       }
       login(data.token, data);
+      if (onLoginSuccess) onLoginSuccess();
     } catch (err) {
       setErro(err.message);
     } finally {

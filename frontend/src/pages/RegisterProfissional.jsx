@@ -12,7 +12,7 @@ const UFS_BRASIL = [
   'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
 ];
 
-export default function RegisterProfissional({ onBackToLogin }) {
+export default function RegisterProfissional({ onBackToLogin, onRegisterSuccess }) {
   const { login } = useAuth();
   const [etapa, setEtapa] = useState(1);
   const [tokenCriado, setTokenCriado] = useState(null);
@@ -82,6 +82,7 @@ export default function RegisterProfissional({ onBackToLogin }) {
     e.preventDefault();
     if (!arquivo) {
       login(tokenCriado, profCriado);
+      if (onRegisterSuccess) onRegisterSuccess();
       return;
     }
 
@@ -97,8 +98,10 @@ export default function RegisterProfissional({ onBackToLogin }) {
       });
 
       login(tokenCriado, { ...profCriado, status_verificacao: 'em_analise' });
+      if (onRegisterSuccess) onRegisterSuccess();
     } catch (err) {
       login(tokenCriado, profCriado);
+      if (onRegisterSuccess) onRegisterSuccess();
     } finally {
       setCarregando(false);
     }
