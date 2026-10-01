@@ -150,28 +150,59 @@ def carregar_bertimbau(forcar: bool = False):
     try:
         from transformers import AutoTokenizer, AutoModelForSequenceClassification
         import torch
+        import gc
+
+        # Restringe pools de threads para economizar buffers de memória em CPU
+        torch.set_num_threads(1)
+
         logger.info(f"Carregando BERTimbau a partir de: {BERTIMBAU_DIR}")
         _bert_estado["tokenizer"] = AutoTokenizer.from_pretrained(str(BERTIMBAU_DIR))
-        raw_model = AutoModelForSequenceClassification.from_pretrained(str(BERTIMBAU_DIR))
 
-        # Quantização dinâmica INT8: reduz memória de ~800MB para ~180MB (essencial para não estourar RAM no Render)
-        try:
-            _bert_estado["modelo"] = torch.quantization.quantize_dynamic(
+        caminho_int8 = BERTIMBAU_DIR / "modelo_quantizado_int8.pt"
+        if caminho_int8.exists():
+            logger.info(f"Carregando modelo quantizado INT8 pré-salvo de {caminho_int8} (baixo consumo de RAM)...")
+            _bert_estado["modelo"] = torch.load(str(caminho_int8), map_location="cpu")
+            _bert_estado["diagnostico"] = "ativo_quantizado_int8_cpu"
+        else:
+            logger.info("Carregando pesos safetensors com low_cpu_mem_usage...")
+            raw_model = AutoModelForSequenceClassification.from_pretrained(
+                str(BERTIMBAU_DIR),
+                low_cpu_mem_usage=True
+            )
+
+            # Quantização dinâmica INT8: reduz memória de ~800MB para ~180MB
+            logger.info("Aplicando quantização dinâmica INT8 sobre os pesos...")
+            quantized_model = torch.quantization.quantize_dynamic(
                 raw_model, {torch.nn.Linear}, dtype=torch.qint8
             )
-            logger.info("Quantização dinâmica int8 aplicada ao BERTimbau (inferência leve em CPU).")
+
+            # Libera o modelo raw imediatamente para evitar duplo consumo de RAM
+            del raw_model
+            gc.collect()
+
+            # Salva o modelo quantizado para carregamentos ultra-leves no futuro
+            try:
+                torch.save(quantized_model, str(caminho_int8))
+                logger.info(f"Modelo INT8 persistido em {caminho_int8}")
+                safetensors_path = BERTIMBAU_DIR / "model.safetensors"
+                if safetensors_path.exists():
+                    safetensors_path.unlink()
+                    logger.info("Arquivo model.safetensors original removido do disco após quantização.")
+            except Exception as s_err:
+                logger.warning(f"Não foi possível salvar modelo quantizado em disco: {s_err}")
+
+            _bert_estado["modelo"] = quantized_model
             _bert_estado["diagnostico"] = "ativo_quantizado_int8_cpu"
-        except Exception as q_err:
-            logger.warning(f"Quantização dinâmica int8 não pôde ser aplicada ({q_err}); usando modelo original.")
-            _bert_estado["modelo"] = raw_model
-            _bert_estado["diagnostico"] = f"ativo_fp32_sem_quantizacao: {q_err}"
 
         _bert_estado["modelo"].eval()
         _bert_estado["disponivel"] = True
         logger.info("BERTimbau carregado com sucesso para inferência em CPU.")
-    except Exception as e:
-        _bert_estado["diagnostico"] = f"falha_carregamento: {e}"
-        logger.warning(f"Não foi possível inicializar BERTimbau ({e}). Usando fallback de regras determinísticas.")
+    except (MemoryError, Exception) as e:
+        _bert_estado["disponivel"] = False
+        _bert_estado["diagnostico"] = f"memoria_insuficiente_ou_falha: {e}"
+        logger.warning(f"Não foi possível inicializar BERTimbau ({e}). Operando com motor determinístico de regras FEBRASGO.")
+        import gc
+        gc.collect()
 
 
 def bertimbau_disponivel(recarregar: bool = False) -> bool:

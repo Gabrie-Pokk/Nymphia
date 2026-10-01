@@ -28,14 +28,27 @@ logger = logging.getLogger("nymphia")
 try:
     Base.metadata.create_all(bind=engine)
     logger.info("Tabelas do banco de dados verificadas e inicializadas com sucesso.")
+    from app.database import executar_migracoes_automaticas
+    executar_migracoes_automaticas()
     from app.seed_demo import seed_demo_accounts
     seed_demo_accounts()
 except Exception as e:
     logger.error(f"Erro ao inicializar tabelas do banco de dados: {e}")
 
-# Pré-carregamento dos modelos de Machine Learning (Random Forest, Isolation Forest, BERTimbau)
+# Pré-carregamento dos modelos de Machine Learning (Random Forest & Isolation Forest)
 carregar_modelos_ml()
-carregar_bertimbau()
+
+# Carregamento do BERTimbau em thread separada para não bloquear o startup nem estourar memória
+import threading
+
+def _iniciar_bertimbau_background():
+    logger.info("Disparando thread em segundo plano para download/carregamento do BERTimbau...")
+    try:
+        carregar_bertimbau()
+    except Exception as e:
+        logger.warning(f"Exceção na thread do BERTimbau: {e}")
+
+threading.Thread(target=_iniciar_bertimbau_background, daemon=True, name="bertimbau-worker").start()
 
 app = FastAPI(
     title="Nymphia — Inteligência Artificial Obstétrica",
