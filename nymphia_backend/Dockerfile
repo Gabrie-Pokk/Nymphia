@@ -6,10 +6,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Atualiza pip, setuptools e wheel para suporte pleno a metadados modernos
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+
 WORKDIR /app
 
 COPY requirements-prod.txt .
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple
 RUN pip install --no-cache-dir -r requirements-prod.txt
 
 COPY . .
