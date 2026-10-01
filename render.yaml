@@ -13,3 +13,5 @@ services:
         generateValue: true
       - key: NYMPHIA_DB_TYPE
         value: sqlite
+      - key: NYMPHIA_BERTIMBAU_URL
+        sync: false

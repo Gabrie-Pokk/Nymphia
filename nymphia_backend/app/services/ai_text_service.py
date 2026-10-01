@@ -122,11 +122,18 @@ EMOTION_KEYWORDS = {
 }
 
 def carregar_bertimbau():
-    """Tenta carregar o modelo BERTimbau ajustado localmente."""
+    """Tenta carregar o modelo BERTimbau ajustado localmente ou baixa via URL."""
     if _bert_estado["tentado"]:
         return
 
     _bert_estado["tentado"] = True
+
+    # 1. Garante que os pesos foram baixados ou descompactados no disco
+    try:
+        from app.services.model_downloader import garantir_bertimbau_presente
+        garantir_bertimbau_presente()
+    except Exception as e:
+        logger.warning(f"Verificação de download do BERTimbau retornou: {e}")
 
     if not BERTIMBAU_DIR.exists():
         logger.info(f"Pasta do BERTimbau não encontrada em {BERTIMBAU_DIR}. Operando com motor de regras regex.")
@@ -137,7 +144,18 @@ def carregar_bertimbau():
         import torch
         logger.info(f"Carregando BERTimbau a partir de: {BERTIMBAU_DIR}")
         _bert_estado["tokenizer"] = AutoTokenizer.from_pretrained(str(BERTIMBAU_DIR))
-        _bert_estado["modelo"] = AutoModelForSequenceClassification.from_pretrained(str(BERTIMBAU_DIR))
+        raw_model = AutoModelForSequenceClassification.from_pretrained(str(BERTIMBAU_DIR))
+
+        # Quantização dinâmica INT8: reduz memória de ~800MB para ~180MB (essencial para não estourar RAM no Render)
+        try:
+            _bert_estado["modelo"] = torch.quantization.quantize_dynamic(
+                raw_model, {torch.nn.Linear}, dtype=torch.qint8
+            )
+            logger.info("Quantização dinâmica int8 aplicada ao BERTimbau (inferência leve em CPU).")
+        except Exception as q_err:
+            logger.warning(f"Quantização dinâmica int8 não pôde ser aplicada ({q_err}); usando modelo original.")
+            _bert_estado["modelo"] = raw_model
+
         _bert_estado["modelo"].eval()
         _bert_estado["disponivel"] = True
         logger.info("BERTimbau carregado com sucesso para inferência em CPU.")
