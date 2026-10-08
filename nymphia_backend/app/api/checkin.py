@@ -58,6 +58,7 @@ def analisar_checkin_preview(payload: CheckinAnalisarRequest):
         "scores_bertimbau": scores
     }
 
+@router.post("", response_model=CheckinOut, status_code=status.HTTP_201_CREATED)
 @router.post("/registrar", response_model=CheckinOut, status_code=status.HTTP_201_CREATED)
 def registrar_checkin(
     payload: CheckinCreate,

@@ -11,6 +11,7 @@ from app.security.jwt_auth import get_current_gestante
 router = APIRouter(tags=["Risco e Anomalia"])
 
 @router.post("/risco/gestante")
+@router.post("/risco/avaliar")
 def calcular_risco_gestante(payload: Dict[str, Any]):
     """
     Calcula o risco estatístico para as 6 condições obstétricas com base no perfil.

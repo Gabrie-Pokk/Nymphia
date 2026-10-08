@@ -568,7 +568,8 @@ def _consultar_gemini(
     historico: Optional[List[Dict[str, str]]] = None,
     nome_gestante: Optional[str] = None,
     tema_clinico: Optional[str] = None,
-    active_categories: Optional[List[str]] = None
+    active_categories: Optional[List[str]] = None,
+    dados_medico: Optional[Dict[str, Any]] = None
 ) -> Optional[str]:
     api_key = (settings.GEMINI_API_KEY or "").strip()
     if not api_key or api_key == "COLE_SUA_CHAVE_AQUI" or len(api_key) < 10:
@@ -586,6 +587,18 @@ def _consultar_gemini(
         contexto_parts.append(
             f"Referência clínica FEBRASGO/MS: {info['resumo']}. Cuidados sugeridos: {'; '.join(info['cuidados'])}. "
             f"Orientação: {info['orientacao']}. Incorpore com suas próprias palavras na conversa, sem fazer listas mecânicas."
+        )
+
+    # Cruzamento de dados com o médico/obstetra responsável
+    if dados_medico and dados_medico.get("nome"):
+        med_nome = dados_medico["nome"]
+        med_reg = f"{dados_medico.get('registro_tipo', 'CRM')} {dados_medico.get('registro_numero', '')}/{dados_medico.get('registro_uf', '')}".strip()
+        obs_lista = dados_medico.get("observacoes_recentes", [])
+        obs_txt = f" Orientações clínicas registradas no prontuário pelo médico: '{'; '.join(obs_lista)}'." if obs_lista else ""
+        contexto_parts.append(
+            f"Obstetra responsável da paciente: {med_nome} ({med_reg}).{obs_txt} "
+            f"CRUZE as dúvidas da gestante com esse acompanhamento, citando carinhosamente o Dr.(a) {med_nome} "
+            f"e reforçando o cumprimento das orientações deixadas por ele(a) no pré-natal."
         )
 
     contexto_str = ""
@@ -650,7 +663,8 @@ def _consultar_openai_compativel(
     historico: Optional[List[Dict[str, str]]] = None,
     nome_gestante: Optional[str] = None,
     tema_clinico: Optional[str] = None,
-    active_categories: Optional[List[str]] = None
+    active_categories: Optional[List[str]] = None,
+    dados_medico: Optional[Dict[str, Any]] = None
 ) -> Optional[str]:
     if not api_key or len(api_key.strip()) < 5:
         return None
@@ -665,6 +679,16 @@ def _consultar_openai_compativel(
         contexto_parts.append(
             f"Referência clínica FEBRASGO/MS: {info['resumo']}. Cuidados sugeridos: {'; '.join(info['cuidados'])}. "
             f"Orientação: {info['orientacao']}. Incorpore com suas próprias palavras na conversa."
+        )
+
+    # Cruzamento com dados do médico
+    if dados_medico and dados_medico.get("nome"):
+        med_nome = dados_medico["nome"]
+        med_reg = f"{dados_medico.get('registro_tipo', 'CRM')} {dados_medico.get('registro_numero', '')}/{dados_medico.get('registro_uf', '')}".strip()
+        obs_lista = dados_medico.get("observacoes_recentes", [])
+        obs_txt = f" Orientações clínicas registradas pelo obstetra: '{'; '.join(obs_lista)}'." if obs_lista else ""
+        contexto_parts.append(
+            f"Obstetra vinculado: {med_nome} ({med_reg}).{obs_txt} Cruze com a conduta do(a) Dr.(a) {med_nome}."
         )
 
     prompt_atual = texto
@@ -711,13 +735,14 @@ def _consultar_api_llm(
     historico: Optional[List[Dict[str, str]]] = None,
     nome_gestante: Optional[str] = None,
     tema_clinico: Optional[str] = None,
-    active_categories: Optional[List[str]] = None
+    active_categories: Optional[List[str]] = None,
+    dados_medico: Optional[Dict[str, Any]] = None
 ) -> Optional[str]:
     """
     Tenta consultar a API de IA Generativa com fallback em cascata (Gemini -> Groq -> OpenRouter -> OpenAI).
     """
     # 1. Google Gemini
-    res_gemini = _consultar_gemini(texto, historico, nome_gestante, tema_clinico, active_categories)
+    res_gemini = _consultar_gemini(texto, historico, nome_gestante, tema_clinico, active_categories, dados_medico)
     if res_gemini:
         return res_gemini
 
@@ -727,7 +752,7 @@ def _consultar_api_llm(
             "https://api.groq.com/openai/v1/chat/completions",
             settings.GROQ_API_KEY,
             "llama-3.3-70b-versatile",
-            texto, historico, nome_gestante, tema_clinico, active_categories
+            texto, historico, nome_gestante, tema_clinico, active_categories, dados_medico
         )
         if res_groq:
             return res_groq
@@ -738,7 +763,7 @@ def _consultar_api_llm(
             "https://openrouter.ai/api/v1/chat/completions",
             settings.OPENROUTER_API_KEY,
             "meta-llama/llama-3.3-70b-instruct",
-            texto, historico, nome_gestante, tema_clinico, active_categories
+            texto, historico, nome_gestante, tema_clinico, active_categories, dados_medico
         )
         if res_openrouter:
             return res_openrouter
@@ -749,7 +774,7 @@ def _consultar_api_llm(
             "https://api.openai.com/v1/chat/completions",
             settings.OPENAI_API_KEY,
             "gpt-4o-mini",
-            texto, historico, nome_gestante, tema_clinico, active_categories
+            texto, historico, nome_gestante, tema_clinico, active_categories, dados_medico
         )
         if res_openai:
             return res_openai
@@ -760,16 +785,16 @@ def generate_chat_response(
     message: str,
     recusa_ia: bool = False,
     historico: Optional[List[Dict[str, str]]] = None,
-    nome_gestante: Optional[str] = None
+    nome_gestante: Optional[str] = None,
+    dados_medico: Optional[Dict[str, Any]] = None
 ) -> Tuple[str, bool, str]:
     """
     Gera resposta conversacional inteligente, acolhedora e segura:
     1. Triage de Emergência: Identifica sinais de alarme obstétrico imediatamente (sem delay de LLM).
     2. Consulta de IA Generativa Real: Prioridade total para a API LLM (Gemini / Provedores),
-       enviando contexto da gestante, histórico da conversa e referências clínicas com tom acolhedor.
+       enviando contexto da gestante, histórico da conversa, dados do médico responsável e referências clínicas com tom acolhedor.
     3. Fallback Conversacional Natural: Se a API estiver sem cota ou indisponível, responde
-       com linguagem 100% natural, humana e acolhedora, SEM scripts prontos, SEM menus engessados
-       e SEM repetição exaustiva de artigos e leis.
+       com linguagem 100% natural, humana e acolhedora, cruzando com os dados do médico.
     """
     texto_limpo = message.strip()
 
@@ -788,7 +813,7 @@ def generate_chat_response(
             return _formatar_conversa_clinica_natural(tema_clinico, nome_gestante), False, "base_clinica_ia"
         return _gerar_resposta_dinamica_ia(texto_limpo, scores, active_categories, nome_gestante), False, "bertimbau_ia"
 
-    # 2. IA Conversacional Real: Usa e abusa da API com histórico e contexto
+    # 2. IA Conversacional Real: Usa e abusa da API com histórico, contexto e dados do obstetra
     scores, active_categories = classify_text_emotions(texto_limpo)
     tema_detectado = _buscar_tema_clinico(texto_limpo)
 
@@ -797,17 +822,26 @@ def generate_chat_response(
         historico=historico,
         nome_gestante=nome_gestante,
         tema_clinico=tema_detectado,
-        active_categories=active_categories
+        active_categories=active_categories,
+        dados_medico=dados_medico
     )
     if resposta_api:
         return resposta_api, False, "gemini_ia"
 
-    # 3. Fallback Conversacional Humanizado (Sem scripts rígidos e sem disclaimers repetitivos)
+    # 3. Fallback Conversacional Humanizado
     if _detectar_saudacao(texto_limpo) and len(texto_limpo.split()) <= 7:
         return _construir_resposta_saudacao(texto_limpo, nome_gestante), False, "assistente_nymphia"
 
-    if tema_detectado and tema_detectado in CONHECIMENTO_CLINICO:
-        return _formatar_conversa_clinica_natural(tema_detectado, nome_gestante), False, "base_clinica_ia"
+    adendo_medico = ""
+    if dados_medico and dados_medico.get("nome"):
+        med_nome = dados_medico["nome"]
+        med_reg = f"{dados_medico.get('registro_tipo', 'CRM')} {dados_medico.get('registro_numero', '')}/{dados_medico.get('registro_uf', '')}".strip()
+        adendo_medico = f"\n\n🩺 Lembre-se também de alinhar suas sensações com o seu obstetra responsável, {med_nome} ({med_reg}), seguindo as orientações combinadas no seu pré-natal."
 
-    return _gerar_resposta_dinamica_ia(texto_limpo, scores, active_categories, nome_gestante), False, "bertimbau_ia"
+    if tema_detectado and tema_detectado in CONHECIMENTO_CLINICO:
+        base_resp = _formatar_conversa_clinica_natural(tema_detectado, nome_gestante)
+        return f"{base_resp}{adendo_medico}", False, "base_clinica_ia"
+
+    base_resp = _gerar_resposta_dinamica_ia(texto_limpo, scores, active_categories, nome_gestante)
+    return f"{base_resp}{adendo_medico}", False, "bertimbau_ia"
 

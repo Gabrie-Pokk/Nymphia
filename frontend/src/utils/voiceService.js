@@ -68,31 +68,117 @@ export const saveVoicePreferences = (prefs) => {
 };
 
 /**
- * Obtém a lista de vozes disponíveis no navegador, filtrando e priorizando
- * vozes em português brasileiro de alta qualidade (Google, Microsoft Natural, Luciana, etc).
+ * Retorna o emoji da bandeira do país correspondente à voz,
+ * corrigindo com precisão Bodo (Índia), Português (Brasil), Português (Portugal), etc.
+ */
+export const getVoiceFlag = (voice) => {
+  if (!voice) return '🌐';
+  const lang = (voice.lang || '').toLowerCase().replace(/_/g, '-');
+  const name = (voice.name || '').toLowerCase();
+
+  // Bodo da Índia (ISO brx / brx-IN ou menção explícita a Índia/India)
+  if (
+    lang.startsWith('brx') ||
+    name.includes('bodo') ||
+    name.includes('índia') ||
+    name.includes('india') ||
+    lang.endsWith('-in') ||
+    lang === 'hi' ||
+    lang.startsWith('hi-')
+  ) {
+    return '🇮🇳';
+  }
+
+  // Português do Brasil
+  if (
+    lang === 'pt-br' ||
+    lang.endsWith('-br') ||
+    name.includes('brasil') ||
+    name.includes('brazil')
+  ) {
+    return '🇧🇷';
+  }
+
+  // Português de Portugal
+  if (
+    lang === 'pt-pt' ||
+    lang.startsWith('pt') ||
+    name.includes('portugal')
+  ) {
+    return '🇵🇹';
+  }
+
+  // Outros idiomas comuns
+  if (lang.includes('us') || name.includes('united states')) return '🇺🇸';
+  if (lang.includes('gb') || lang.includes('uk')) return '🇬🇧';
+  if (lang.startsWith('es') || name.includes('español')) return '🇪🇸';
+  if (lang.startsWith('fr') || name.includes('français')) return '🇫🇷';
+  if (lang.startsWith('it') || name.includes('italiano')) return '🇮🇹';
+  if (lang.startsWith('de') || name.includes('deutsch')) return '🇩🇪';
+
+  // Fallback para código de país ISO 3166-1 de 2 letras se presente (ex: en-US, pt-AO -> AO)
+  const parts = lang.split('-');
+  if (parts.length >= 2 && parts[1].length === 2) {
+    const country = parts[1].toUpperCase();
+    return String.fromCodePoint(...country.split('').map((c) => 127397 + c.charCodeAt(0)));
+  }
+
+  return '🌐';
+};
+
+/**
+ * Formata o nome da voz com iniciais em maiúsculas (Title Case).
+ * Exemplos: "bodo Índia" -> "Bodo Índia", "português Brasil" -> "Português Brasil"
+ */
+export const formatVoiceName = (rawName) => {
+  if (!rawName) return 'Voz do Sistema';
+
+  return rawName
+    .split(/\s+/)
+    .map((word) => {
+      if (!word) return '';
+      // Preserva siglas já maiúsculas como "BR", "PT", "TTS"
+      if (word.length <= 3 && word.toUpperCase() === word && !/^[a-z]/i.test(word)) return word;
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(' ');
+};
+
+/**
+ * Obtém a lista de vozes disponíveis no navegador,
+ * formatando letras maiúsculas, bandeiras corretas e ordenando alfabeticamente (A-Z).
  */
 export const getAvailablePortugueseVoices = () => {
   if (!('speechSynthesis' in window)) return [];
   const allVoices = window.speechSynthesis.getVoices() || [];
 
-  // Filtra vozes em português
+  // Filtra vozes em português ou compatíveis no dispositivo
   const ptVoices = allVoices.filter(
     (v) => v.lang && (v.lang.toLowerCase().startsWith('pt') || v.lang.toLowerCase().includes('br'))
   );
 
-  // Ordena dando preferência a vozes pt-BR e vozes naturais/neurais
-  ptVoices.sort((a, b) => {
-    const aBR = a.lang.toLowerCase().includes('br') ? 2 : 1;
-    const bBR = b.lang.toLowerCase().includes('br') ? 2 : 1;
-
-    const naturalKeywords = ['natural', 'online', 'google', 'neural', 'luciana', 'francisca', 'yara', 'leticia', 'maria'];
-    const aNat = naturalKeywords.some((k) => a.name.toLowerCase().includes(k)) ? 3 : 0;
-    const bNat = naturalKeywords.some((k) => b.name.toLowerCase().includes(k)) ? 3 : 0;
-
-    return bBR + bNat - (aBR + aNat);
+  // Mapeia e enriquece com nome formatado e bandeira
+  const enriched = ptVoices.map((v) => {
+    const displayName = formatVoiceName(v.name);
+    const flag = getVoiceFlag(v);
+    const label = `${displayName} ${flag}`;
+    return {
+      ...v,
+      voiceURI: v.voiceURI,
+      name: v.name,
+      lang: v.lang,
+      displayName,
+      flag,
+      label
+    };
   });
 
-  return ptVoices;
+  // Ordena estritamente por ordem alfabética (A-Z) com suporte ao português brasileiro
+  enriched.sort((a, b) =>
+    a.label.localeCompare(b.label, 'pt-BR', { sensitivity: 'base' })
+  );
+
+  return enriched;
 };
 
 /**

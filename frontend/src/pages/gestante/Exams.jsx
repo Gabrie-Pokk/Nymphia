@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
+import { apiFetch } from '../../utils/api';
+import FullScreenSuccessModal from '../../components/FullScreenSuccessModal';
 import { UploadCloud, FileText, CheckCircle2, Calendar, Activity } from 'lucide-react';
 
 export default function Exams({ onBack }) {
@@ -13,14 +15,13 @@ export default function Exams({ onBack }) {
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
+  const [modalSucessoAberto, setModalSucessoAberto] = useState(false);
+  const [modalSucessoDados, setModalSucessoDados] = useState(null);
 
   const carregarExames = async () => {
     try {
-      const res = await fetch('/exames', { headers: authHeaders() });
-      if (res.ok) {
-        const data = await res.json();
-        setExames(data);
-      }
+      const data = await apiFetch('/exames');
+      setExames(Array.isArray(data) ? data : []);
     } catch (err) {}
   };
 
@@ -50,21 +51,24 @@ export default function Exams({ onBack }) {
     formData.append('arquivo', arquivo);
 
     try {
-      const res = await fetch('/exames/upload', {
+      const data = await apiFetch('/exames/upload', {
         method: 'POST',
-        headers: authHeaders(),
         body: formData
       });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || 'Falha ao processar exame.');
-      }
       setSucesso('Exame enviado e valores extraídos com sucesso pelo OCR!');
+      setModalSucessoDados({
+        title: 'Laudo Enviado com Sucesso! 📄',
+        subtitle: 'Seu documento médico foi recebido com sucesso e integrado ao seu prontuário digital.',
+        highlightText: `${tipo} • Realizado em ${dataRealizacao}`,
+        orientacao: 'Os parâmetros detectados foram estruturados pelo OCR e estão disponíveis para apoiar suas orientações nutricionais e pré-natais.',
+        confirmButtonText: 'Ver Laudos Cadastrados'
+      });
+      setModalSucessoAberto(true);
       setArquivo(null);
       setObservacoes('');
-      carregarExames();
+      await carregarExames();
     } catch (err) {
-      setErro(err.message);
+      setErro(err.message || 'Falha ao processar exame.');
     } finally {
       setCarregando(false);
     }
@@ -197,6 +201,17 @@ export default function Exams({ onBack }) {
           ))}
         </div>
       )}
+
+      {/* Confirmação de Envio em Tela Inteira */}
+      <FullScreenSuccessModal
+        isOpen={modalSucessoAberto}
+        onClose={() => setModalSucessoAberto(false)}
+        title={modalSucessoDados?.title || 'Laudo Enviado com Sucesso! 📄'}
+        subtitle={modalSucessoDados?.subtitle}
+        highlightText={modalSucessoDados?.highlightText}
+        orientacao={modalSucessoDados?.orientacao}
+        confirmButtonText={modalSucessoDados?.confirmButtonText || 'Continuar'}
+      />
     </div>
   );
 }

@@ -229,11 +229,16 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   bottom: 84px;
   right: 20px;
   z-index: 100;
-  width: 58px;
-  height: 58px;
-  min-width: 58px;
-  min-height: 58px;
-  border-radius: var(--radius-full);
+  width: 58px !important;
+  height: 58px !important;
+  min-width: 58px !important;
+  min-height: 58px !important;
+  max-width: 58px !important;
+  max-height: 58px !important;
+  aspect-ratio: 1 / 1 !important;
+  border-radius: 50% !important;
+  flex-shrink: 0 !important;
+  box-sizing: border-box !important;
   background-color: var(--color-vermelho);
   color: #FFFFFF;
   display: flex;
@@ -243,6 +248,27 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   border: 2px solid #FFFFFF;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Utilitários para garantir que todos os símbolos e ícones sejam círculos perfeitos, nunca ovais */
+.symbol-round, .icon-round, .circle-btn, .avatar-round {
+  aspect-ratio: 1 / 1 !important;
+  border-radius: 50% !important;
+  flex-shrink: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+}
+
+/* Evita quebras indesejadas de texto em elementos de destaque */
+.no-wrap {
+  white-space: nowrap !important;
+}
+
+.text-break-safe {
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .floating-emergency-btn:hover {
@@ -451,4 +477,40 @@ textarea.form-control {
 .horizontal-scroll > .btn {
   flex: 0 0 auto !important;
   flex-shrink: 0 !important;
+}
+
+/* Geometria Estritamente Circular para Símbolos e Botões Redondos (Sem Ovais) */
+.circle-btn,
+.symbol-round,
+.round-icon,
+.btn-round,
+.avatar-round,
+[style*="border-radius: 50%"],
+[style*="borderRadius: '50%'"],
+[style*="borderRadius: '50% !important'"],
+[style*="border-radius: 50% !important"] {
+  aspect-ratio: 1 / 1 !important;
+  border-radius: 50% !important;
+  flex-shrink: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+}
+
+/* Prevenção de quebra feia de texto (Word wrapping limpo em PT-BR) */
+.no-wrap {
+  white-space: nowrap !important;
+}
+
+.text-break-safe {
+  overflow-wrap: break-word !important;
+  word-break: normal !important;
+  hyphens: auto !important;
+}
+
+.header-title-safe {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
 }

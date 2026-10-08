@@ -87,8 +87,10 @@ class ProfissionalRegister(BaseModel):
         return v_upper
 
 class ProfissionalLogin(BaseModel):
-    email: EmailStr = Field(..., max_length=120)
+    email: Optional[EmailStr] = Field(None, max_length=120)
     senha: str = Field(..., max_length=72)
+    crm: Optional[str] = Field(None, max_length=20)
+    crm_uf: Optional[str] = Field(None, max_length=2)
 
     @field_validator("senha")
     @classmethod
@@ -96,6 +98,30 @@ class ProfissionalLogin(BaseModel):
         if len(v.encode("utf-8")) > 72:
             raise ValueError("A senha excede o limite seguro de 72 bytes do algoritmo de criptografia (bcrypt).")
         return v
+
+class LoginUnificadoPayload(BaseModel):
+    email: Optional[EmailStr] = Field(None, max_length=120)
+    senha: str = Field(..., max_length=72)
+    crm: Optional[str] = Field(None, max_length=20)
+    crm_uf: Optional[str] = Field(None, max_length=2)
+    perfil: Optional[str] = Field(None, max_length=20)
+
+    @field_validator("senha")
+    @classmethod
+    def validar_senha_bcrypt(cls, v: str) -> str:
+        if len(v.encode("utf-8")) > 72:
+            raise ValueError("A senha excede o limite seguro de 72 bytes do algoritmo de criptografia (bcrypt).")
+        return v
+
+class CrmValidacaoResponse(BaseModel):
+    valido: bool
+    crm: str
+    uf: str
+    situacao: str
+    mensagem: str
+    nome_medico: Optional[str] = None
+    conselho: Optional[str] = None
+    especialidade: Optional[str] = None
 
 class ParceiroRegister(BaseModel):
     nome: str = Field(..., min_length=2, max_length=100)

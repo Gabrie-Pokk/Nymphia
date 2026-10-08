@@ -208,10 +208,10 @@ def avaliar_altura_uterina(semana: int, au_cm: Optional[float]) -> Optional[Dict
         "detalhe": detalhe
     }
 
-def obter_guia_educativo_antropometria() -> Dict[str, Any]:
+def obter_guia_educativo_antropometria(exames: Optional[List[Any]] = None) -> Dict[str, Any]:
     """
     Retorna guia educativo completo e desmistificador sobre ganho de peso,
-    nutrição e composição corporal durante a gestação.
+    nutrição e composição corporal durante a gestação, personalizado pelos exames laboratoriais.
     """
     return {
         "distribuicao_peso_fetal": [
@@ -288,5 +288,173 @@ def obter_guia_educativo_antropometria() -> Dict[str, Any]:
                 "ganho_esperado": "~0,3 a 0,5 kg por semana",
                 "dicas": "O útero comprime o estômago; coma porções menores mais vezes ao dia. Fique atenta a inchaços súbitos e meça a pressão periodicamente."
             }
-        ]
+        ],
+        "nutricao_personalizada_exames": processar_nutricao_baseada_em_exames(exames)
+    }
+
+def processar_nutricao_baseada_em_exames(exames: Optional[List[Any]] = None) -> Dict[str, Any]:
+    """
+    Cruza exames laboratoriais da gestante (hemograma/ferro, glicemia, vitamina D, B12, TSH)
+    com protocolos nutricionais FEBRASGO e Ministério da Saúde, personalizando o guia alimentar.
+    """
+    valores_encontrados = {}
+
+    if exames:
+        for ex in exames:
+            extraidos = getattr(ex, "valores_extraidos", {}) or {}
+            if not isinstance(extraidos, dict):
+                continue
+
+            # Hemoglobina e Ferritina
+            if "hemoglobina" in extraidos and "hemoglobina" not in valores_encontrados:
+                try: valores_encontrados["hemoglobina"] = float(extraidos["hemoglobina"])
+                except: pass
+            if "ferritina" in extraidos and "ferritina" not in valores_encontrados:
+                try: valores_encontrados["ferritina"] = float(extraidos["ferritina"])
+                except: pass
+
+            # Glicemia de Jejum
+            if "glicemia_jejum_mg_dl" in extraidos and "glicemia" not in valores_encontrados:
+                try: valores_encontrados["glicemia"] = float(extraidos["glicemia_jejum_mg_dl"])
+                except: pass
+            elif "glicemia" in extraidos and "glicemia" not in valores_encontrados:
+                try: valores_encontrados["glicemia"] = float(extraidos["glicemia"])
+                except: pass
+
+            # Vitamina D
+            if "vitamina_d" in extraidos and "vitamina_d" not in valores_encontrados:
+                try: valores_encontrados["vitamina_d"] = float(extraidos["vitamina_d"])
+                except: pass
+
+            # Vitamina B12
+            if "vitamina_b12" in extraidos and "vitamina_b12" not in valores_encontrados:
+                try: valores_encontrados["vitamina_b12"] = float(extraidos["vitamina_b12"])
+                except: pass
+
+            # TSH (Tireoide)
+            if "tsh" in extraidos and "tsh" not in valores_encontrados:
+                try: valores_encontrados["tsh"] = float(extraidos["tsh"])
+                except: pass
+
+    biomarcadores = []
+
+    # 1. Ferro, Ferritina e Hemoglobina
+    hb = valores_encontrados.get("hemoglobina")
+    ferr = valores_encontrados.get("ferritina")
+    if hb is not None or ferr is not None:
+        tem_anemia = (hb is not None and hb < 11.0) or (ferr is not None and ferr < 30.0)
+        status_texto = "Atenção: Indicativo de Anemia Ferropriva / Estoque Baixo de Ferro" if tem_anemia else "Níveis de Hemoglobina e Ferro Adequados"
+        cor = "#C0392B" if tem_anemia else "#27AE60"
+        detalhe_valor = f"Hemoglobina: {hb} g/dL" if hb else ""
+        if ferr: detalhe_valor += f" (Ferritina: {ferr} ng/mL)"
+    else:
+        status_texto = "Prevenção Nutricional de Anemia (Sem exame recente cadastrado)"
+        cor = "#C9A84C"
+        detalhe_valor = "Referência: Hemoglobina >= 11,0 g/dL | Ferritina >= 30 ng/mL"
+
+    biomarcadores.append({
+        "id": "ferro_hemoglobina",
+        "nome": "Ferro, Ferritina & Hemoglobina",
+        "icone": "🩸",
+        "valor_detectado": detalhe_valor,
+        "status": status_texto,
+        "cor": cor,
+        "alimentos_recomendados": [
+            "Carnes vermelhas magras bem cozidas (fonte de ferro heme de alta biodisponibilidade)",
+            "Feijão preto, carioca e lentilhas temperados com folhas de louro",
+            "Folhas verde-escuras: couve refogada, espinafre e agrião",
+            "Sementes de abóbora tostadas e gergelim"
+        ],
+        "sinergia_absorcao": "🍋 Dica de Ouro: Sempre consuma uma fonte de Vitamina C (suco de limão ou laranja, acerola, kiwi) junto da refeição rica em ferro.",
+        "inibidores_evitar": "☕ Evite estritamente café, chá preto/verde, leite e derivados até 2 horas após o almoço ou jantar (cálcio e polifenóis reduzem a absorção de ferro em até 60%)."
+    })
+
+    # 2. Glicemia de Jejum
+    glic = valores_encontrados.get("glicemia")
+    if glic is not None:
+        tem_dg = glic >= 92.0
+        status_texto = "Atenção: Glicemia Limítrofe / Rastreio de Diabetes Gestacional (>= 92 mg/dL)" if tem_dg else "Glicemia de Jejum Normal (< 92 mg/dL)"
+        cor = "#E67E22" if tem_dg else "#27AE60"
+        detalhe_valor = f"{glic} mg/dL (Critério FEBRASGO/IADPSG)"
+    else:
+        status_texto = "Equilíbrio Glicêmico & Curva Glicêmica"
+        cor = "#C9A84C"
+        detalhe_valor = "Meta no 1º, 2º e 3º trimestres: Jejum < 92 mg/dL"
+
+    biomarcadores.append({
+        "id": "glicemia",
+        "nome": "Glicemia & Controle de Carboidratos",
+        "icone": "🥑",
+        "valor_detectado": detalhe_valor,
+        "status": status_texto,
+        "cor": cor,
+        "alimentos_recomendados": [
+            "Fibras solúveis: farelo de aveia, sementes de chia e linhaça dourada",
+            "Saladas cruas no início das refeições para retardar o pico glicêmico",
+            "Carboidratos complexos de baixo índice glicêmico: batata-doce, arroz integral, quinoa",
+            "Proteínas magras em todas as refeições (ovos caipiras, peito de frango, peixes)"
+        ],
+        "sinergia_absorcao": "⏰ Estratégia de Fracionamento: Faça 5 a 6 refeições menores a cada 3 horas para evitar quedas e picos acentuados de insulina.",
+        "inibidores_evitar": "🚫 Evite sucos de fruta concentrados (mesmo 100% fruta, pois perdem a fibra), refrigerantes, doces refinados e pães brancos em jejum."
+    })
+
+    # 3. Vitamina D
+    vit_d = valores_encontrados.get("vitamina_d")
+    if vit_d is not None:
+        baixa_d = vit_d < 30.0
+        status_texto = "Atenção: Vitamina D Subótima (< 30 ng/mL)" if baixa_d else "Vitamina D em Faixa Ideal (>= 30 ng/mL)"
+        cor = "#F39C12" if baixa_d else "#27AE60"
+        detalhe_valor = f"{vit_d} ng/mL"
+    else:
+        status_texto = "Mineralização Óssea & Fixação de Cálcio"
+        cor = "#C9A84C"
+        detalhe_valor = "Meta gestacional recomendada: >= 30 ng/mL"
+
+    biomarcadores.append({
+        "id": "vitamina_d",
+        "nome": "Vitamina D & Saúde Esquelética",
+        "icone": "☀️",
+        "valor_detectado": detalhe_valor,
+        "status": status_texto,
+        "cor": cor,
+        "alimentos_recomendados": [
+            "Ovos caipiras cozidos (consumir com a gema)",
+            "Sardinha fresca e salmão bem cozidos",
+            "Cogumelos frescos expostos ao sol"
+        ],
+        "sinergia_absorcao": "☀️ Banho de Sol Seguro: 15 a 20 minutos de sol matinal antes das 9h com braços e pernas descobertos (sem protetor nas áreas expostas por curto período).",
+        "inibidores_evitar": "⚠️ Não tome megadoses por conta própria; a suplementação em gotas ou cápsulas deve ser ajustada com a dosagem prescrita pelo obstetra."
+    })
+
+    # 4. Hormônios da Tireoide (TSH)
+    tsh = valores_encontrados.get("tsh")
+    if tsh is not None:
+        status_texto = f"TSH: {tsh} mUI/L (Acompanhamento Perinatal)"
+        cor = "#27AE60" if 0.4 <= tsh <= 3.0 else "#E67E22"
+        detalhe_valor = f"{tsh} mUI/L"
+    else:
+        status_texto = "Tireoide & Neurodesenvolvimento Fetal"
+        cor = "#C9A84C"
+        detalhe_valor = "Referência: 1º tri < 2,5 mUI/L | 2º e 3º tri < 3,0 mUI/L"
+
+    biomarcadores.append({
+        "id": "tsh_tireoide",
+        "nome": "Hormônio TSH & Suporte Tireoidiano",
+        "icone": "🦋",
+        "valor_detectado": detalhe_valor,
+        "status": status_texto,
+        "cor": cor,
+        "alimentos_recomendados": [
+            "Sal de cozinha iodado brasileiro (usado com moderação para não elevar a pressão)",
+            "Peixes de água salgada bem cozidos",
+            "Castanha-do-pará (1 unidade ao dia fornece o selênio ideal para a conversão de T4 em T3)"
+        ],
+        "sinergia_absorcao": "💧 Hidratação Plena: A tireoide regula a temperatura corporal e a expansão do volume sanguíneo gestacional.",
+        "inibidores_evitar": "🚫 Evite excesso de soja não fermentada ou couve crua em grandes volumes se tiver hipotireoidismo diagnosticado."
+    })
+
+    return {
+        "tem_exames_cadastrados": len(valores_encontrados) > 0,
+        "valores_identificados": valores_encontrados,
+        "biomarcadores": biomarcadores
     }

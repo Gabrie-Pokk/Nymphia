@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 import { formatDate } from '../../utils/dateUtils';
-import { Sparkles, Heart, Coffee, Moon, Music, CheckCircle2, UserCheck, ShieldAlert, Award } from 'lucide-react';
+import { Sparkles, Heart, Coffee, Moon, Music, CheckCircle2, UserCheck, ShieldAlert, Award, RefreshCw } from 'lucide-react';
+import { apiFetch } from '../../utils/api';
 
 export default function QuizGostos({ onBack }) {
   const { user, authHeaders } = useAuth();
@@ -33,30 +34,34 @@ export default function QuizGostos({ onBack }) {
 
   const [semVinculo, setSemVinculo] = useState(false);
 
-  useEffect(() => {
+  const carregarQuiz = async () => {
+    setCarregando(true);
+    setErro('');
     const endpoint = isParceiro ? '/parceiro/quiz-gostos' : '/quiz-gostos';
-    fetch(endpoint, { headers: authHeaders() })
-      .then(async (res) => {
-        if (!res.ok) {
-          if (res.status === 403 && isParceiro) {
-            setSemVinculo(true);
-          }
-          return null;
-        }
-        return res.json();
-      })
-      .then((data) => {
-        if (data && data.preenchido) {
-          setRespostas((prev) => ({ ...prev, ...data.respostas }));
-          setInfoRespondente({
-            respondido_por: data.respondido_por,
-            nome_respondente: data.nome_respondente,
-            atualizado_em: data.atualizado_em
-          });
-        }
-      })
-      .catch(() => {})
-      .finally(() => setCarregando(false));
+    try {
+      const data = await apiFetch(endpoint);
+      if (data && data.preenchido) {
+        setRespostas((prev) => ({ ...prev, ...data.respostas }));
+        setInfoRespondente({
+          respondido_por: data.respondido_por,
+          nome_respondente: data.nome_respondente,
+          atualizado_em: data.atualizado_em
+        });
+      }
+    } catch (err) {
+      if (err.status === 403 && isParceiro) {
+        setSemVinculo(true);
+      } else {
+        // Se der timeout ou erro de rede, libera a tela para a gestante/parceiro preencher
+        setErro('Aviso: Não foi possível sincronizar respostas anteriores da nuvem no momento. Você pode preencher o formulário normalmente abaixo.');
+      }
+    } finally {
+      setCarregando(false);
+    }
+  };
+
+  useEffect(() => {
+    carregarQuiz();
   }, []);
 
   const handleChange = (campo, valor) => {
@@ -75,24 +80,15 @@ export default function QuizGostos({ onBack }) {
 
     const endpoint = isParceiro ? '/parceiro/quiz-gostos' : '/quiz-gostos';
     try {
-      const res = await fetch(endpoint, {
+      await apiFetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           respostas,
           respondido_por: isParceiro ? 'parceiro' : 'gestante',
           nome_respondente: user?.nome
         })
       });
-
-      let data;
-      try {
-        data = await res.json();
-      } catch {
-        data = {};
-      }
-
-      if (!res.ok) throw new Error(data.detail || 'Falha ao salvar o quiz.');
 
       setSucesso(isParceiro ? 'Quiz respondido com muito carinho pelo parceiro!' : 'Seus gostos e mimos foram salvos com sucesso!');
       setInfoRespondente({
@@ -101,17 +97,31 @@ export default function QuizGostos({ onBack }) {
         atualizado_em: new Date().toISOString()
       });
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
     } catch (err) {
-      setErro(err.message);
+      setErro(err.message || 'Falha ao salvar o quiz.');
     } finally {
       setSalvando(false);
     }
   };
 
   if (carregando) {
-    return <div style={{ padding: '32px', textAlign: 'center' }}>Carregando quiz de mimos...</div>;
+    return (
+      <div style={{ padding: '48px 16px', textAlign: 'center' }}>
+        <p style={{ fontSize: '1rem', color: 'var(--color-vinho)', fontWeight: 600, marginBottom: '8px' }}>
+          🌸 Carregando quiz de mimos...
+        </p>
+        <p className="text-muted" style={{ fontSize: '0.82rem', marginBottom: '16px' }}>
+          Conectando de forma segura ao banco de dados materno...
+        </p>
+        <button
+          onClick={() => setCarregando(false)}
+          className="btn btn-outline"
+          style={{ fontSize: '0.78rem', padding: '6px 12px', borderRadius: 'var(--radius-full)' }}
+        >
+          Preencher Formulário Agora
+        </button>
+      </div>
+    );
   }
 
   return (

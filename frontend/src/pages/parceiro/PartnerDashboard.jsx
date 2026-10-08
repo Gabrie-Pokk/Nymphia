@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { formatDateTime, formatTime } from '../../utils/dateUtils';
+import { apiFetch } from '../../utils/api';
+import FullScreenSuccessModal from '../../components/FullScreenSuccessModal';
 import {
   Heart, AlertTriangle, Calendar, Phone, ShieldCheck, CheckCircle2,
   Info, ArrowRight, Plus, CheckCircle, Trash2, Activity, Clock, Smile,
@@ -38,6 +40,8 @@ export default function PartnerDashboard({ onNavigateEmergency, onNavigateQuiz, 
   const [movimentosBebeCheckin, setMovimentosBebeCheckin] = useState(6);
   const [salvandoCheckin, setSalvandoCheckin] = useState(false);
   const [resultadoCheckin, setResultadoCheckin] = useState(null);
+  const [modalSucessoAberto, setModalSucessoAberto] = useState(false);
+  const [modalSucessoDados, setModalSucessoDados] = useState(null);
 
   // Formulário Rápido de Adição de Evento na Agenda
   const [mostrarFormAgenda, setMostrarFormAgenda] = useState(false);
@@ -130,31 +134,34 @@ export default function PartnerDashboard({ onNavigateEmergency, onNavigateQuiz, 
     setSalvandoCheckin(true);
     setErro('');
     try {
-      const res = await fetch('/parceiro/checkin', {
+      const data = await apiFetch('/parceiro/checkin', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           humor: humorCheckin,
-          descricao: descricaoCheckin,
+          descricao: (descricaoCheckin || '').trim(),
           sintomas: sintomasCheckin,
           movimentos_bebe: movimentosBebeCheckin,
           semana_gestacional: gestanteConectada?.semana_atual || marcos?.semana_atual || 24
         })
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || 'Falha ao registrar check-in.');
-      }
-
       setResultadoCheckin(data);
       setSucesso('Check-in diário registrado com sucesso no prontuário da gestante!');
+      setModalSucessoDados({
+        title: 'Check-in Registrado por Você! 🤝',
+        subtitle: 'O check-in diário foi sincronizado com sucesso no prontuário da gestante.',
+        highlightText: `Humor ${humorCheckin}/5 • ${sintomasCheckin.length > 0 ? sintomasCheckin.length + ' sintoma(s) anotado(s)' : 'Sem sintomas físicos incômodos'}`,
+        orientacao: data?.recomendacao,
+        confirmButtonText: 'Continuar no Painel'
+      });
+      setModalSucessoAberto(true);
       setDescricaoCheckin('');
       setSintomasCheckin([]);
       setMostrarFormCheckin(false);
-      carregarDadosParceiro();
+      await carregarDadosParceiro();
     } catch (err) {
-      setErro(err.message);
+      setErro(err.message || 'Falha ao registrar check-in.');
     } finally {
       setSalvandoCheckin(false);
     }
@@ -900,6 +907,17 @@ export default function PartnerDashboard({ onNavigateEmergency, onNavigateQuiz, 
           </div>
         </div>
       </div>
+
+      {/* Confirmação de Check-in em Tela Inteira */}
+      <FullScreenSuccessModal
+        isOpen={modalSucessoAberto}
+        onClose={() => setModalSucessoAberto(false)}
+        title={modalSucessoDados?.title || 'Check-in Registrado com Sucesso! 🤝'}
+        subtitle={modalSucessoDados?.subtitle}
+        highlightText={modalSucessoDados?.highlightText}
+        orientacao={modalSucessoDados?.orientacao}
+        confirmButtonText={modalSucessoDados?.confirmButtonText || 'Continuar'}
+      />
     </div>
   );
 }

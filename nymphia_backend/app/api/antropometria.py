@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.auth import Gestante
-from app.models.clinical import PerfilClinico, RegistroAntropometrico
+from app.models.clinical import PerfilClinico, RegistroAntropometrico, Exame
 from app.schemas.all_schemas import (
     RegistroAntropometricoCreate,
     RegistroAntropometricoOut,
@@ -100,6 +100,8 @@ def obter_painel_antropometria(
                 "(edema) e requerem aferição da pressão arterial para rastreio de pré-eclâmpsia."
             )
 
+    exames = db.query(Exame).filter(Exame.gestante_id == gestante.id).all()
+
     return PainelAntropometriaResponse(
         altura_cm=altura_cm,
         peso_pre_gestacional=peso_pre,
@@ -112,7 +114,7 @@ def obter_painel_antropometria(
         avaliacao_atalah=avaliacao_atalah,
         avaliacao_altura_uterina=avaliacao_au,
         historico_registros=registros,
-        guia_educativo=obter_guia_educativo_antropometria(),
+        guia_educativo=obter_guia_educativo_antropometria(exames=exames),
         alerta_ganho_subito=alerta_ganho_subito,
         mensagem_alerta=mensagem_alerta
     )

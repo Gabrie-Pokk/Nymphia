@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
-import { FileText, CheckCircle, ShieldCheck, Heart, User, Calendar, Syringe } from 'lucide-react';
+import TriageDisclaimer from '../../components/TriageDisclaimer';
+import { FileText, CheckCircle, ShieldCheck, Heart, User, Calendar, Syringe, AlertTriangle } from 'lucide-react';
 
 const VACINAS_PADRAO = [
   { nome: "dTpa (Difteria, Tétano e Coqueluche)", periodo: "A partir da 20ª semana", status: "Recomendada" },
@@ -171,6 +172,35 @@ export default function PrenatalCard({ onBack }) {
           </div>
         )}
       </div>
+
+      {/* Avaliação Preditiva Obstétrica & Disclaimer Legal CFM */}
+      {riscos && (
+        <div className="card" style={{ border: '1px solid var(--color-border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ShieldCheck size={18} color="var(--color-vinho)" />
+              <h3 style={{ fontSize: '1rem', margin: 0 }}>Estratificação Preditiva SUS</h3>
+            </div>
+            <span
+              className={
+                riscos.nivel_risco_global === 'ALTO'
+                  ? 'badge-vinho'
+                  : riscos.nivel_risco_global === 'MEDIO'
+                  ? 'badge-gold'
+                  : 'badge-rosa'
+              }
+            >
+              Risco {riscos.nivel_risco_global} ({Math.round(riscos.score_risco_global * 100)}%)
+            </span>
+          </div>
+
+          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '12px' }}>
+            Ensemble de 6 modelos Random Forest treinados sobre microdados populacionais SINASC e SIH/SUS.
+          </p>
+
+          <TriageDisclaimer customText={riscos.aviso_legal} />
+        </div>
+      )}
     </div>
   );
 }

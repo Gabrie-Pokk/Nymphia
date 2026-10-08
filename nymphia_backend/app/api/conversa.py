@@ -4,7 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.auth import Gestante
+from app.models.auth import Gestante, Profissional
+from app.models.relations import Vinculo
+from app.models.governance import ObservacaoProfissional
 from app.models.interaction import Mensagem
 from app.schemas.all_schemas import (
     ConversaEnviarRequest, ConversaResponse, MensagemOut
@@ -55,12 +57,38 @@ def enviar_mensagem_chat(
         for m in historico_db
     ]
 
+    # 2.5 Busca médico obstetra vinculado e anotações clínicas recentes
+    dados_medico = None
+    vinculo_ativo = (
+        db.query(Vinculo)
+        .filter(Vinculo.gestante_id == gestante.id, Vinculo.status == "ativo")
+        .first()
+    )
+    if vinculo_ativo:
+        prof = db.query(Profissional).filter(Profissional.id == vinculo_ativo.profissional_id).first()
+        if prof:
+            obs_clinicas = (
+                db.query(ObservacaoProfissional)
+                .filter(ObservacaoProfissional.gestante_id == gestante.id)
+                .order_by(ObservacaoProfissional.criado_em.desc())
+                .limit(4)
+                .all()
+            )
+            dados_medico = {
+                "nome": prof.nome,
+                "registro_tipo": prof.registro_tipo,
+                "registro_numero": prof.registro_numero,
+                "registro_uf": prof.registro_uf,
+                "observacoes_recentes": [o.observacao for o in obs_clinicas]
+            }
+
     # 3. Gera resposta conversacional real através do serviço clínico
     resposta_texto, is_alerta, fonte = generate_chat_response(
         message=texto,
         recusa_ia=gestante.recusa_ia,
         historico=historico_formatado,
-        nome_gestante=gestante.nome
+        nome_gestante=gestante.nome,
+        dados_medico=dados_medico
     )
 
     # 3. Salva a resposta da IA

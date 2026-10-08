@@ -6,3 +6,6 @@
 *.onnx binary
 *.db binary
 *.sqlite3 binary
+
+*.pdf binary
+*.png binary

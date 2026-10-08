@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nymphia — Documentação Técnica & Arquitetura Oficial (v2.3.0)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --vinho: #5C1A2A;
+      --rosa: #C2185B;
+      --dourado: #C9A84C;
+      --rosa-claro: #FDF0F2;
+      --bg-cinza: #F8F9FA;
+      --borda: #E5D4D8;
+      --texto-primario: #1F2937;
+      --texto-secundario: #4B5563;
+      --radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      color: var(--texto-primario);
+      background-color: #FDFDFE;
+      line-height: 1.65;
+      padding: 32px 16px;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      background: #FFFFFF;
+      padding: 48px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(92, 26, 42, 0.06);
+      border: 1px solid var(--borda);
+    }
+
+    .doc-header {
+      border-bottom: 2px solid var(--vinho);
+      padding-bottom: 24px;
+      margin-bottom: 32px;
+    }
+
+    .doc-logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .doc-logo svg {
+      width: 40px;
+      height: 40px;
+      fill: var(--vinho);
+    }
+
+    .doc-logo span {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--vinho);
+      letter-spacing: -0.5px;
+    }
+
+    h1.doc-title {
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: var(--vinho);
+      line-height: 1.25;
+      margin-bottom: 8px;
+    }
+
+    .doc-subtitle {
+      font-size: 1.05rem;
+      color: var(--rosa);
+      font-weight: 500;
+      margin-bottom: 16px;
+    }
+
+    .metadata-card {
+      background: var(--rosa-claro);
+      border-left: 4px solid var(--rosa);
+      padding: 14px 18px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      color: var(--texto-secundario);
+      margin-bottom: 24px;
+    }
+
+    .metadata-card strong {
+      color: var(--vinho);
+    }
+
+    .metadata-card a {
+      color: var(--rosa);
+      text-decoration: none;
+      word-break: break-all;
+    }
+
+    .metadata-card a:hover {
+      text-decoration: underline;
+    }
+
+    h2 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--vinho);
+      margin-top: 36px;
+      margin-bottom: 14px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--borda);
+    }
+
+    h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--rosa);
+      margin-top: 20px;
+      margin-bottom: 8px;
+    }
+
+    p {
+      font-size: 0.95rem;
+      color: var(--texto-secundario);
+      margin-bottom: 14px;
+    }
+
+    ul, ol {
+      margin-left: 24px;
+      margin-bottom: 16px;
+      font-size: 0.93rem;
+      color: var(--texto-secundario);
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    hr {
+      border: 0;
+      height: 1px;
+      background: var(--borda);
+      margin: 28px 0;
+    }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.86rem;
+      background: #F3ECEE;
+      color: var(--vinho);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    pre.code-block {
+      background: #23272E;
+      color: #E6EDF3;
+      padding: 16px 20px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      line-height: 1.45;
+      margin: 16px 0;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+    }
+
+    pre.code-block code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+      font-weight: 400;
+    }
+
+    .callout {
+      background: #FFF9FA;
+      border: 1px solid var(--borda);
+      border-left: 4px solid var(--rosa);
+      padding: 14px 18px;
+      border-radius: 6px;
+      margin: 18px 0;
+    }
+
+    .callout .badge {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--rosa);
+      margin-bottom: 4px;
+    }
+
+    .callout p {
+      margin-bottom: 0;
+      font-size: 0.92rem;
+      color: var(--vinho);
+      font-style: italic;
+    }
+
+    .table-responsive {
+      overflow-x: auto;
+      margin: 20px 0;
+      border: 1px solid var(--borda);
+      border-radius: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+
+    th {
+      background: var(--vinho);
+      color: #FFFFFF;
+      font-weight: 600;
+      text-align: left;
+      padding: 10px 14px;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--borda);
+      color: var(--texto-secundario);
+      vertical-align: top;
+    }
+
+    tr:nth-child(even) {
+      background: #FAF7F8;
+    }
+
+    tr:hover {
+      background: #F5EBEF;
+    }
+
+    td.code-col {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--vinho);
+      font-weight: 600;
+      font-size: 0.84rem;
+    }
+
+    .action-bar {
+      position: sticky;
+      top: 16px;
+      background: #FFFFFF;
+      padding: 12px 18px;
+      border-radius: 30px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+      border: 1px solid var(--borda);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      z-index: 100;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--rosa);
+      color: #FFFFFF;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s ease;
+    }
+
+    .btn:hover {
+      background: #A0134B;
+    }
+
+    .btn-secondary {
+      background: #F3ECEE;
+      color: var(--vinho);
+    }
+
+    .btn-secondary:hover {
+      background: #E8D9DE;
+    }
+
+    .mermaid-wrapper {
+      background: #FFFFFF;
+      border: 1px solid var(--borda);
+      border-radius: 8px;
+      padding: 24px 16px;
+      margin: 20px 0;
+      overflow-x: auto;
+      text-align: center;
+      box-shadow: 0 2px 10px rgba(92, 26, 42, 0.04);
+    }
+
+    .mermaid-wrapper .mermaid {
+      display: inline-block;
+      text-align: left;
+    }
+
+    @media print {
+      body {
+        padding: 0;
+        background: #FFFFFF;
+      }
+      .container {
+        border: none;
+        box-shadow: none;
+        padding: 0;
+        max-width: 100%;
+      }
+      .action-bar {
+        display: none;
+      }
+      h2 {
+        page-break-before: auto;
+      }
+      pre.code-block, table, .mermaid-wrapper {
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      if (window.mermaid) {
+        mermaid.initialize({
+          startOnLoad: true,
+          theme: 'base',
+          themeVariables: {
+            primaryColor: '#FDF0F2',
+            primaryTextColor: '#5C1A2A',
+            primaryBorderColor: '#C2185B',
+            lineColor: '#C2185B',
+            secondaryColor: '#FFF8E7',
+            tertiaryColor: '#FFFFFF',
+            fontFamily: 'Inter, sans-serif',
+            fontSize: '13px'
+          }
+        });
+      }
+    });
+  </script>
+</head>
+<body>
+  <div class="container">
+    <div class="action-bar">
+      <div style="font-weight: 700; color: var(--vinho); font-size: 0.9rem;">
+        Plataforma Nymphia v2.3.0
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-secondary" onclick="window.print()">🖨️ Imprimir / Salvar em PDF</button>
+        <a class="btn" href="DOCUMENTACAO_SISTEMA_NYMPHIA.pdf" download="DOCUMENTACAO_SISTEMA_NYMPHIA.pdf">📥 Baixar PDF Direto</a>
+      </div>
+    </div>
+
+    <div class="doc-header">
+      <div class="doc-logo">
+        <svg viewBox="0 0 100 100">
+          <path d="M50 15 C45 35 25 45 15 50 C35 55 45 75 50 85 C55 75 75 55 85 50 C75 45 55 35 50 15 Z" fill="#5C1A2A"/>
+          <path d="M50 28 C46 40 32 46 25 50 C38 54 46 68 50 72 C54 68 62 54 75 50 C68 46 54 40 50 28 Z" fill="#C2185B"/>
+          <circle cx="50" cy="50" r="7" fill="#C9A84C"/>
+        </svg>
+        <span>Nymphia</span>
+      </div>
+      <div class="metadata-card">
+        <strong>Status:</strong> Produção Cloud Ready (2027 Ready) • <strong>Slogan:</strong> "Cada batimento importa."<br/>
+        <strong>Diretrizes Clínicas:</strong> Ministério da Saúde, FEBRASGO, ACOG, CDC e Resolução CFM 2.454/2026<br/>
+        <strong>Ambiente em Nuvem:</strong> <a href="https://nymphia-plataforma-ia.onrender.com" target="_blank">https://nymphia-plataforma-ia.onrender.com</a><br/>
+        <strong>Repositório GitHub:</strong> <a href="https://github.com/Gabrie-Pokk/Nymphia.git" target="_blank">https://github.com/Gabrie-Pokk/Nymphia.git</a>
+      </div>
+    </div>
+
+    <div class="doc-content">
+      <h1 class="doc-title">Documentação Técnica e de Arquitetura da Plataforma Nymphia</h1>
+<div class="callout"><span class="badge">Aviso Clínico / Nota</span><p><strong>Versão da Plataforma</strong>: 2.3.0 (Produção Cloud Ready & 2027 Ready)</p></div>
+<div class="callout"><span class="badge">Aviso Clínico / Nota</span><p><strong>Slogan Oficial</strong>: *"Cada batimento importa."*</p></div>
+<div class="callout"><span class="badge">Aviso Clínico / Nota</span><p><strong>Diretrizes e Protocolos Clínicos</strong>: Ministério da Saúde do Brasil, FEBRASGO, ACOG (American College of Obstetricians and Gynecologists), CDC e Resoluções CFM 2.454/2026.</p></div>
+<div class="callout"><span class="badge">Aviso Clínico / Nota</span><p><strong>Repositório Oficial</strong>: <a href="https://github.com/Gabrie-Pokk/Nymphia.git" target="_blank"><code>https://github.com/Gabrie-Pokk/Nymphia.git</code></a></p></div>
+<div class="callout"><span class="badge">Aviso Clínico / Nota</span><p><strong>Ambiente de Produção (Render)</strong>: <a href="https://nymphia-plataforma-ia.onrender.com" target="_blank"><code>https://nymphia-plataforma-ia.onrender.com</code></a></p></div>
+<hr/>
+<h2 id="1-vis-o-geral-e-identidade-do-projeto">1. Visão Geral e Identidade do Projeto</h2>
+<p>O <strong>Nymphia</strong> é um ecossistema digital e startup de saúde perinatal focada no acompanhamento contínuo da gestante, na prevenção ativa de desfechos obstétricos adversos e na conexão em tempo real entre a gestante, seu médico obstetra e seu parceiro/rede de apoio.</p>
+<p>A plataforma unifica prontuário eletrônico, monitoramento domiciliar de sinais vitais, avaliação postural biomecânica por visão computacional, triagem neural de sintomas/emoções e predições epidemiológicas populacionais, integrando três perfis interdependentes:</p>
+<ol>
+<li><strong>Gestante</strong>: Protagonista do cuidado, diário de sintomas, curvas antropométricas, visão corporal, caderneta de vacinas e botão de emergência SAMU 192.</li>
+<li><strong>Profissional de Saúde (Obstetra/Enfermeira)</strong>: Painel clínico de triagem com priorização por risco, prontuário detalhado com curvas evolutivas e modelos preditivos sob conformidade CFM/CDC.</li>
+<li><strong>Parceiro / Rede de Apoio</strong>: Co-participação ativa, check-in diário em nome da gestante, gestão completa da agenda de consultas/exames, alertas de emergência em tempo real e quiz de confortos.</li>
+</ol>
+<h3>1.1. Identidade Visual e Design System (Paleta 60-30-10)</h3>
+<p>A interface foi projetada rigorosamente com base nas diretrizes <strong>WCAG AA</strong> de acessibilidade para gestantes em momentos de fadiga, estresse ou mobilidade reduzida:</p>
+<ul>
+<li><strong>60% Âncora da Marca</strong>: Vinho Profundo (<code>#5C1A2A</code>) — cabeçalhos, títulos estruturais, cartões nobres e tipografia primária.</li>
+<li><strong>30% Ação e Direcionamento</strong>: Rosa Materno (<code>#C2185B</code>) — botões primários de ação, badges interativos e destaque de navegação.</li>
+<li><strong>10% Acento e Sofisticação</strong>: Dourado Suave (<code>#C9A84C</code>) — marcos gestacionais, badges de certificação e orientações especiais.</li>
+<li><strong>Superfícies de Respiro</strong>: Rosa Claro Eutrófico (<code>#FDF0F2</code>) e Branco Puro (<code>#FFFFFF</code>) — leitura limpa sem poluição visual.</li>
+<li><strong>Uso Exclusivo de Emergência</strong>: Vermelho Clínico (<code>#C0392B</code>) — restrito ao Botão Flutuante do SAMU 192 e sinais de contraindicação médica absoluta.</li>
+<li><strong>Tipografia</strong>: Família *Inter / Sans-serif estrito*, com touch targets mínimos de 44x44px em todos os controles móveis.</li>
+</ul>
+<hr/>
+<h2 id="2-arquitetura-tecnol-gica-e-topologia-de-nuvem">2. Arquitetura Tecnológica e Topologia de Nuvem</h2>
+<div class="mermaid-wrapper"><div class="mermaid">
+graph TD
+    Client[Dispositivo Móvel / Desktop - PWA] -->|HTTPS / WSS| CDN[Render Static CDN]
+    CDN --> Frontend[React 18 + Vite SPA / PWA]
+    Frontend -->|WebAssembly / Local GPU| MediaPipe[Google MediaPipe Pose Edge AI]
+    Frontend -->|Web Speech API| AudioSynth[Voz Sintetizada Nymphia PT-BR]
+    Frontend -->|REST API + Bearer JWT| Backend[FastAPI Backend - Python 3.10]
+    Backend --> DB[(Banco Relacional - SQLite Local / PostgreSQL Nuvem)]
+    Backend --> GeminiAPI[Google Gemini 2.5 / 1.5 Flash API]
+    Backend --> BERTimbau[BERTimbau NLP Classifier PT-BR - INT8 Quantized]
+    Backend --> MLModels[Scikit-Learn Random Forest x6 & Isolation Forest]
+    Backend --> RulesEngine[Motor Determinístico FEBRASGO / ACOG / MS]
+    Backend --> GDrive[Pipeline de Download e Quantização Automática]
+</div></div>
+<h3>2.1. Frontend (Cliente PWA)</h3>
+<ul>
+<li><strong>Framework</strong>: React 18 com Vite 5.</li>
+<li><strong>PWA & Capacidade Offline</strong>: Service Worker ativo com manifesto (<code>manifest.json</code>) garantindo que a tela de socorro (<code>/emergencia</code>), contatos do SAMU 192 e rota da maternidade de referência abram instantaneamente mesmo sem sinal de internet ou rede celular.</li>
+<li><strong>Design System</strong>: Vanilla CSS com Design Tokens (<code>index.css</code>), eliminando sobrecargas de frameworks pesados e mantendo LCP < 1.5s.</li>
+<li><strong>Ícones</strong>: <code>lucide-react</code>.</li>
+<li><strong>Áudio e Biomecânica</strong>: Web Speech Synthesis API configurável (<code>VoiceSettingsModal.jsx</code>) para orientações posturais e de acolhimento sem necessidade de fixar os olhos na tela durante os movimentos.</li>
+<li><strong>Alternador Rápido de Perfil</strong>: Switcher instantâneo no header (<code>Ir p/ Parceiro</code> e <code>Ir p/ Gestante</code>) para simulações e homologações sem necessidade de logout.</li>
+</ul>
+<h3>2.2. Backend (API REST)</h3>
+<ul>
+<li><strong>Framework</strong>: FastAPI (Python 3.10) com arquitetura assíncrona.</li>
+<li><strong>ORM e Persistência</strong>: SQLAlchemy 2.0 com suporte nativo a SQLite local e PostgreSQL em produção (<code>psycopg2-binary</code> com pool de conexões recicladas e <code>pool_pre_ping</code>).</li>
+<li><strong>Auto-Migração Idempotente</strong>: Rotina <code>executar_migracoes_automaticas()</code> no startup que adiciona automaticamente novas colunas (<code>altura_cm</code>, <code>peso_pre_gestacional</code>, <code>maternidade_latitude</code>, <code>maternidade_longitude</code>, <code>dpp_editada_manualmente</code>) sem necessidade de migrações manuais externas.</li>
+<li><strong>Validação</strong>: Pydantic v2 com esquemas estritos, normalização e limites máximos de caracteres.</li>
+<li><strong>Segurança e Criptografia</strong>: Autenticação stateless via Bearer JWT (HMAC-SHA256), hashing de senhas com BCrypt e proteção de dados em repouso.</li>
+<li><strong>Total de Endpoints</strong>: <strong>95+ rotas REST documentadas</strong> estruturadas por módulos de domínio clínico e governança.</li>
+</ul>
+<h3>2.3. Fluxogramas de Funcionamento e Arquitetura Operacional</h3>
+<p>#### Fluxograma 1: Fluxo Geral de Funcionamento e Jornada do Cuidado (End-to-End)</p>
+<div class="mermaid-wrapper"><div class="mermaid">
+flowchart TD
+    %% Atores
+    G[Gestante / Paciente]
+    P[Parceiro / Rede de Apoio]
+    M[Médico Obstetra / Equipe Clínica]
+
+    %% 1. Acesso
+    subgraph Acesso ["1. Acesso & Autenticação"]
+        Login[POST /auth/login - Login Unificado Inteligente]
+        EmergenciaDirect[Rota Pública /emergencia - SAMU 192 Offline First]
+    end
+
+    G -->|Credenciais| Login
+    P -->|Credenciais| Login
+    M -->|Credenciais| Login
+    Login -->|Perfil: Gestante| HomeG[GestanteHome - Painel da Gestante]
+    Login -->|Perfil: Parceiro| HomeP[PartnerDashboard - Painel do Parceiro]
+    Login -->|Perfil: Profissional| HomeM[DoctorDashboard - Triagem Clínica]
+
+    %% 2. Rotina da Gestante
+    subgraph GestanteRotina ["2. Rotina Diária & Monitoramento Contínuo"]
+        CheckinG[DailyCheckin: Humor, Sintomas, Movimentos Fetais]
+        Antropo[Antropometria: Curva Atalah IMC, Altura Uterina, Metas IOM]
+        BodyPose[BodyVision: MediaPipe 33 Landmarks + Voz Sintetizada]
+        AgendaG[Agenda de Consultas e Exames]
+        ChatG[AiChat: Dúvidas de Rotina, Mitos e Acolhimento]
+    end
+
+    HomeG --> CheckinG
+    HomeG --> Antropo
+    HomeG --> BodyPose
+    HomeG --> AgendaG
+    HomeG --> ChatG
+
+    %% 3. Apoio do Parceiro
+    subgraph ParceiroColeta ["3. Co-participação Ativa do Parceiro"]
+        CheckinP[POST /parceiro/checkin: Check-in por Procuração em Nome da Gestante]
+        AgendaP[Gerenciamento da Agenda: Criar / Concluir / Excluir Compromissos]
+        QuizP[Quiz de Gostos & Mimos da Gestante]
+        EmergPoll[Polling 8s: Alerta de Emergência SAMU Ativo]
+    end
+
+    HomeP --> CheckinP
+    HomeP --> AgendaP
+    HomeP --> QuizP
+    HomeP --> EmergPoll
+
+    CheckinP -.->|Registrado pelo Parceiro com Tag de Autoria| CheckinG
+    AgendaP -.->|Sincronizado na Nuvem| AgendaG
+
+    %% 4. Pipeline de Decisão de IA
+    subgraph PipelineIA ["4. Pipeline de IA em Camadas & Guardrails Determinísticos"]
+        RegrasFEBRASGO{Motor Determinístico FEBRASGO / Sinais de Alarme?}
+        BERTimbau[BERTimbau NLP INT8: Análise de 6 Emoções e Queixas]
+        RandomForest[Ensemble Random Forest x6 + Isolation Forest DataSUS]
+        Gemini[Google Gemini 2.5/1.5 Flash: Resposta Humanizada]
+        AlertaSAMU[PROTOCOLO DE URGÊNCIA: SAMU 192 + Maternidade]
+    end
+
+    CheckinG --> RegrasFEBRASGO
+    ChatG --> RegrasFEBRASGO
+
+    RegrasFEBRASGO -->|SIM: Sangramento / Cefaleia / PA >= 140x90 / Mov. Fetal Ausente| AlertaSAMU
+    RegrasFEBRASGO -->|NÃO: Estável| BERTimbau
+    BERTimbau --> RandomForest
+    RandomForest --> Gemini
+
+    AlertaSAMU ==>|Notificação em Tempo Real| EmergPoll
+    AlertaSAMU ==>|Bandeira Vermelha no Prontuário| HomeM
+
+    %% 5. Prontuário Médico
+    subgraph ProntuarioMedico ["5. Prontuário Clínico & Governança Ética"]
+        PatientRec[PatientRecord: Curvas Evolutivas, 6 Probabilidades e Condutas]
+        AuditoriaLGPD[Trilha de Auditoria LGPD e CFM 2.454/2026]
+    end
+
+    HomeM --> PatientRec
+    PatientRec --> AuditoriaLGPD
+</div></div>
+<p>#### Fluxograma 2: Pipeline de Decisão Clínica e Degradação Graciosa (Motor de IA e Regras)</p>
+<div class="mermaid-wrapper"><div class="mermaid">
+flowchart TD
+    In[Entrada: Texto do Check-in, Sintomas Marcados ou Mensagem do Chat] --> Norm[Normalização Fonética e Léxica PT-BR]
+    
+    Norm --> Stage1{1. Triagem de Emergência Determinística FEBRASGO}
+    
+    Stage1 -->|Grave / Perigo Obstétrico| UrgOut[EMERGÊNCIA MÉDICA: Disparo SAMU 192 + Orientação Rápida + Bloqueio de Exercícios]
+    
+    Stage1 -->|Sem Sinais de Alarme| Stage2{2. Consentimento de IA Ativo? CFM 2.454/2026}
+    
+    Stage2 -->|Recusou IA| RulesOnly[Motor Determinístico Exclusivo MS/FEBRASGO: Diretrizes Oficiais Sem Predições Neurais]
+    
+    Stage2 -->|Autorizou IA| Stage3[3. Classificação Emocional e Sintomas BERTimbau INT8]
+    
+    Stage3 --> BERTCheck{BERTimbau Disponível em Memória?}
+    BERTCheck -->|Sim: Ativo INT8 ~180MB| CatBERT[Classificação 6 Classes: Ansiedade, Medo, Tristeza, Sobrecarga, Bem-Estar, Físico]
+    BERTCheck -->|Não: Fallback de Memória <512MB| CatRegex[Classificador Heurístico e Dicionário Clínico Nymphia]
+    
+    CatBERT --> Stage4[4. Inferência nos Modelos Preditivos Random Forest x6 & Isolation Forest]
+    CatRegex --> Stage4
+    
+    Stage4 --> OutRF[Cálculo de Probabilidades: Pré-Eclâmpsia, DMG, Eclâmpsia, ITU, Malformação, Bem-Estar Fetal]
+    
+    OutRF --> Stage5{Origem da Requisição?}
+    Stage5 -->|Chat de Acolhimento| GeminiLLM[Google Gemini 2.5/1.5 Flash com Prompt Clínico e Temperatura 0.4]
+    Stage5 -->|Check-in Diário| RecCard[Cartão de Cuidado Personalizado + Dicas de Alívio e Nutrição]
+    Stage5 -->|Prontuário Médico| MedView[Dashboard Clínico com Aviso Legal CFM/CDC + Histórico Antropométrico]
+</div></div>
+<p>#### Fluxograma 3: Biomecânica Postural Edge AI (Google MediaPipe Pose)</p>
+<div class="mermaid-wrapper"><div class="mermaid">
+flowchart TD
+    VideoCam[Câmera do Smartphone / Notebook] --> EdgeProcess[Processamento 100% Local no Navegador via WebAssembly / GPU]
+    
+    EdgeProcess --> Landmarks[Rastreamento de 33 Marcos Anatômicos 3D a 30+ FPS]
+    
+    EdgeProcess -.->|PRIVACIDADE ABSOLUTA| CloudBlocked[(NENHUM FRAME ENVIADO PARA A NUVEM)]
+    
+    Landmarks --> CheckSemana{Idade Gestacional >= 16 semanas?}
+    CheckSemana -->|Sim| VetoSupino[Veto a Decúbito Dorsal / Barriga para Cima - Prevenção de Compressão da Veia Cava]
+    CheckSemana -->|Não| PermitePos[Posição Permitida]
+    
+    Landmarks --> CheckPubica{Gestante relatou Dor Púbica ou SPD?}
+    CheckPubica -->|Sim| VetoPassada[Veto a Afundos e Passadas Assimétricas]
+    CheckPubica -->|Não| PermiteExerc[Exercício Liberado]
+    
+    VetoSupino --> FeedbackVoz[Sintetizador de Voz Web Speech Nymphia PT-BR]
+    VetoPassada --> FeedbackVoz
+    PermitePos --> CalcAngulos[Cálculo em Tempo Real: Lordose Lombar, Báscula Pélvica, Amplitude de Agachamento]
+    PermiteExerc --> CalcAngulos
+    
+    CalcAngulos --> FeedbackVoz
+    FeedbackVoz --> AudioOrientacao[Orientação Sonora Imediata para Correção da Postura]
+</div></div>
+<p>#### Fluxograma 4: Tríade de Conexão Colaborativa (Gestante - Parceiro - Obstetra)</p>
+<div class="mermaid-wrapper"><div class="mermaid">
+flowchart LR
+    subgraph GestanteHub ["NÚCLEO DO CUIDADO: GESTANTE"]
+        G_ID[Perfil Clínico e Caderneta Digital]
+        G_TokenM[Gera/Usa Código para Médico]
+        G_TokenP[Gera Código para Parceiro]
+    end
+
+    subgraph ParceiroHub ["REDE DE APOIO: PARCEIRO"]
+        P_Vinculo[Vínculo Ativo com Gestante]
+        P_Action1[Check-in pelo Parceiro com Tag de Autoria]
+        P_Action2[Gestão Completa da Agenda: Adicionar/Concluir/Excluir]
+        P_Action3[Recebe Alerta SAMU 192 em Tempo Real]
+        P_Action4[Quiz de Gostos e Mimos Compartilhado]
+    end
+
+    subgraph MedicoHub ["SUPERVISÃO TÉCNICA: OBSTETRA"]
+        M_Vinculo[Painel de Gestantes Vinculadas]
+        M_Triagem[Ordenação por Prioridade de Urgência 30d]
+        M_Prontuario[Prontuário com Curva Atalah, Altura Uterina e 6 Modelos RF]
+        M_Auditoria[Trilha de Acessos Auditáveis LGPD]
+    end
+
+    G_TokenP -->|Código PARC-XXXXX| P_Vinculo
+    G_TokenM -->|Código 8 caracteres| M_Vinculo
+
+    P_Action1 -->|Alimenta Diário com Auditoria| G_ID
+    P_Action2 <-->|Sincronia Bidirecional da Agenda| G_ID
+    G_ID -->|Disparo de Emergência| P_Action3
+    G_ID <-->|Sincronia de Preferências| P_Action4
+
+    G_ID -->|Dados Evolutivos| M_Triagem
+    M_Triagem --> M_Prontuario
+    M_Prontuario --> M_Auditoria
+</div></div>
+<hr/>
+<h2 id="3-especifica-o-das-intelig-ncias-artificiais">3. Especificação das Inteligências Artificiais</h2>
+<p>A Nymphia opera com uma arquitetura de IA em camadas, garantindo que modelos generativos e preditivos nunca tomem decisões médicas isoladas sem a supervisão de guardrails clínicos rígidos:</p>
+<div class="table-responsive"><table>
+<thead><tr>
+<th>Camada</th>
+<th>Tecnologia / Modelo</th>
+<th>Onde Roda</th>
+<th>Função e Métricas de Validação</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>Visão Computacional & Biomecânica</strong></td>
+<td><strong>Google MediaPipe Pose</strong></td>
+<td><strong>Edge AI</strong> (Navegador via WebAssembly)</td>
+<td>Rastreia 33 marcos anatômicos tridimensionais a 30+ FPS. Avalia lordose lombar, alinhamento espinhal, báscula pélvica e amplitude de agachamento. <strong>Privacidade Absoluta</strong>: Nenhum frame de vídeo é enviado para a nuvem.</td>
+</tr>
+<tr>
+<td><strong>Acolhimento & Dúvidas Maternas</strong></td>
+<td class="code-col"><strong>Google Gemini (2.5 Flash / 1.5 Flash)</strong></td>
+<td>Backend Nymphia (<code>ai_chat_service.py</code>)</td>
+<td>Assistente maternal empático com temperatura controlada (0.4) para responder dúvidas de rotina, sono, mitos e preparativos. Proibido de emitir diagnósticos.</td>
+</tr>
+<tr>
+<td><strong>Classificação Neural de Sentimentos</strong></td>
+<td><strong>BERTimbau Fine-Tuned (PT-BR)</strong></td>
+<td>Backend Nymphia (<code>ai_text_service.py</code>)</td>
+<td>Classificador neural de texto multi-rótulo em 6 categorias clínicas. <strong>ROC-AUC: 0.9725</strong> / <strong>F1-Macro: 0.8165</strong>. Quantizado em INT8 para rodar leve na CPU com ~180MB RAM.</td>
+</tr>
+<tr>
+<td><strong>Rastreio Epidemiológico de Risco</strong></td>
+<td><strong>Random Forest Ensemble (x6)</strong></td>
+<td>Backend Nymphia (<code>ai_risk_service.py</code>)</td>
+<td>Modelos supervisionados calibrados com dados do SINASC e SIH (DataSUS) para 6 condições obstétricas críticas.</td>
+</tr>
+<tr>
+<td><strong>Detecção de Atipicidade Clínica</strong></td>
+<td><strong>Isolation Forest (Não-Supervisionado)</strong></td>
+<td>Backend Nymphia (<code>ai_risk_service.py</code>)</td>
+<td>Detecta combinações atípicas multivariadas de sinais vitais e histórico materno que fogem aos padrões habituais.</td>
+</tr>
+<tr>
+<td><strong>Guardrails Médicos Invioláveis</strong></td>
+<td class="code-col"><strong>Motor de Regras FEBRASGO / ACOG / MS</strong></td>
+<td>Backend Nymphia (<code>clinical_movement_service.py</code>, <code>rules_engine.py</code>)</td>
+<td>Conjunto de regras determinísticas que sobrepõem e bloqueiam qualquer recomendação da IA caso a paciente apresente sintomas de alarme.</td>
+</tr>
+<tr>
+<td><strong>Moderação Segura de Comunidade</strong></td>
+<td><strong>Filtro Léxico e Heurístico Clínico</strong></td>
+<td>Backend Nymphia (<code>moderation_service.py</code>)</td>
+<td>Bloqueio ativo de ofensas, toxicidade e automedicação perigosa (prescrição de doses ou anti-inflamatórios).</td>
+</tr>
+</tbody></table></div>
+<hr/>
+<h2 id="4-o-modelo-bertimbau-treinamento-entrega-e-otimiza-o-int8">4. O Modelo BERTimbau: Treinamento, Entrega e Otimização INT8</h2>
+<h3>4.1. Dataset e Treinamento (Google Colab)</h3>
+<p>O modelo neural da Nymphia foi ajustado a partir do <code>neuralmind/bert-base-portuguese-cased</code> em GPU T4 com uma base curada de 434 exemplos sintéticos contextualizados na linguagem coloquial da gestante brasileira (<code>nymphia_checkins_sinteticos.csv</code>).</p>
+<p>O modelo categoriza os relatos em 6 classes clínicas:</p>
+<ol>
+<li><code>ansiedade</code> (F1: 0.7500)</li>
+<li><code>tristeza_desanimo</code> (F1: 0.8000)</li>
+<li><code>estresse_sobrecarga</code> (F1: 0.9091)</li>
+<li><code>medo_inseguranca</code> (F1: 0.8889)</li>
+<li><code>bem_estar</code> (F1: 0.8235)</li>
+<li><code>sintoma_fisico</code> (F1: 0.7273)</li>
+</ol>
+<h3>4.2. Carregamento Seguro em Nuvem e Thread Assíncrona</h3>
+<ul>
+<li>O carregamento do modelo é disparado em uma thread desacoplada em segundo plano (<code>threading.Thread(target=_iniciar_bertimbau_background)</code>), impedindo que a subida do servidor FastAPI/Uvicorn trave ou sofra timeout no Render.</li>
+<li>Caso os pesos não estejam em disco, o serviço <a href="file:///c:/Users/famil/Documents/Nymphia/nymphia/nymphia_backend/app/services/model_downloader.py" target="_blank"><code>model_downloader.py</code></a> faz o download via blocos de 4 MB com validação de tamanho antes da quantização.</li>
+<li><strong>Compatibilidade PyTorch 2.6+ Verificada</strong>: Carregamento assegurado com fallback para <code>weights_only=False</code> na desserialização de modelos com classes HuggingFace pré-treinadas (<code>BertForSequenceClassification</code>), garantindo que a chamada <code>GET /health</code> retorne <code>bertimbau_disponivel: true</code> e <code>bertimbau_status: "ativo_quantizado_int8_cpu"</code> com consumo estrito de ~180MB RAM.</li>
+</ul>
+<h3>4.3. Quantização Dinâmica INT8 (`torch.quantization.quantize_dynamic`)</h3>
+<p>Em contêineres de nuvem com limite restrito de 512 MB de RAM:</p>
+<ul>
+<li>A quantização dinâmica converte os módulos lineares do modelo para inteiros de 8 bits.</li>
+<li><strong>Redução de Memória</strong>: O consumo do modelo caiu de <strong>~800 MB para ~180 MB de RAM</strong>.</li>
+<li><strong>Persistência INT8</strong>: O modelo quantizado é salvo em disco (<code>modelo_quantizado_int8.pt</code>) e o arquivo de pesos brutos (<code>model.safetensors</code>) é desalocado e removido para economizar espaço e memória.</li>
+</ul>
+<hr/>
+<h2 id="5-modelos-random-forest-de-risco-cl-nico-datasus-e-m-tricas-validadas">5. Modelos Random Forest de Risco Clínico (DataSUS) e Métricas Validadas</h2>
+<p>O módulo de predição populacional avalia o perfil e os sinais vitais da gestante contra seis modelos matemáticos calibrados com dados de milhões de internações obstétricas brasileiras (SINASC e SIH/DataSUS), com faixa de desempenho calibrada de <strong>ROC-AUC 0,68 a 0,78</strong>:</p>
+<div class="table-responsive"><table>
+<thead><tr>
+<th>Condição Obstétrica</th>
+<th>Modelo / Arquivo Joblib</th>
+<th>Tamanho</th>
+<th>ROC-AUC</th>
+<th>F1-Score</th>
+<th>Recall</th>
+<th>Comentário Clínico / Amostral</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>Malformação Congênita</strong></td>
+<td><code>rf_malformacao.joblib</code></td>
+<td>27.7 MB</td>
+<td><strong>0.68</strong> (0.6751)</td>
+<td>0.05</td>
+<td>0.39</td>
+<td>Sinal populacional baseado em idade e histórico materno (SINASC).</td>
+</tr>
+<tr>
+<td><strong>Eclâmpsia / HELLP</strong></td>
+<td><code>rf_eclampsia.joblib</code></td>
+<td>2.9 MB</td>
+<td><strong>0.68</strong> (0.6815)</td>
+<td>0.12</td>
+<td>0.48</td>
+<td>Risco de convulsões obstétricas e emergência hipertensiva.</td>
+</tr>
+<tr>
+<td><strong>Bem-Estar Fetal</strong></td>
+<td><code>rf_bem_estar_fetal.joblib</code></td>
+<td>40.3 MB</td>
+<td><strong>0.69</strong> (0.6907)</td>
+<td>0.38</td>
+<td>0.52</td>
+<td>Rastreio de sofrimento fetal, vitalidade e escore de Apgar ao nascer.</td>
+</tr>
+<tr>
+<td><strong>Pré-Eclâmpsia</strong></td>
+<td><code>rf_pre_eclampsia.joblib</code></td>
+<td>5.3 MB</td>
+<td><strong>0.74</strong> (0.7382)</td>
+<td>0.41</td>
+<td>0.65</td>
+<td>Rastreio probabilístico por curva pressórica, histórico e paridade (0.7617 em validação).</td>
+</tr>
+<tr>
+<td><strong>Diabetes Gestacional</strong></td>
+<td><code>rf_diabetes_gestacional.joblib</code></td>
+<td>3.0 MB</td>
+<td><strong>0.77</strong> (0.7740)</td>
+<td>0.35</td>
+<td>0.58</td>
+<td>Predição de DMG associada a ganho de peso acelerado e glicemia.</td>
+</tr>
+<tr>
+<td><strong>Infecção Urinária (ITU)</strong></td>
+<td><code>rf_itu.joblib</code></td>
+<td>707 KB</td>
+<td><strong>0.78</strong> (0.7815)</td>
+<td>0.01</td>
+<td>0.44</td>
+<td>Desbalanceamento extremo no SIH: 18 casos positivos vs 30.134 negativos.</td>
+</tr>
+<tr>
+<td><strong>Atipicidade Clínica</strong></td>
+<td><code>isolation_forest_anomalia.joblib</code></td>
+<td>504 KB</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>Detector não supervisionado multivariado de combinações fisiológicas anômalas.</td>
+</tr>
+</tbody></table></div>
+<h3>5.1. Contexto do Modelo de ITU e Desbalanceamento Populacional</h3>
+<p>A precisão de 0,01 no modelo de ITU decorre de desbalanceamento extremo na base hospitalar: o conjunto de teste de internações hospitalares (SIH) possui apenas 18 casos positivos contra 30.134 negativos. Em rastreamento populacional, recall alto com precisão baixa é uma escolha clínica deliberada para priorizar a detecção precoce de uma das causas mais prevalentes de trabalho de parto prematuro evitável.</p>
+<h3>5.2. Diagnóstico Empírico no SIH e Decisão Clínica de Produto</h3>
+<p>Execução diagnóstica automatizada sobre <strong>210.148 registros do SIH</strong> (sendo <strong>169.213 internações obstétricas com especialidade ESPEC=02</strong>):</p>
+<ul>
+<li><strong>Análise dos Campos de Diagnóstico Secundário</strong>: No layout hospitalar do DATASUS, o campo legacy <code>DIAG_SECUN</code> é frequentemente nulo (<code>0000</code>), mas o formato atual expande para <code>DIAGSEC1</code> até <code>DIAGSEC9</code>.</li>
+<li><strong>Ganhos com Inclusão de DIAGSEC1-9</strong>:</li>
+</ul>
+<p>* *ITU (N39)*: 92 casos só em <code>DIAG_PRINC</code> &rarr; 120 casos com secundários (+30% de ganho, 1.30x).</p>
+<p>* *Pré-Eclâmpsia (O14)*: 9.880 casos &rarr; 10.318 casos (+438 casos, 1.04x).</p>
+<p>* *Eclâmpsia (O15)*: 959 casos &rarr; 978 casos (+19 casos, 1.02x).</p>
+<p>* *Diabetes Gestacional (O24)*: 7.615 casos &rarr; 8.927 casos (+1.312 casos, 1.17x).</p>
+<ul>
+<li><strong>Cobertura de GESTRISCO</strong>: 100% de preenchimento nos registros obstétricos (99.9% com valor 1, refletindo que a internação hospitalar no SUS já seleciona gestantes que atingiram critérios de internação).</li>
+<li><strong>Decisão de Produto & Próximos Passos (SIA)</strong>: Clinicamente, infecções urinárias e disfunções tireoidianas são manejadas na Atenção Primária e Ambulatorial, registradas no <strong>SIA (Sistema de Informações Ambulatoriais)</strong> e não no SIH hospitalar. Enquanto a ingestão de microdados do SIA é finalizada, a Nymphia mantém o modelo de ITU operando como peso integrado ao <strong>Score Composto Geral</strong>, evitando alertas individuais falso-positivos à gestante.</li>
+</ul>
+<h3>5.3. Validação na Literatura Científica & Parecer Clínico</h3>
+<ol>
+<li><strong>Publicação na Nature Medicine (Setembro de 2026)</strong>:</li>
+</ol>
+<p>* Consórcio internacional envolvendo <strong>Stanford University e NYU (New York University)</strong> publicou estudo validando arquitetura técnica e clínica análoga à implementada na Nymphia: modelo de linguagem multimodal orquestrando ferramentas clínicas, motor de inferência preditiva populacional sobre dados de saúde estruturados e base de conhecimento clínico curada. A Nymphia aplica essa arquitetura pioneira validada pela comunidade internacional adaptada aos protocolos do SUS e FEBRASGO.</p>
+<ol>
+<li><strong>Benchmark Internacional com fullPIERS</strong>:</li>
+</ol>
+<p>* O escore preditivo *fullPIERS* (modelo de referência global para estratificação de risco em pré-eclâmpsia) alcançou ROC-AUC de 0,672 em validação externa no Brasil em centros terciários. O modelo preditivo da Nymphia atinge ROC-AUC de 0,7617 utilizando exclusivamente variáveis clínicas e demográficas acessíveis na atenção básica pré-natal.</p>
+<ol>
+<li><strong>Corpo de Validação Profissional</strong>:</li>
+</ol>
+<p>* <strong>Dra. Daniele R. Estedan</strong>: Consultoria clínica obstétrica contínua, com quatro recomendações estruturais incorporadas aos guardrails de segurança materna.</p>
+<p>* <strong>Dr. João Radvany (Neurologista)</strong>: Avaliação da plataforma com foco em ergonomia cognitiva, minimização de fadiga materna e respostas posturais do sistema neuromuscular.</p>
+<h2 id="6-governan-a-e-prote-o-jur-dica-visual-cfm-2-454-2026-e-cdc">6. Governança e Proteção Jurídica Visual (CFM 2.454/2026 e CDC)</h2>
+<p>Para garantir proteção ética e segurança jurídica em estrita conformidade com o <strong>Conselho Federal de Medicina</strong> e o <strong>Código de Defesa do Consumidor (CDC, Art. 6º, III e Art. 31)</strong>:</p>
+<ol>
+<li><strong>Direito de Recusa da IA (CFM 2.454/2026)</strong>:</li>
+</ol>
+<p>* A gestante tem o direito expresso de optar por utilizar a Nymphia operando exclusivamente sob as regras clínicas do Ministério da Saúde, recusando análises automáticas por inteligência artificial (<code>recusa_ia</code>).</p>
+<ol>
+<li><strong>Exibição Obrigatória dos Disclaimers na Interface</strong>:</li>
+</ol>
+<p>* O aviso de responsabilidade <strong>não fica oculto em termos de uso</strong>.</p>
+<p>* O componente <a href="file:///c:/Users/famil/Documents/Nymphia/nymphia/frontend/src/components/TriageDisclaimer.jsx" target="_blank"><code>TriageDisclaimer.jsx</code></a> é renderizado visualmente em todas as telas de cuidado diário:</p>
+<p>> *"Apoio de Cuidado & Bem-Estar (CFM 2.454/2026 e CDC): As análises estatísticas e orientações apresentadas constituem triagem preditiva e apoio educativo, sujeitas a margem probabilística (falsos positivos/negativos), e NÃO CONSTITUEM DIAGNÓSTICO MÉDICO nem substituem consultas presenciais e decisões clínicas do seu médico obstetra."*</p>
+<p>* No Prontuário Médico (<a href="file:///c:/Users/famil/Documents/Nymphia/nymphia/frontend/src/pages/profissional/PatientRecord.jsx" target="_blank"><code>PatientRecord.jsx</code></a>), uma caixa de alerta jurídico-clínico é exibida imediatamente abaixo das 6 probabilidades calculadas, protegendo o médico e orientando a equipe de saúde.</p>
+<hr/>
+<h2 id="7-m-dulos-e-funcionalidades-por-perfil-de-usu-rio">7. Módulos e Funcionalidades por Perfil de Usuário</h2>
+<h3>7.1. Perfil Gestante</h3>
+<ul>
+<li><strong>Onboarding em 4 Etapas (<a href="file:///c:/Users/famil/Documents/Nymphia/nymphia/frontend/src/pages/gestante/OnboardingClinico.jsx" target="_blank"><code>OnboardingClinico.jsx</code></a>)</strong>: Histórico obstétrico com validação de consistência, Regra de Naegele para DPP (+7 dias / +9 meses), histórico familiar e escolha da maternidade de referência com GPS e telefone.</li>
+<li><strong>Página Inicial (<a href="file:///c:/Users/famil/Documents/Nymphia/nymphia/frontend/src/pages/gestante/GestanteHome.jsx" target="_blank"><code>GestanteHome.jsx</code></a>)</strong>: Idade gestacional em semanas e dias, status do check-in, cartão do próximo compromisso e atalhos rápidos.</li>
+<li><strong>Módulo de Antropometria Materna (<a href="file:///c:/Users/famil/Documents/Nymphia/nymphia/frontend/src/pages/gestante/Antropometria.jsx" target="_blank"><code>Antropometria.jsx</code></a>)</strong>:</li>
+</ul>
+<p>* <strong>Curva de Atalah (Ministério da Saúde / FEBRASGO)</strong>: Classificação do IMC gestacional da 6ª à 42ª semana em *Baixo Peso, Adequado, Sobrepeso ou Obesidade*.</p>
+<p>* <strong>Curva de Altura Uterina (P10 - P90)</strong>: Monitoramento do crescimento fetal em centímetros.</p>
+<p>* <strong>Metas IOM / OMS</strong>: Ganho de peso total recomendado e taxa semanal personalizada.</p>
+<p>* <strong>Alerta de Ganho Rápido</strong>: Notificação caso o ganho exceda 1 kg em 7 dias (suspeita de retenção volêmica aguda).</p>
+<p>* <strong>Guia Educativo</strong>: Distribuição fisiológica do peso (bebê, placenta, sangue +45%, útero) e micronutrientes essenciais.</p>
+<ul>
+<li><strong>Visão Corporal & Postura IA (<a href="file:///c:/Users/famil/Documents/Nymphia/nymphia/frontend/src/pages/gestante/BodyVision.jsx" target="_blank"><code>BodyVision.jsx</code></a>)</strong>:</li>
+</ul>
+<p>* Check-in prévio de disposição física e desconfortos (lombar, bacia, ciático).</p>
+<p>* Triagem clínica automática: bloqueio de posições em decúbito dorsal após 16 semanas (veia cava), veto de afundos/passadas assimétricas em dor púbica (SPD) e suspensão total em caso de sinal de alarme.</p>
+<p>* Análise MediaPipe Pose 33 landmarks em tempo real com contador de repetições e comandos por voz sintetizada personalizada.</p>
+<ul>
+<li><strong>Check-in Diário (<a href="file:///c:/Users/famil/Documents/Nymphia/nymphia/frontend/src/pages/gestante/DailyCheckin.jsx" target="_blank"><code>DailyCheckin.jsx</code></a>)</strong>: Diário de sintomas, movimentação fetal e análise emocional neural com BERTimbau.</li>
+<li><strong>Caderneta Digital (<a href="file:///c:/Users/famil/Documents/Nymphia/nymphia/frontend/src/pages/gestante/PrenatalCard.jsx" target="_blank"><code>PrenatalCard.jsx</code></a>)</strong>: Vacinas do PNI (dTpa, Hepatite B, Influenza), consultas pré-natais e laudos.</li>
+<li><strong>Diário de Glicemia & Pressão (<a href="file:///c:/Users/famil/Documents/Nymphia/nymphia/frontend/src/pages/gestante/Devices.jsx" target="_blank"><code>Devices.jsx</code></a>)</strong>: Acompanhamento com limites críticos de alerta (PA $\ge$ 140x90 ou glicemia de jejum $\ge$ 92 mg/dL).</li>
+<li><strong>Botão SAMU 192 Permanente (<a href="file:///c:/Users/famil/Documents/Nymphia/nymphia/frontend/src/components/FloatingEmergencyButton.jsx" target="_blank"><code>FloatingEmergencyButton.jsx</code></a>)</strong>: Acesso em dois toques com funcionamento offline garantido pelo Service Worker.</li>
+</ul>
+<h3>7.2. Perfil Profissional de Saúde (Obstetra / Enfermeira)</h3>
+<ul>
+<li><strong>Dashboard Clínico (<a href="file:///c:/Users/famil/Documents/Nymphia/nymphia/frontend/src/pages/profissional/DoctorDashboard.jsx" target="_blank"><code>DoctorDashboard.jsx</code></a>)</strong>: Painel de pacientes com ordenação por gravidade de alertas nos últimos 30 dias e idade gestacional.</li>
+<li><strong>Prontuário Completo (<a href="file:///c:/Users/famil/Documents/Nymphia/nymphia/frontend/src/pages/profissional/PatientRecord.jsx" target="_blank"><code>PatientRecord.jsx</code></a>)</strong>: Histórico evolutivo de peso, curvas de Atalah e Altura Uterina, laudos anexados, probabilidades das 6 condições obstétricas com nota de conformidade ao CDC/CFM e campo para condutas médicas.</li>
+<li><strong>Gerador de Convites (<a href="file:///c:/Users/famil/Documents/Nymphia/nymphia/frontend/src/pages/profissional/GenerateInvite.jsx" target="_blank"><code>GenerateInvite.jsx</code></a>)</strong>: Emissão de tokens de uso único de 8 caracteres para vínculo presencial no consultório.</li>
+</ul>
+<h3>7.3. Perfil Parceiro / Rede de Apoio (Atualizado)</h3>
+<ul>
+<li><strong>Check-in pelo Parceiro em Nome da Gestante (<a href="file:///c:/Users/famil/Documents/Nymphia/nymphia/frontend/src/pages/parceiro/PartnerDashboard.jsx" target="_blank"><code>PartnerDashboard.jsx</code></a>)</strong>:</li>
+</ul>
+<p>* Permite que o parceiro registre sintomas, humor e notas quando a parceira estiver indisposta ou dormindo.</p>
+<p>* Executa a análise determinística FEBRASGO de sintomas e avaliação de sentimento neural, registrando tag explicita e trilha de auditoria LGPD.</p>
+<ul>
+<li><strong>Gerenciamento Completo da Agenda Compartilhada</strong>:</li>
+</ul>
+<p>* Visualização de consultas, ultrassons e vacinas da parceira.</p>
+<p>* Adição de novos compromissos na agenda com identificação de autoria.</p>
+<p>* Alternância de conclusão (marcar/desmarcar) e exclusão de eventos.</p>
+<ul>
+<li><strong>Alertas de Emergência em Tempo Real (Gratuito para todos os planos)</strong>:</li>
+</ul>
+<p>* Polling ativo a cada 8 segundos; exibe alerta visual de alta prioridade caso a gestante acione o botão SAMU 192 com atalho para ligar e rota da maternidade.</p>
+<ul>
+<li><strong>Marcos Gestacionais e Dicas Práticas</strong>:</li>
+</ul>
+<p>* Tamanho lúdico do bebê por semana, sugestões de massagens e orientações de apoio por trimestre.</p>
+<ul>
+<li><strong>Quiz de Gostos & Mimos (<a href="file:///c:/Users/famil/Documents/Nymphia/nymphia/frontend/src/pages/gestante/QuizGostos.jsx" target="_blank"><code>QuizGostos.jsx</code></a>)</strong>:</li>
+</ul>
+<p>* Acesso e resposta compartilhada às preferências alimentares, confortos e aromas preferidos da gestante.</p>
+<ul>
+<li><strong>Blindagem de Sigilo (LGPD)</strong>:</li>
+</ul>
+<p>* O parceiro <strong>não</strong> tem acesso a conversas privadas da IA, exames íntimos ou anotações sigilosas do médico.</p>
+<hr/>
+<h2 id="8-estrutura-de-roteamento-sem-risco-de-tela-branca">8. Estrutura de Roteamento Sem Risco de Tela Branca</h2>
+<pre class="code-block "><code>/
+├── / (Direcionamento dinâmico: GestanteHome, DoctorDashboard ou PartnerDashboard)
+├── /login (Login unificado inteligente ou acesso a contas demo de teste rápido)
+├── /cadastro-gestante | /cadastro-profissional | /cadastro-parceiro
+├── /emergencia (Tela pública de socorro e rota hospitalar, acessível sem login)
+│
+├── Sub-rotas Gestante:
+│   ├── /checkin (Check-in emocional e de sintomas)
+│   ├── /antropometria (Curva de Atalah, Altura Uterina e IOM)
+│   ├── /visao-corporal (Pose AI MediaPipe e Biomecânica)
+│   ├── /conversa (Chat Nymphia com Google Gemini)
+│   ├── /agenda (Consultas e compromissos)
+│   ├── /prenatal-card (Caderneta digital de vacinas)
+│   ├── /exames (Laudos ecográficos e laboratoriais anexados)
+│   ├── /dispositivos (Pressão arterial e glicemia)
+│   ├── /vinculo-medico (Conexão via token com obstetra)
+│   ├── /comunidade (Feed seguro moderado com grupos temáticos)
+│   ├── /quiz-gostos (Preferências e mimos)
+│   ├── /diario-visual (Fotos semanais)
+│   ├── /meus-dados (Direitos, consentimento IA e portabilidade LGPD)
+│   └── /assinatura (Planos e benefícios)
+│
+├── Sub-rotas Profissional:
+│   ├── /paciente (Prontuário completo da gestante selecionada)
+│   └── /convite (Emissão de código de vínculo)
+│
+└── Sub-rotas Parceiro:
+    ├── /checkin (Registro de check-in em nome da gestante)
+    ├── /agenda (Gerenciamento da agenda de pré-natal)
+    └── /quiz-gostos (Mimos cadastrados e preferências)</code></pre>
+<div class="callout"><span class="badge">Aviso Clínico / Nota</span><p><strong>Garantia Anti-Tela Branca</strong>: O roteador central possui resolução universal de rotas. Caso um usuário autenticado acesse rotas de login ou digite uma URL não correspondente, o sistema o redireciona automaticamente para o dashboard do seu perfil ativo.</p></div>
+<hr/>
+<h2 id="9-monitoramento-de-sa-de-da-aplica-o-get-health">9. Monitoramento de Saúde da Aplicação (`GET /health`)</h2>
+<p>O endpoint oficial de monitoramento contínuo em tempo real (<code>/health</code>) reporta a disponibilidade e o estado exato de cada camada de IA:</p>
+<pre class="code-block json"><code>{
+  "status": "online",
+  "sistema": "Nymphia Backend",
+  "versao": "2.3.0-2027ready",
+  "modelos_rf_disponiveis": [
+    "bem_estar_fetal",
+    "malformacao",
+    "pre_eclampsia",
+    "eclampsia",
+    "diabetes_gestacional",
+    "itu"
+  ],
+  "isolation_forest_disponivel": true,
+  "bertimbau_disponivel": true,
+  "bertimbau_status": "ativo_quantizado_int8_cpu",
+  "sistema_regras_urgencia": "ativo_deterministico_febrasgo",
+  "degradacao_graciosa": true
+}</code></pre>
+<hr/>
+<h2 id="10-matriz-completa-de-endpoints-da-api-rest-fastapi">10. Matriz Completa de Endpoints da API REST (FastAPI)</h2>
+<div class="table-responsive"><table>
+<thead><tr>
+<th>Módulo / Roteador</th>
+<th>Prefixo / Rota</th>
+<th>Método</th>
+<th>Descrição e Finalidade</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong><code>health</code></strong></td>
+<td class="code-col"><code>/health</code></td>
+<td><code>GET</code></td>
+<td>Diagnóstico de modelos de IA, integridade dos pesos e status operacional.</td>
+</tr>
+<tr>
+<td><strong><code>auth</code></strong></td>
+<td class="code-col"><code>/auth/login</code></td>
+<td><code>POST</code></td>
+<td><strong>Login Unificado</strong>: Resolve automaticamente Gestante, Parceiro ou Profissional (com validação estrita de CRM/UF).</td>
+</tr>
+<tr>
+<td><strong><code>auth</code></strong></td>
+<td class="code-col"><code>/auth/profissional/validar-crm</code></td>
+<td><code>GET</code></td>
+<td>Consulta e validação em tempo real de CRM e UF junto ao Conselho Federal de Medicina (CFM).</td>
+</tr>
+<tr>
+<td><strong><code>auth</code></strong></td>
+<td class="code-col"><code>/auth/gestante/cadastro</code></td>
+<td><code>POST</code></td>
+<td>Registro de conta da gestante com opção de recusa de IA (CFM 2.454/2026).</td>
+</tr>
+<tr>
+<td><strong><code>auth</code></strong></td>
+<td class="code-col"><code>/auth/gestante/login</code></td>
+<td><code>POST</code></td>
+<td>Login com e-mail e senha da gestante.</td>
+</tr>
+<tr>
+<td><strong><code>auth</code></strong></td>
+<td class="code-col"><code>/auth/profissional/cadastro</code></td>
+<td><code>POST</code></td>
+<td>Cadastro do médico/enfermeiro com validação de CRM/COREN e UF.</td>
+</tr>
+<tr>
+<td><strong><code>auth</code></strong></td>
+<td class="code-col"><code>/auth/profissional/login</code></td>
+<td><code>POST</code></td>
+<td>Login do profissional de saúde com checagem de CRM e situação no conselho.</td>
+</tr>
+<tr>
+<td><strong><code>auth</code></strong></td>
+<td class="code-col"><code>/auth/parceiro/cadastro</code></td>
+<td><code>POST</code></td>
+<td>Cadastro do parceiro/rede de apoio.</td>
+</tr>
+<tr>
+<td><strong><code>auth</code></strong></td>
+<td class="code-col"><code>/auth/parceiro/login</code></td>
+<td><code>POST</code></td>
+<td>Login do parceiro.</td>
+</tr>
+<tr>
+<td><strong><code>perfil</code></strong></td>
+<td class="code-col"><code>/perfil-clinico</code></td>
+<td><code>GET/POST/PUT</code></td>
+<td>Dados gestacionais (DUM, DPP Naegele ou manual, hospital de referência).</td>
+</tr>
+<tr>
+<td><strong><code>perfil</code></strong></td>
+<td class="code-col"><code>/historico-familiar</code></td>
+<td><code>GET/POST/DELETE</code></td>
+<td>Gestão de histórico genético/familiar (hipertensão, DMG, gemelaridade).</td>
+</tr>
+<tr>
+<td><strong><code>checkin</code></strong></td>
+<td class="code-col"><code>/checkin/registrar</code></td>
+<td><code>POST</code></td>
+<td>Registro diário com análise BERTimbau e detecção de urgência FEBRASGO.</td>
+</tr>
+<tr>
+<td><strong><code>checkin</code></strong></td>
+<td class="code-col"><code>/checkin/historico</code></td>
+<td><code>GET</code></td>
+<td>Histórico dos check-ins diários da paciente.</td>
+</tr>
+<tr>
+<td><strong><code>conversa</code></strong></td>
+<td class="code-col"><code>/conversa/enviar</code></td>
+<td><code>POST</code></td>
+<td>Envio de mensagem à IA Nymphia (Gemini 2.5 / 1.5 Flash com guardrails).</td>
+</tr>
+<tr>
+<td><strong><code>conversa</code></strong></td>
+<td class="code-col"><code>/conversa/historico</code></td>
+<td><code>GET</code></td>
+<td>Histórico de mensagens do chat privado da gestante.</td>
+</tr>
+<tr>
+<td><strong><code>agenda</code></strong></td>
+<td class="code-col"><code>/agenda/eventos</code></td>
+<td><code>GET/POST</code></td>
+<td>Compromissos e consultas pré-natais (com filtro de futuros e tags).</td>
+</tr>
+<tr>
+<td><strong><code>agenda</code></strong></td>
+<td class="code-col"><code>/agenda/eventos/{id}/concluir</code></td>
+<td><code>PATCH</code></td>
+<td>Alterna status de conclusão do compromisso.</td>
+</tr>
+<tr>
+<td><strong><code>agenda</code></strong></td>
+<td class="code-col"><code>/agenda/eventos/{id}</code></td>
+<td><code>DELETE</code></td>
+<td>Remove evento da agenda.</td>
+</tr>
+<tr>
+<td><strong><code>antropometria</code></strong></td>
+<td class="code-col"><code>/antropometria/painel</code></td>
+<td><code>GET</code></td>
+<td>Painel com Curva de Atalah, Altura Uterina, metas do IOM e guia nutricional.</td>
+</tr>
+<tr>
+<td><strong><code>antropometria</code></strong></td>
+<td class="code-col"><code>/antropometria/medicao</code></td>
+<td><code>POST</code></td>
+<td>Registro de nova pesagem ou medição de altura uterina com alerta de ganho rápido.</td>
+</tr>
+<tr>
+<td><strong><code>antropometria</code></strong></td>
+<td class="code-col"><code>/antropometria/perfil</code></td>
+<td><code>PUT</code></td>
+<td>Atualização de altura e peso pré-gestacional.</td>
+</tr>
+<tr>
+<td><strong><code>antropometria</code></strong></td>
+<td class="code-col"><code>/antropometria/avaliar-movimento</code></td>
+<td><code>POST</code></td>
+<td>Triagem biomecânica de segurança pré-exercício (regras ACOG/FEBRASGO).</td>
+</tr>
+<tr>
+<td><strong><code>risco</code></strong></td>
+<td class="code-col"><code>/risco/avaliar</code></td>
+<td><code>POST</code></td>
+<td>Executa inferência nos 6 Random Forests + Isolation Forest.</td>
+</tr>
+<tr>
+<td><strong><code>risco</code></strong></td>
+<td class="code-col"><code>/risco/paciente/{id}</code></td>
+<td><code>GET</code></td>
+<td>Avaliação de risco obstétrico para visualização no prontuário médico.</td>
+</tr>
+<tr>
+<td><strong><code>vinculo</code></strong></td>
+<td class="code-col"><code>/vinculo/convite/gerar</code></td>
+<td><code>POST</code></td>
+<td>Emissão de código alfanumérico pelo médico para vincular paciente.</td>
+</tr>
+<tr>
+<td><strong><code>vinculo</code></strong></td>
+<td class="code-col"><code>/vinculo/convite/usar</code></td>
+<td><code>POST</code></td>
+<td>Associação do código de convite pela gestante.</td>
+</tr>
+<tr>
+<td><strong><code>vinculo</code></strong></td>
+<td class="code-col"><code>/vinculo/minhas-gestantes</code></td>
+<td><code>GET</code></td>
+<td>Painel de pacientes vinculadas ordenado por urgência clínica.</td>
+</tr>
+<tr>
+<td><strong><code>vinculo</code></strong></td>
+<td class="code-col"><code>/vinculo/{id}/revogar</code></td>
+<td><code>POST</code></td>
+<td>Revogação imediata de vínculo pela paciente.</td>
+</tr>
+<tr>
+<td><strong><code>parceiro</code></strong></td>
+<td class="code-col"><code>/parceiro/gestante-conectada</code></td>
+<td><code>GET</code></td>
+<td>Resumo da parceira conectada (semana, dias, DPP).</td>
+</tr>
+<tr>
+<td><strong><code>parceiro</code></strong></td>
+<td class="code-col"><code>/parceiro/convite/gerar</code></td>
+<td><code>POST</code></td>
+<td>Gera código temporário para conectar com parceiro.</td>
+</tr>
+<tr>
+<td><strong><code>parceiro</code></strong></td>
+<td class="code-col"><code>/parceiro/convite/usar</code></td>
+<td><code>POST</code></td>
+<td>Parceiro vincula-se à gestante via código.</td>
+</tr>
+<tr>
+<td><strong><code>parceiro</code></strong></td>
+<td class="code-col"><code>/parceiro/agenda</code></td>
+<td><code>GET</code></td>
+<td>Agenda completa da gestante compartilhada para o parceiro.</td>
+</tr>
+<tr>
+<td><strong><code>parceiro</code></strong></td>
+<td class="code-col"><code>/parceiro/agenda/evento</code></td>
+<td><code>POST</code></td>
+<td>Parceiro adiciona compromisso na agenda da parceira.</td>
+</tr>
+<tr>
+<td><strong><code>parceiro</code></strong></td>
+<td class="code-col"><code>/parceiro/agenda/evento/{id}/concluir</code></td>
+<td><code>PATCH</code></td>
+<td>Parceiro marca compromisso como concluído.</td>
+</tr>
+<tr>
+<td><strong><code>parceiro</code></strong></td>
+<td class="code-col"><code>/parceiro/agenda/evento/{id}</code></td>
+<td><code>DELETE</code></td>
+<td>Parceiro exclui evento da agenda.</td>
+</tr>
+<tr>
+<td><strong><code>parceiro</code></strong></td>
+<td class="code-col"><code>/parceiro/checkin</code></td>
+<td><code>POST</code></td>
+<td>Parceiro registra check-in diário em nome da gestante.</td>
+</tr>
+<tr>
+<td><strong><code>parceiro</code></strong></td>
+<td class="code-col"><code>/parceiro/checkin/historico</code></td>
+<td><code>GET</code></td>
+<td>Parceiro visualiza os últimos check-ins da parceira.</td>
+</tr>
+<tr>
+<td><strong><code>parceiro</code></strong></td>
+<td class="code-col"><code>/parceiro/marcos</code></td>
+<td><code>GET</code></td>
+<td>Informações de desenvolvimento fetal da semana e guia de apoio.</td>
+</tr>
+<tr>
+<td><strong><code>parceiro</code></strong></td>
+<td class="code-col"><code>/parceiro/emergencias-ativas</code></td>
+<td><code>GET</code></td>
+<td>Polling de alerta de emergência ativado pela gestante (SAMU 192).</td>
+</tr>
+<tr>
+<td><strong><code>parceiro</code></strong></td>
+<td class="code-col"><code>/parceiro/quiz-gostos</code></td>
+<td><code>GET/POST</code></td>
+<td>Consulta e atualização do quiz de mimos e confortos da gestante.</td>
+</tr>
+<tr>
+<td><strong><code>emergencia</code></strong></td>
+<td class="code-col"><code>/emergencia/notificar</code></td>
+<td><code>POST</code></td>
+<td>Acionamento de socorro hospitalar e orientações SAMU 192 (público).</td>
+</tr>
+<tr>
+<td><strong><code>exames</code></strong></td>
+<td class="code-col"><code>/exames/upload</code></td>
+<td><code>POST</code></td>
+<td>Upload seguro de laudos (PDF, PNG, JPG).</td>
+</tr>
+<tr>
+<td><strong><code>exames</code></strong></td>
+<td class="code-col"><code>/exames/listar</code></td>
+<td><code>GET</code></td>
+<td>Listagem dos laudos da gestante.</td>
+</tr>
+<tr>
+<td><strong><code>dispositivos</code></strong></td>
+<td class="code-col"><code>/dispositivos/medicoes</code></td>
+<td><code>GET/POST</code></td>
+<td>Registro de leituras de pressão arterial e glicemia capilar.</td>
+</tr>
+<tr>
+<td><strong><code>comunidade</code></strong></td>
+<td class="code-col"><code>/comunidade/feed</code></td>
+<td><code>GET</code></td>
+<td>Feed social filtrado por grupos de afinidade com moderação ativa.</td>
+</tr>
+<tr>
+<td><strong><code>comunidade</code></strong></td>
+<td class="code-col"><code>/comunidade/posts</code></td>
+<td><code>POST</code></td>
+<td>Publicação de post (passa por moderação contra automedicação e toxicidade).</td>
+</tr>
+<tr>
+<td><strong><code>comunidade</code></strong></td>
+<td class="code-col"><code>/comunidade/preferencias</code></td>
+<td><code>GET/POST</code></td>
+<td>Personalização de tópicos e interesses da comunidade.</td>
+</tr>
+<tr>
+<td><strong><code>assinaturas</code></strong></td>
+<td class="code-col"><code>/assinaturas/planos</code></td>
+<td><code>GET</code></td>
+<td>Planos de assinatura (Gratuito, Cuidado Contínuo, Premium Maternidade).</td>
+</tr>
+<tr>
+<td><strong><code>lgpd</code></strong></td>
+<td class="code-col"><code>/meus-dados/exportar</code></td>
+<td><code>GET</code></td>
+<td>Exportação de dados do titular em JSON ou relatório PDF estruturado.</td>
+</tr>
+<tr>
+<td><strong><code>lgpd</code></strong></td>
+<td class="code-col"><code>/meus-dados/consentimento-ia</code></td>
+<td><code>PUT</code></td>
+<td>Ativação ou revogação de consentimento de inteligência artificial.</td>
+</tr>
+<tr>
+<td><strong><code>lgpd</code></strong></td>
+<td class="code-col"><code>/minha-conta</code></td>
+<td><code>DELETE</code></td>
+<td>Exclusão definitiva de conta e anonimização de registros.</td>
+</tr>
+<tr>
+<td><strong><code>governance</code></strong></td>
+<td class="code-col"><code>/governance/auditoria</code></td>
+<td><code>GET</code></td>
+<td>Relatórios de auditoria e trilha de acessos conforme CFM e LGPD.</td>
+</tr>
+</tbody></table></div>
+<hr/>
+<h2 id="11-seguran-a-da-informa-o-lgpd-e-privacidade">11. Segurança da Informação, LGPD e Privacidade</h2>
+<ol>
+<li><strong>Minimização e Finalidade</strong>: Coleta restrita aos dados estritamente necessários ao acompanhamento clínico seguro da gestação.</li>
+<li><strong>Criptografia em Trânsito e Repouso</strong>: Comunicações via HTTPS/TLS 1.3 com HSTS forçado e senhas com BCrypt salt balanceado.</li>
+<li><strong>Segregação de Perfis & Auditoria</strong>:</li>
+</ol>
+<p>* O parceiro nunca acessa conversas íntimas com a IA nem prontuário restrito.</p>
+<p>* Todos os acessos de parceiros e médicos aos dados da gestante registram entradas na tabela <code>logs_acesso</code> com carimbo UTC do servidor.</p>
+<ol>
+<li><strong>Isolamento de Câmera na Visão Corporal</strong>: O feed de vídeo do MediaPipe Pose é processado <strong>100% no navegador do dispositivo da usuária via WebAssembly</strong>. Nenhum frame ou imagem de câmera trafega ou é gravado em servidor.</li>
+</ol>
+<hr/>
+<h2 id="12-credenciais-de-teste-e-homologa-o-r-pida-demo">12. Credenciais de Teste e Homologação Rápida (Demo)</h2>
+<p>Para avaliações por bancas examinadoras, investidores e médicos auditores, a plataforma possui contas seed pré-configuradas e inicializadas automaticamente:</p>
+<ul>
+<li><strong>Perfil Gestante Demo</strong>: <code>gestante@nymphia.com.br</code> / <code>senhaMaternidade123</code></li>
+<li><strong>Perfil Médico Obstetra Demo</strong>: <code>medico@nymphia.com.br</code> / <code>senhaMaternidade123</code></li>
+<li><strong>Perfil Parceiro Demo</strong>: <code>parceiro@nymphia.com.br</code> / <code>senhaMaternidade123</code></li>
+</ul>
+<hr/>
+<h2 id="13-guia-de-deploy-em-produ-o-render-com">13. Guia de Deploy em Produção (Render.com)</h2>
+<ol>
+<li><strong>Pipeline Docker Multi-Stage (<a href="file:///c:/Users/famil/Documents/Nymphia/nymphia/Dockerfile" target="_blank"><code>Dockerfile</code></a>)</strong>:</li>
+</ol>
+<p>* *Stage 1*: Constrói o frontend React com Node 20 (<code>npm run build</code>), gerando os artefatos otimizados em <code>frontend/dist</code>.</p>
+<p>* *Stage 2*: Monta a imagem enxuta de runtime Python 3.10-slim instalando o wheel oficial do PyTorch CPU-only (<code>--index-url https://download.pytorch.org/whl/cpu</code>) e dependências enxutas de produção (<code>requirements-prod.txt</code>).</p>
+<ol>
+<li><strong>Startup com Auto-Download e Migrações</strong>:</li>
+</ol>
+<p>* O servidor inicializa o Uvicorn na porta pública atribuída pela nuvem.</p>
+<p>* <code>executar_migracoes_automaticas()</code> garante schema íntegro no PostgreSQL.</p>
+<p>* <code>seed_demo_accounts()</code> garante a presença das 3 contas demo conectadas.</p>
+<p>* O modelo BERTimbau é verificado e carregado em background com quantização INT8.</p>
+<ol>
+<li><strong>Variáveis de Ambiente Suportadas</strong>:</li>
+</ol>
+<p>* <code>PORT</code>: Porta atribuída pelo provedor de hospedagem (padrão: 8000 / 10000).</p>
+<p>* <code>NYMPHIA_SECRET_KEY</code>: Chave mestra criptográfica para assinatura de tokens JWT.</p>
+<p>* <code>NYMPHIA_DATABASE_URL</code>: String de conexão SQLite ou PostgreSQL (<code>postgresql://...</code>).</p>
+<p>* <code>NYMPHIA_CARREGAR_BERTIMBAU</code>: Flag de controle para carregamento em nuvem (<code>1</code> ou <code>0</code>).</p>
+<p>* <code>GEMINI_API_KEY</code>: Chave de acesso à API do Google Gemini para conversação humanizada.</p>
+<hr/>
+<h2 id="14-roadmap-estrat-gico-dispositivos-m-dicos-e-marco-regulat-rio">14. Roadmap Estratégico, Dispositivos Médicos e Marco Regulatório</h2>
+<h3>14.1. Recursos Já Operacionais no MVP Atual (Disponíveis em Produção)</h3>
+<p>Para alinhamento rigoroso com bancas avaliadoras e investidores, o ecossistema Nymphia já possui em funcionamento efetivo:</p>
+<ul>
+<li><strong>Painel Profissional do Obstetra (<a href="file:///c:/Users/famil/Documents/Nymphia/nymphia/frontend/src/pages/profissional/DoctorDashboard.jsx" target="_blank"><code>DoctorDashboard.jsx</code></a>)</strong>: Triagem clínica com ordenação por gravidade de alertas em 30 dias.</li>
+<li><strong>Ficha Individual & Prontuário (<a href="file:///c:/Users/famil/Documents/Nymphia/nymphia/frontend/src/pages/profissional/PatientRecord.jsx" target="_blank"><code>PatientRecord.jsx</code></a>)</strong>: Curvas evolutivas de Atalah e Altura Uterina, laudos anexados e pareceres.</li>
+<li><strong>Convites de Vínculo Seguro (<a href="file:///c:/Users/famil/Documents/Nymphia/nymphia/frontend/src/pages/profissional/GenerateInvite.jsx" target="_blank"><code>GenerateInvite.jsx</code></a>)</strong>: Emissão e consumo de tokens alfanuméricos de 8 caracteres.</li>
+<li><strong>Consentimento de IA & Direito de Recusa</strong>: Conformidade visual e banco de dados com a Resolução CFM 2.454/2026.</li>
+<li><strong>Upload e Leitura de Exames com OCR</strong>: Extração estruturada de parâmetros ecográficos e laboratoriais.</li>
+<li><strong>Assistente de Conversação Contextualizada</strong>: Chat maternal seguro integrado ao Google Gemini com guardrails FEBRASGO.</li>
+<li><strong>Caderneta Digital de Pré-Natal (<a href="file:///c:/Users/famil/Documents/Nymphia/nymphia/frontend/src/pages/gestante/PrenatalCard.jsx" target="_blank"><code>PrenatalCard.jsx</code></a>)</strong>: Padrão Ministério da Saúde com vacinas do PNI e aviso legal CFM/CDC.</li>
+<li><strong>Comunidade Materna com Moderação Segura</strong>: Feed por tópicos e bloqueio automático de termos perigosos e automedicação.</li>
+<li><strong>Diário Visual</strong>: Galeria de acompanhamento fotográfico com cálculo de semanas e evolução gestacional.</li>
+</ul>
+<h3>14.2. Escopo Planejado para os Próximos Ciclos</h3>
+<ul>
+<li><strong>Automação de Pagamentos</strong>: Checkout transparente integrado a gateways (PIX e cartão) com processamento de webhooks assíncronos.</li>
+<li><strong>Exportação Universal de Agenda</strong>: Geração de arquivos <code>.ics</code> compatíveis com Google Agenda, Apple Calendar e Outlook.</li>
+<li><strong>Integração com a RNDS (SUS)</strong>: Interoperabilidade com a Rede Nacional de Dados em Saúde via padrão FHIR/HL7.</li>
+<li><strong>Painel B2B para Clínicas e Operadoras</strong>: Gestão de coortes de risco perinatal em larga escala.</li>
+</ul>
+<h3>14.3. Diretriz de Dispositivos: Aparelhos Médicos Validados vs Smartwatches</h3>
+<p>A equipe clínica da Nymphia tomou a decisão deliberada de <strong>não utilizar medições de pressão arterial e oximetria de smartwatches de consumo</strong>:</p>
+<ol>
+<li><strong>Contraindicação Clínica Obstétrica</strong>: Os algoritmos ópticos de fotopletismografia (PPG) de relógios comerciais (como o Apple Watch) são formalmente contraindicados para aferição de pressão em gestantes, devido ao aumento de 45% na volemia plasmática e alterações fisiológicas na complacência vascular.</li>
+<li><strong>Vedação Regulatória</strong>: Nem a ANVISA nem a FDA autorizam smartwatches para aferição contínua de SpO₂ diagnóstica em obstetrícia ou glicemia não invasiva.</li>
+<li><strong>Decisão por Dispositivos Médicos Validados (Inmetro/ANVISA)</strong>: A Nymphia adota aparelhos de braço clinicamente validados (OMRON) e glicosímetros capilares certificados.</li>
+<li><strong>Modelo de Comodato Sustentável</strong>: Aparelhos fornecidos em modalidade de comodato nos planos superiores de assinatura, garantindo alta precisão de dados para o modelo preditivo e economia unitária robusta.</li>
+</ol>
+<h3>14.4. Marco Regulatório e Compliance</h3>
+<ul>
+<li><strong>Registro da Cinta Fetal na ANVISA (Planejado para 2029)</strong>: Como vestível de monitoramento acústico de frequência cardíaca fetal, a Cinta Nymphia enquadra-se como dispositivo médico (Classe II/III). O caminho regulatório inclui protocolo de conformidade pré-clínica concomitante ao protótipo físico.</li>
+<li><strong>Parecer Jurídico sobre Prática Médica e CRM</strong>: Blindagem jurídica sob a Resolução CFM 2.314/2022 (Telemedicina) e Resolução CFM 2.454/2026 (Inteligência Artificial em Medicina).</li>
+<li><strong>Migração de Banco de Dados</strong>: Suporte total e arquitetado para PostgreSQL em produção com pooling e transações ACID.</li>
+<li><strong>Privacidade e LGPD</strong>: Atendimento pleno ao Art. 18 da Lei 13.709/2018 com download integral de prontuário e anonimização de conta.</li>
+</ul>
+<hr/>
+<h2 id="15-decis-es-de-engenharia-de-software-e-seguran-a">15. Decisões de Engenharia de Software e Segurança</h2>
+<ol>
+<li><strong>Unificação do Identificador de Check-in</strong>:</li>
+</ol>
+<p>* O check-in diário (<code>/checkin/registrar</code>) utiliza exclusivamente o ID do usuário extraído do token JWT Bearer assinado, garantindo que o alerta de risco seja computado de forma precisa e auditável no painel do obstetra vinculado.</p>
+<ol>
+<li><strong>Criptografia com BCrypt Nativo</strong>:</li>
+</ol>
+<p>* O hashing de senhas é executado diretamente via biblioteca <code>bcrypt</code> (<code>bcrypt.hashpw</code> / <code>bcrypt.checkpw</code>), prevenindo os problemas de truncamento de senha de 72 bytes e incompatibilidade de versão historicamente reportados no wrapper <code>passlib</code>.</p>
+<ol>
+<li><strong>Fixação e Homologação do Python 3.11</strong>:</li>
+</ol>
+<p>* Versão de runtime fixada em <strong>Python 3.11</strong> em arquivos <code>.python-version</code>, assegurando estabilidade na orquestração entre PyTorch CPU, HuggingFace Transformers, Scikit-Learn e FastAPI.</p>
+<ol>
+<li><strong>Camada de Assinaturas e Webhooks</strong>:</li>
+</ol>
+<p>* Arquitetura de monetização desacoplada em <code>/assinaturas/planos</code>, <code>/assinaturas/checkout</code> e <code>/assinaturas/webhook</code>, com a camada de emergência (botão SAMU 192 e notificação em tempo real ao parceiro) mantida <strong>100% gratuita em todos os planos</strong> como diretriz de saúde pública inviolável.</p>
+    </div>
+  </div>
+</body>
+</html>

@@ -259,7 +259,7 @@ export default function VoiceSettingsModal({ isOpen, onClose, onSaved }) {
             ) : (
               vozesDisponiveis.map((v) => (
                 <option key={v.voiceURI} value={v.voiceURI}>
-                  {v.name} {v.lang.includes('BR') ? '🇧🇷' : '🇵🇹'}
+                  {v.label || `${v.displayName || v.name} ${v.flag || '🇧🇷'}`}
                 </option>
               ))
             )}

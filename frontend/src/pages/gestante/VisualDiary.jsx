@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import BackButton from '../../components/BackButton';
+import FullScreenSuccessModal from '../../components/FullScreenSuccessModal';
 import { Camera, Lock, Plus, Trash2 } from 'lucide-react';
 
 export default function VisualDiary({ onBack }) {
@@ -21,6 +22,7 @@ export default function VisualDiary({ onBack }) {
   const [nota, setNota] = useState('');
   const [fotoUrl, setFotoUrl] = useState(null);
   const [mostrarForm, setMostrarForm] = useState(false);
+  const [modalSucessoAberto, setModalSucessoAberto] = useState(false);
 
   const handleFotoChange = (e) => {
     const file = e.target.files && e.target.files[0];
@@ -57,6 +59,7 @@ export default function VisualDiary({ onBack }) {
     setNota('');
     setFotoUrl(null);
     setMostrarForm(false);
+    setModalSucessoAberto(true);
   };
 
   const handleRemoverEntrada = (id) => {
@@ -217,6 +220,16 @@ export default function VisualDiary({ onBack }) {
           </div>
         ))}
       </div>
+
+      {/* Confirmação de Salvamento em Tela Inteira */}
+      <FullScreenSuccessModal
+        isOpen={modalSucessoAberto}
+        onClose={() => setModalSucessoAberto(false)}
+        title="Momento Guardado com Carinho! 📸"
+        subtitle="Sua recordação foi gravada com segurança no seu diário visual privado."
+        highlightText="Registro salvo com sucesso"
+        confirmButtonText="Continuar no Diário"
+      />
     </div>
   );
 }

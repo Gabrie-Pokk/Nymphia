@@ -24,7 +24,8 @@ export default defineConfig({
       '/meus-dados': 'http://127.0.0.1:8000',
       '/minha-conta': 'http://127.0.0.1:8000',
       '/health': 'http://127.0.0.1:8000',
-      '/storage': 'http://127.0.0.1:8000'
+      '/storage': 'http://127.0.0.1:8000',
+      '/antropometria': 'http://127.0.0.1:8000'
     }
   }
 })

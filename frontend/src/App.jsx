@@ -3,6 +3,7 @@ import { useAuth } from './context/AuthContext';
 import LotusLogo from './components/LotusLogo';
 import FloatingEmergencyButton from './components/FloatingEmergencyButton';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
+import { apiFetch } from './utils/api';
 
 // Páginas Públicas
 import WelcomeIntro from './pages/WelcomeIntro';
@@ -98,9 +99,9 @@ export default function App() {
   useEffect(() => {
     if (isAuthenticated && user?.perfil === 'gestante') {
       setVerificandoOnboarding(true);
-      fetch('/perfil-clinico', { headers: authHeaders() })
-        .then((res) => {
-          if (res.ok) {
+      apiFetch('/perfil-clinico')
+        .then((data) => {
+          if (data) {
             setOnboardingCompleto(true);
           } else {
             setOnboardingCompleto(false);
@@ -200,26 +201,26 @@ export default function App() {
 
       {/* Top Header Comum */}
       <header className="app-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => navigate('/')}>
-          <LotusLogo size={28} color="#FFFFFF" />
-          <div>
-            <h1 style={{ color: '#FFFFFF', margin: 0, fontSize: '1.28rem', fontWeight: 800 }}>Nymphia</h1>
-            <span className="header-slogan" style={{ color: '#FDF0F2', opacity: 0.95, fontSize: '0.78rem' }}>Cada batimento importa.</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', flexShrink: 0 }} onClick={() => navigate('/')}>
+          <LotusLogo size={26} color="#FFFFFF" />
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <h1 style={{ color: '#FFFFFF', margin: 0, fontSize: '1.18rem', fontWeight: 800, lineHeight: 1.1 }}>Nymphia</h1>
+            <span className="header-slogan" style={{ color: '#FDF0F2', opacity: 0.92, fontSize: '0.68rem', whiteSpace: 'nowrap' }}>Cada batimento importa.</span>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
           {user?.perfil === 'gestante' && (
             <button
               onClick={async () => {
                 try {
-                  const res = await fetch('/auth/login', {
+                  const d = await apiFetch('/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: 'parceiro@nymphia.com.br', senha: 'senhaMaternidade123' })
+                    body: JSON.stringify({ email: 'parceiro@nymphia.com.br', senha: 'senhaMaternidade123' }),
+                    skipAuth: true
                   });
-                  const d = await res.json();
-                  if (d.token) {
+                  if (d && d.token) {
                     login(d.token, d);
                     navigate('/');
                   }
@@ -228,19 +229,21 @@ export default function App() {
               style={{
                 backgroundColor: 'rgba(255,255,255,0.22)',
                 border: '1px solid rgba(255,255,255,0.4)',
-                borderRadius: 'var(--radius-full)',
+                borderRadius: '9999px',
                 color: '#FFFFFF',
                 fontSize: '0.72rem',
                 fontWeight: 600,
-                padding: '4px 10px',
+                padding: '4px 8px',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px'
+                gap: '4px',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
               }}
               title="Alternar para visualização de Parceiro (Lucas)"
             >
-              🤝 Ir p/ Parceiro
+              🤝 Parceiro
             </button>
           )}
 
@@ -248,13 +251,13 @@ export default function App() {
             <button
               onClick={async () => {
                 try {
-                  const res = await fetch('/auth/login', {
+                  const d = await apiFetch('/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: 'gestante@nymphia.com.br', senha: 'senhaMaternidade123' })
+                    body: JSON.stringify({ email: 'gestante@nymphia.com.br', senha: 'senhaMaternidade123' }),
+                    skipAuth: true
                   });
-                  const d = await res.json();
-                  if (d.token) {
+                  if (d && d.token) {
                     login(d.token, d);
                     navigate('/');
                   }
@@ -263,23 +266,35 @@ export default function App() {
               style={{
                 backgroundColor: 'rgba(255,255,255,0.22)',
                 border: '1px solid rgba(255,255,255,0.4)',
-                borderRadius: 'var(--radius-full)',
+                borderRadius: '9999px',
                 color: '#FFFFFF',
                 fontSize: '0.72rem',
                 fontWeight: 600,
-                padding: '4px 10px',
+                padding: '4px 8px',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px'
+                gap: '4px',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
               }}
               title="Alternar para visualização da Gestante (Mariana)"
             >
-              🌸 Ir p/ Gestante
+              🌸 Gestante
             </button>
           )}
 
-          <span style={{ fontSize: '0.78rem', backgroundColor: 'rgba(255,255,255,0.2)', padding: '3px 8px', borderRadius: 'var(--radius-full)', textTransform: 'capitalize' }}>
+          <span
+            style={{
+              fontSize: '0.72rem',
+              backgroundColor: 'rgba(255,255,255,0.2)',
+              padding: '3px 8px',
+              borderRadius: '9999px',
+              textTransform: 'capitalize',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
+            }}
+          >
             {user?.perfil}
           </span>
           <button
@@ -291,10 +306,18 @@ export default function App() {
               background: 'transparent',
               border: 'none',
               color: '#FFFFFF',
-              padding: '6px',
+              width: '34px',
+              height: '34px',
+              minWidth: '34px',
+              minHeight: '34px',
+              aspectRatio: '1 / 1',
+              borderRadius: '50%',
               cursor: 'pointer',
               display: 'flex',
-              alignItems: 'center'
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              padding: 0
             }}
             title="Sair da conta"
             aria-label="Encerrar sessão"

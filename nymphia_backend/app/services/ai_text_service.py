@@ -161,7 +161,10 @@ def carregar_bertimbau(forcar: bool = False):
         caminho_int8 = BERTIMBAU_DIR / "modelo_quantizado_int8.pt"
         if caminho_int8.exists():
             logger.info(f"Carregando modelo quantizado INT8 pré-salvo de {caminho_int8} (baixo consumo de RAM)...")
-            _bert_estado["modelo"] = torch.load(str(caminho_int8), map_location="cpu")
+            try:
+                _bert_estado["modelo"] = torch.load(str(caminho_int8), map_location="cpu", weights_only=False)
+            except TypeError:
+                _bert_estado["modelo"] = torch.load(str(caminho_int8), map_location="cpu")
             _bert_estado["diagnostico"] = "ativo_quantizado_int8_cpu"
         else:
             logger.info("Carregando pesos safetensors com low_cpu_mem_usage...")

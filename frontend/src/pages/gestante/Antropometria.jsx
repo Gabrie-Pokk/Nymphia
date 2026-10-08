@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 import TriageDisclaimer from '../../components/TriageDisclaimer';
+import { apiFetch } from '../../utils/api';
+import FullScreenSuccessModal from '../../components/FullScreenSuccessModal';
 import {
   Scale,
   TrendingUp,
@@ -18,7 +20,8 @@ import {
   ChevronDown,
   ChevronUp,
   HelpCircle,
-  ShieldCheck
+  ShieldCheck,
+  Sliders
 } from 'lucide-react';
 
 export default function Antropometria({ onBack }) {
@@ -28,11 +31,23 @@ export default function Antropometria({ onBack }) {
   const [erro, setErro] = useState('');
   const [sessaoExpirada, setSessaoExpirada] = useState(false);
   const [sucessoMsg, setSucessoMsg] = useState('');
+  const [modalSucessoAberto, setModalSucessoAberto] = useState(false);
+  const [modalSucessoDados, setModalSucessoDados] = useState(null);
 
   // Modais e formulários
   const [modalRegistroAberto, setModalRegistroAberto] = useState(false);
   const [modalBaseAberto, setModalBaseAberto] = useState(false);
   const [secaoAberta, setSecaoAberta] = useState('atalah'); // atalah | guia | historico
+
+  // Guia Nutricional Personalizado por Exames
+  const [mostrarSimuladorExames, setMostrarSimuladorExames] = useState(false);
+  const [examesInterativos, setExamesInterativos] = useState({
+    hemoglobina: '',
+    ferritina: '',
+    glicemia: '',
+    vitamina_d: '',
+    tsh: ''
+  });
 
   // Form novo registro
   const [novoPeso, setNovoPeso] = useState('');
@@ -54,27 +69,33 @@ export default function Antropometria({ onBack }) {
     setErro('');
     setSessaoExpirada(false);
     try {
-      const headers = authHeaders ? authHeaders() : {};
-      const res = await fetch('/antropometria/painel', { headers });
-      if (res.status === 401) {
-        setSessaoExpirada(true);
-        setErro('Sua sessão expirou ou não está autenticada. Por favor, faça login novamente para visualizar seus dados.');
-        return;
+      const data = await apiFetch('/antropometria/painel');
+      setPainel(data);
+      if (data.semana_gestacional_atual) {
+        setNovaSemana(data.semana_gestacional_atual);
       }
-      if (res.ok) {
-        const data = await res.json();
-        setPainel(data);
-        if (data.semana_gestacional_atual) {
-          setNovaSemana(data.semana_gestacional_atual);
-        }
-        if (data.altura_cm) setFormAltura(data.altura_cm);
-        if (data.peso_pre_gestacional) setFormPesoPre(data.peso_pre_gestacional);
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.detail || 'Não foi possível carregar os dados de antropometria.');
+      if (data.altura_cm) setFormAltura(data.altura_cm);
+      if (data.peso_pre_gestacional) setFormPesoPre(data.peso_pre_gestacional);
+
+      // Pré-preenche exames interativos com valores detectados pelo OCR do backend se houver
+      const ident = data?.guia_educativo?.nutricao_personalizada_exames?.valores_identificados;
+      if (ident) {
+        setExamesInterativos((prev) => ({
+          ...prev,
+          hemoglobina: ident.hemoglobina ?? prev.hemoglobina,
+          ferritina: ident.ferritina ?? prev.ferritina,
+          glicemia: ident.glicemia ?? prev.glicemia,
+          vitamina_d: ident.vitamina_d ?? prev.vitamina_d,
+          tsh: ident.tsh ?? prev.tsh
+        }));
       }
     } catch (err) {
-      setErro(err.message || 'Erro de conexão ao carregar painel antropométrico.');
+      if (err.status === 401) {
+        setSessaoExpirada(true);
+        setErro('Sua sessão expirou ou não está autenticada. Por favor, faça login novamente para visualizar seus dados.');
+      } else {
+        setErro(err.message || 'Erro de conexão ao carregar painel antropométrico.');
+      }
     } finally {
       setCarregando(false);
     }
@@ -89,24 +110,27 @@ export default function Antropometria({ onBack }) {
     setSalvandoBase(true);
     setErro('');
     try {
-      const res = await fetch('/antropometria/perfil-base', {
+      await apiFetch('/antropometria/perfil-base', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           altura_cm: parseFloat(formAltura),
           peso_pre_gestacional: parseFloat(formPesoPre)
         })
       });
-      if (!res.ok) {
-        const d = await res.json();
-        throw new Error(d.detail || 'Erro ao atualizar dados base.');
-      }
       setModalBaseAberto(false);
       setSucessoMsg('Dados pré-gestacionais atualizados com sucesso!');
+      setModalSucessoDados({
+        title: 'Dados Pré-Gestacionais Salvos! 📏',
+        subtitle: 'Sua altura e peso pré-gestacional foram atualizados e calibraram o cálculo de IMC e ganho ponderal esperado.',
+        highlightText: `Altura: ${formAltura} cm • Peso Inicial: ${formPesoPre} kg`,
+        confirmButtonText: 'Ver Curvas Atualizadas'
+      });
+      setModalSucessoAberto(true);
       setTimeout(() => setSucessoMsg(''), 4000);
       await carregarDados();
     } catch (err) {
-      setErro(err.message);
+      setErro(err.message || 'Erro ao atualizar dados pré-gestacionais.');
     } finally {
       setSalvandoBase(false);
     }
@@ -127,28 +151,31 @@ export default function Antropometria({ onBack }) {
         observacoes: novaObs.trim() || null
       };
 
-      const res = await fetch('/antropometria/registro', {
+      await apiFetch('/antropometria/registro', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
-      if (!res.ok) {
-        const d = await res.json();
-        throw new Error(d.detail || 'Erro ao registrar medição.');
-      }
-
       setModalRegistroAberto(false);
+      setSucessoMsg('Nova pesagem registrada com sucesso!');
+      setModalSucessoDados({
+        title: 'Pesagem Registrada com Sucesso! ⚖️',
+        subtitle: 'Seu registro antropométrico foi plotado na Curva de Atalah e analisado pelas diretrizes do Ministério da Saúde.',
+        highlightText: `Semana ${novaSemana} • ${novoPeso} kg ${novaAU ? '• Altura Uterina: ' + novaAU + ' cm' : ''}`,
+        confirmButtonText: 'Continuar no Painel'
+      });
+      setModalSucessoAberto(true);
+
       setNovoPeso('');
       setNovaAU('');
       setNovaCircunferencia('');
       setNovaPressao('');
       setNovaObs('');
-      setSucessoMsg('Nova pesagem registrada com sucesso!');
       setTimeout(() => setSucessoMsg(''), 4000);
       await carregarDados();
     } catch (err) {
-      setErro(err.message);
+      setErro(err.message || 'Erro ao registrar medição.');
     } finally {
       setSalvandoRegistro(false);
     }
@@ -157,16 +184,15 @@ export default function Antropometria({ onBack }) {
   const handleExcluirRegistro = async (id) => {
     if (!window.confirm('Deseja realmente remover este registro de pesagem?')) return;
     try {
-      const res = await fetch(`/antropometria/registro/${id}`, {
-        method: 'DELETE',
-        headers: authHeaders()
+      await apiFetch(`/antropometria/registro/${id}`, {
+        method: 'DELETE'
       });
-      if (res.ok) {
-        setSucessoMsg('Registro removido.');
-        setTimeout(() => setSucessoMsg(''), 3000);
-        await carregarDados();
-      }
-    } catch (e) {}
+      setSucessoMsg('Registro removido.');
+      setTimeout(() => setSucessoMsg(''), 3000);
+      await carregarDados();
+    } catch (e) {
+      setErro(e.message || 'Erro ao remover medição.');
+    }
   };
 
   if (carregando && !painel) {
@@ -504,9 +530,211 @@ export default function Antropometria({ onBack }) {
         </div>
       )}
 
-      {/* SEÇÃO 2: Guia Nutricional Rico */}
+      {/* SEÇÃO 2: Guia Nutricional Rico Personalizado por Exames */}
       {secaoAberta === 'guia' && guia && (
         <div>
+          {/* Recomendações Nutricionais Personalizadas Baseadas nos Exames */}
+          <div className="card" style={{ marginBottom: '14px', borderLeft: '5px solid var(--color-rosa)', backgroundColor: '#FFFDFE' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Sparkles size={20} color="var(--color-rosa)" />
+                <div>
+                  <h3 style={{ fontSize: '1.05rem', color: 'var(--color-vinho)', margin: 0 }}>
+                    Guia Nutricional Personalizado por Exames
+                  </h3>
+                  <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)' }}>
+                    FEBRASGO & Ministério da Saúde • Ferro, Hormônios, Vitaminas e Glicemia
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setMostrarSimuladorExames(!mostrarSimuladorExames)}
+                className="btn btn-outline"
+                style={{
+                  fontSize: '0.74rem',
+                  padding: '4px 10px',
+                  borderRadius: 'var(--radius-full)',
+                  borderColor: 'var(--color-dourado)',
+                  color: 'var(--color-vinho)'
+                }}
+                title="Informar ou simular valores dos seus exames laboratoriais"
+              >
+                <Sliders size={13} style={{ marginRight: '4px' }} />
+                {mostrarSimuladorExames ? 'Ocultar Valores' : 'Digitar Meus Exames'}
+              </button>
+            </div>
+
+            {/* Formulário Rápido de Valores de Exames */}
+            {mostrarSimuladorExames && (
+              <div style={{ marginBottom: '14px', padding: '12px', backgroundColor: '#FAF6F7', borderRadius: 'var(--radius-md)', border: '1px solid #F0E6E8' }}>
+                <p style={{ margin: '0 0 10px 0', fontSize: '0.8rem', color: 'var(--color-vinho)', fontWeight: 600 }}>
+                  🧪 Digite os valores do seu último exame de sangue para calibrar seu plano alimentar:
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px' }}>
+                  <div>
+                    <label style={{ fontSize: '0.74rem', display: 'block', marginBottom: '2px', fontWeight: 600 }}>Hemoglobina (g/dL)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      placeholder="Ex: 11.8"
+                      value={examesInterativos.hemoglobina}
+                      onChange={(e) => setExamesInterativos({ ...examesInterativos, hemoglobina: e.target.value })}
+                      className="input-field"
+                      style={{ width: '100%', fontSize: '0.82rem', padding: '6px 8px' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.74rem', display: 'block', marginBottom: '2px', fontWeight: 600 }}>Ferritina (ng/mL)</label>
+                    <input
+                      type="number"
+                      step="1"
+                      placeholder="Ex: 35"
+                      value={examesInterativos.ferritina}
+                      onChange={(e) => setExamesInterativos({ ...examesInterativos, ferritina: e.target.value })}
+                      className="input-field"
+                      style={{ width: '100%', fontSize: '0.82rem', padding: '6px 8px' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.74rem', display: 'block', marginBottom: '2px', fontWeight: 600 }}>Glicemia Jejum (mg/dL)</label>
+                    <input
+                      type="number"
+                      step="1"
+                      placeholder="Ex: 84"
+                      value={examesInterativos.glicemia}
+                      onChange={(e) => setExamesInterativos({ ...examesInterativos, glicemia: e.target.value })}
+                      className="input-field"
+                      style={{ width: '100%', fontSize: '0.82rem', padding: '6px 8px' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.74rem', display: 'block', marginBottom: '2px', fontWeight: 600 }}>Vitamina D (ng/mL)</label>
+                    <input
+                      type="number"
+                      step="1"
+                      placeholder="Ex: 32"
+                      value={examesInterativos.vitamina_d}
+                      onChange={(e) => setExamesInterativos({ ...examesInterativos, vitamina_d: e.target.value })}
+                      className="input-field"
+                      style={{ width: '100%', fontSize: '0.82rem', padding: '6px 8px' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.74rem', display: 'block', marginBottom: '2px', fontWeight: 600 }}>TSH Tireoide (mUI/L)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      placeholder="Ex: 2.1"
+                      value={examesInterativos.tsh}
+                      onChange={(e) => setExamesInterativos({ ...examesInterativos, tsh: e.target.value })}
+                      className="input-field"
+                      style={{ width: '100%', fontSize: '0.82rem', padding: '6px 8px' }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Lista de Biomarcadores com Recomendações Clínicas */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {(guia?.nutricao_personalizada_exames?.biomarcadores || []).map((bio) => {
+                let statusAtual = bio.status;
+                let corAtual = bio.cor;
+                let detalheAtual = bio.valor_detectado;
+
+                if (bio.id === 'ferro_hemoglobina' && (examesInterativos.hemoglobina || examesInterativos.ferritina)) {
+                  const hb = parseFloat(examesInterativos.hemoglobina);
+                  const ferr = parseFloat(examesInterativos.ferritina);
+                  const temAnemia = (!isNaN(hb) && hb < 11.0) || (!isNaN(ferr) && ferr < 30.0);
+                  statusAtual = temAnemia ? 'Atenção: Indicativo de Anemia / Estoque Baixo de Ferro' : 'Níveis de Hemoglobina e Ferro Adequados';
+                  corAtual = temAnemia ? '#C0392B' : '#27AE60';
+                  detalheAtual = `Informado: ${!isNaN(hb) ? `Hb: ${hb} g/dL` : ''} ${!isNaN(ferr) ? `(Ferritina: ${ferr} ng/mL)` : ''}`.trim();
+                } else if (bio.id === 'glicemia' && examesInterativos.glicemia) {
+                  const glic = parseFloat(examesInterativos.glicemia);
+                  const temDG = !isNaN(glic) && glic >= 92.0;
+                  statusAtual = temDG ? 'Atenção: Glicemia Limítrofe (Critério >= 92 mg/dL)' : 'Glicemia de Jejum Normal (< 92 mg/dL)';
+                  corAtual = temDG ? '#E67E22' : '#27AE60';
+                  detalheAtual = `Informado: ${glic} mg/dL`;
+                } else if (bio.id === 'vitamina_d' && examesInterativos.vitamina_d) {
+                  const vit = parseFloat(examesInterativos.vitamina_d);
+                  const baixa = !isNaN(vit) && vit < 30.0;
+                  statusAtual = baixa ? 'Atenção: Vitamina D Subótima (< 30 ng/mL)' : 'Vitamina D em Faixa Ideal (>= 30 ng/mL)';
+                  corAtual = baixa ? '#F39C12' : '#27AE60';
+                  detalheAtual = `Informado: ${vit} ng/mL`;
+                } else if (bio.id === 'tsh_tireoide' && examesInterativos.tsh) {
+                  const tsh = parseFloat(examesInterativos.tsh);
+                  const normal = !isNaN(tsh) && tsh >= 0.4 && tsh <= 3.0;
+                  statusAtual = normal ? 'TSH em Faixa Eutireoidiana Gestacional' : 'Atenção: Variação de TSH (Avaliar com Obstetra)';
+                  corAtual = normal ? '#27AE60' : '#E67E22';
+                  detalheAtual = `Informado: ${tsh} mUI/L`;
+                }
+
+                return (
+                  <div
+                    key={bio.id}
+                    style={{
+                      padding: '12px',
+                      borderRadius: 'var(--radius-sm)',
+                      backgroundColor: '#FFFFFF',
+                      border: `1.5px solid ${corAtual}`,
+                      boxShadow: 'var(--shadow-xs)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap', gap: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '1.2rem' }}>{bio.icone}</span>
+                        <strong style={{ fontSize: '0.92rem', color: 'var(--color-vinho)' }}>{bio.nome}</strong>
+                      </div>
+                      <span
+                        style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: 'var(--radius-full)',
+                          backgroundColor: `${corAtual}18`,
+                          color: corAtual,
+                          border: `1px solid ${corAtual}40`
+                        }}
+                      >
+                        {statusAtual}
+                      </span>
+                    </div>
+
+                    {detalheAtual && (
+                      <p style={{ margin: '0 0 6px 0', fontSize: '0.76rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                        {detalheAtual}
+                      </p>
+                    )}
+
+                    <div style={{ fontSize: '0.82rem', color: 'var(--color-text)', lineHeight: 1.45 }}>
+                      <strong style={{ color: 'var(--color-vinho)', display: 'block', marginBottom: '4px' }}>
+                        🥗 Alimentos Estratégicos Recomendados:
+                      </strong>
+                      <ul style={{ margin: '0 0 6px 0', paddingLeft: '18px' }}>
+                        {bio.alimentos_recomendados.map((ali, i) => (
+                          <li key={i}>{ali}</li>
+                        ))}
+                      </ul>
+
+                      {bio.sinergia_absorcao && (
+                        <div style={{ padding: '6px 8px', backgroundColor: '#F0FAF4', borderRadius: '4px', border: '1px solid #D4EDDA', color: '#155724', fontSize: '0.78rem', marginBottom: '4px' }}>
+                          {bio.sinergia_absorcao}
+                        </div>
+                      )}
+
+                      {bio.inibidores_evitar && (
+                        <div style={{ padding: '6px 8px', backgroundColor: '#FFF5F5', borderRadius: '4px', border: '1px solid #FFD1D8', color: '#7E1D2D', fontSize: '0.78rem' }}>
+                          {bio.inibidores_evitar}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Mitos e Verdades */}
           <div className="card" style={{ marginBottom: '14px' }}>
             <h3 style={{ fontSize: '1rem', color: 'var(--color-vinho)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -896,6 +1124,16 @@ export default function Antropometria({ onBack }) {
           </div>
         </div>
       )}
+
+      {/* Confirmação de Salvamento em Tela Inteira */}
+      <FullScreenSuccessModal
+        isOpen={modalSucessoAberto}
+        onClose={() => setModalSucessoAberto(false)}
+        title={modalSucessoDados?.title || 'Salvo com Sucesso! 🌸'}
+        subtitle={modalSucessoDados?.subtitle}
+        highlightText={modalSucessoDados?.highlightText}
+        confirmButtonText={modalSucessoDados?.confirmButtonText || 'Continuar'}
+      />
     </div>
   );
 }

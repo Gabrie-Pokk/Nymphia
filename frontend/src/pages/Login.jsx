@@ -1,21 +1,73 @@
 import React, { useState } from 'react';
 import LotusLogo, { NymphiaBrandName } from '../components/LotusLogo';
-import { Eye, EyeOff, Lock, Mail, ArrowRight, Sparkles } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, ArrowRight, Sparkles, CheckCircle, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
+import { apiFetch } from '../utils/api';
+
+const UFS_BRASIL = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
+  'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
+  'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+];
+
 export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateRegisterProf, onNavigateRegisterParc }) {
-  const { login } = useAuth();
+  const { login, authMessage, clearAuthMessage } = useAuth();
   const [perfil, setPerfil] = useState('gestante'); // gestante | profissional | parceiro
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [crm, setCrm] = useState('');
+  const [crmUf, setCrmUf] = useState('SP');
+  const [crmStatus, setCrmStatus] = useState(null);
+  const [verificandoCrm, setVerificandoCrm] = useState(false);
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erro, setErro] = useState('');
   const [carregando, setCarregando] = useState(false);
 
+  const verificarCrmAoDigitar = async (numDigitado, ufDigitada) => {
+    const numCrm = (numDigitado !== undefined ? numDigitado : crm).trim().replace(/[^0-9]/g, '');
+    const estadoUf = (ufDigitada !== undefined ? ufDigitada : crmUf).trim().toUpperCase();
+    if (!numCrm || numCrm.length < 3) {
+      setCrmStatus(null);
+      return;
+    }
+
+    setVerificandoCrm(true);
+    try {
+      const res = await apiFetch(`/auth/profissional/validar-crm?crm=${numCrm}&uf=${estadoUf}`, { skipAuth: true });
+      setCrmStatus(res);
+    } catch (err) {
+      setCrmStatus({ valido: false, mensagem: err.message || 'Falha ao consultar CRM no CFM.' });
+    } finally {
+      setVerificandoCrm(false);
+    }
+  };
+
   const preencherDemo = async (tipo) => {
     setPerfil(tipo);
+    clearAuthMessage && clearAuthMessage();
     let demoEmail = 'gestante@nymphia.com.br';
-    if (tipo === 'profissional') demoEmail = 'medico@nymphia.com.br';
+    let demoCrm = '';
+    let demoUf = 'SP';
+
+    if (tipo === 'profissional') {
+      demoEmail = 'medico@nymphia.com.br';
+      demoCrm = '123456';
+      demoUf = 'SP';
+      setCrm('123456');
+      setCrmUf('SP');
+      setCrmStatus({
+        valido: true,
+        crm: '123456',
+        uf: 'SP',
+        situacao: 'ATIVO',
+        mensagem: 'Dr. Carlos Silva • CRM Ativo e Regular no CREMESP'
+      });
+    } else {
+      setCrm('');
+      setCrmStatus(null);
+    }
+
     if (tipo === 'parceiro') demoEmail = 'parceiro@nymphia.com.br';
     const demoSenha = 'senhaMaternidade123';
 
@@ -25,34 +77,31 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateRe
     setErro('');
 
     try {
-      // 1. Tenta login unificado
-      let res = await fetch('/auth/login', {
+      const payload = { email: demoEmail, senha: demoSenha, perfil: tipo };
+      if (tipo === 'profissional') {
+        payload.crm = demoCrm;
+        payload.crm_uf = demoUf;
+      }
+
+      const data = await apiFetch('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: demoEmail, senha: demoSenha })
+        body: JSON.stringify(payload),
+        skipAuth: true
       });
-      let data = await res.json();
 
-      // 2. Se falhar, tenta rota específica do perfil
-      if (!res.ok) {
-        let epFallback = '/auth/gestante/login';
-        if (tipo === 'profissional') epFallback = '/auth/profissional/login';
-        if (tipo === 'parceiro') epFallback = '/auth/parceiro/login';
-        res = await fetch(epFallback, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: demoEmail, senha: demoSenha })
-        });
-        data = await res.json();
+      if (data && data.token) {
+        login(data.token, data);
+        if (onLoginSuccess) onLoginSuccess();
+      } else {
+        throw new Error('Falha ao autenticar na conta demo.');
       }
-
-      if (!res.ok) {
-        throw new Error(data.detail || 'Falha ao autenticar na conta demo.');
-      }
-      login(data.token, data);
-      if (onLoginSuccess) onLoginSuccess();
     } catch (err) {
-      setErro(err.message);
+      if (err.isTimeout || err.isNetworkError || err.status >= 500) {
+        setErro('O servidor da Nymphia está inicializando na nuvem. Aguarde cerca de 20 a 30 segundos e toque novamente no perfil desejado.');
+      } else {
+        setErro(err.message || 'Falha ao autenticar na conta de teste.');
+      }
     } finally {
       setCarregando(false);
     }
@@ -60,7 +109,17 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateRe
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    clearAuthMessage && clearAuthMessage();
     setErro('');
+
+    if (perfil === 'profissional') {
+      const crmLimpo = crm.trim().replace(/[^0-9]/g, '');
+      if (!crmLimpo || crmLimpo.length < 3) {
+        setErro('Por favor, informe o número do seu CRM com ao menos 3 dígitos para validação profissional.');
+        return;
+      }
+    }
+
     if (!email || !senha) {
       setErro('Por favor, preencha todos os campos.');
       return;
@@ -70,49 +129,39 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateRe
     const emailLimpo = email.trim().toLowerCase();
 
     try {
-      // 1. Tenta login unificado que detecta o perfil automaticamente
-      let res = await fetch('/auth/login', {
+      const payload = {
+        email: emailLimpo,
+        senha,
+        perfil
+      };
+      if (perfil === 'profissional') {
+        payload.crm = crm.trim().replace(/[^0-9]/g, '');
+        payload.crm_uf = crmUf.trim().toUpperCase();
+      }
+
+      const data = await apiFetch('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: emailLimpo, senha })
+        body: JSON.stringify(payload),
+        skipAuth: true
       });
-      let data = await res.json();
 
-      // 2. Se a rota unificada não estiver disponível ou retornar erro, tenta rota selecionada
-      if (!res.ok) {
-        let endpoint = '/auth/gestante/login';
-        if (perfil === 'profissional') endpoint = '/auth/profissional/login';
-        if (perfil === 'parceiro') endpoint = '/auth/parceiro/login';
-
-        res = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: emailLimpo, senha })
-        });
-        data = await res.json();
-      }
-
-      // 3. Se ainda falhar e perfil estava como gestante, tenta parceiro automaticamente
-      if (!res.ok && perfil === 'gestante') {
-        const resParc = await fetch('/auth/parceiro/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: emailLimpo, senha })
-        });
-        if (resParc.ok) {
-          res = resParc;
-          data = await resParc.json();
-        }
-      }
-
-      if (!res.ok) {
-        throw new Error(data.detail || 'Falha ao autenticar. Verifique seu e-mail e senha.');
+      if (!data || !data.token) {
+        throw new Error('Resposta de autenticação inválida.');
       }
 
       login(data.token, data);
       if (onLoginSuccess) onLoginSuccess();
     } catch (err) {
-      setErro(err.message);
+      if (err.status === 401) {
+        setErro(err.message || 'E-mail, CRM ou senha incorretos.');
+      } else if (err.status === 400 || err.status === 403 || err.status === 422) {
+        setErro(err.message || 'Registro profissional não validado ou inativo no CRM.');
+      } else if (err.isTimeout || err.isNetworkError || err.status >= 500) {
+        setErro('O servidor seguro da Nymphia está inicializando ou com instabilidade momentânea. Aguarde alguns instantes e tente novamente.');
+      } else {
+        setErro(err.message || 'Falha ao entrar na plataforma.');
+      }
     } finally {
       setCarregando(false);
     }
@@ -259,6 +308,24 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateRe
         </button>
       </div>
 
+      {authMessage && (
+        <div
+          role="alert"
+          style={{
+            padding: '12px 14px',
+            backgroundColor: '#FFF9E6',
+            color: '#7A5F1C',
+            borderRadius: 'var(--radius-sm)',
+            fontSize: '0.85rem',
+            marginBottom: '16px',
+            borderLeft: '4px solid var(--color-dourado)',
+            lineHeight: 1.4
+          }}
+        >
+          🔒 {authMessage}
+        </div>
+      )}
+
       {erro && (
         <div
           role="alert"
@@ -278,14 +345,137 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateRe
 
       {/* Formulário de Login */}
       <form onSubmit={handleSubmit}>
+        <div style={{ marginBottom: '14px', fontSize: '0.84rem', color: 'var(--color-vinho)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span>Acessando como:</span>
+          <span className="badge-rosa" style={{ fontSize: '0.78rem' }}>
+            {perfil === 'parceiro' ? '🤝 Parceiro(a) / Rede de Apoio' : perfil === 'profissional' ? '🩺 Profissional de Saúde' : '🌸 Gestante'}
+          </span>
+        </div>
+
+        {/* Bloco de CRM e UF exclusivo para Médico / Profissional de Saúde */}
+        {perfil === 'profissional' && (
+          <div
+            style={{
+              marginBottom: '16px',
+              padding: '12px 14px',
+              backgroundColor: '#FDF0F2',
+              borderRadius: 'var(--radius-sm)',
+              border: '1.5px solid var(--color-vinho)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <label
+                htmlFor="login-crm"
+                style={{
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                  color: 'var(--color-vinho)',
+                  margin: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <ShieldCheck size={16} color="var(--color-vinho)" />
+                Registro Profissional (CRM)
+              </label>
+              <span className="badge-gold" style={{ fontSize: '0.68rem', padding: '2px 6px' }}>Checagem CFM</span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px', gap: '8px' }}>
+              <div>
+                <input
+                  id="login-crm"
+                  type="text"
+                  className="form-control"
+                  placeholder="Número do CRM (ex: 123456)"
+                  value={crm}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9-]/g, '');
+                    setCrm(val);
+                    if (crmStatus) setCrmStatus(null);
+                  }}
+                  onBlur={() => verificarCrmAoDigitar()}
+                  required={perfil === 'profissional'}
+                  style={{ fontWeight: 600 }}
+                />
+              </div>
+              <div>
+                <select
+                  id="login-crm-uf"
+                  className="form-control"
+                  value={crmUf}
+                  onChange={(e) => {
+                    const novaUf = e.target.value;
+                    setCrmUf(novaUf);
+                    if (crm && crm.length >= 3) {
+                      verificarCrmAoDigitar(crm, novaUf);
+                    }
+                  }}
+                  style={{ fontWeight: 600 }}
+                >
+                  {UFS_BRASIL.map((uf) => (
+                    <option key={uf} value={uf}>{uf}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Status de Verificação do CRM em Tempo Real */}
+            {verificandoCrm && (
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-vinho)', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--color-rosa)' }} />
+                Consultando situação cadastral do CRM junto ao CFM...
+              </div>
+            )}
+
+            {crmStatus && (
+              <div
+                style={{
+                  fontSize: '0.78rem',
+                  marginTop: '8px',
+                  padding: '8px 10px',
+                  borderRadius: 'var(--radius-sm)',
+                  backgroundColor: crmStatus.valido ? '#E8F5E9' : '#FFEBEE',
+                  color: crmStatus.valido ? '#2E7D32' : '#C62828',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '6px',
+                  lineHeight: 1.3
+                }}
+              >
+                {crmStatus.valido ? (
+                  <>
+                    <CheckCircle size={16} color="#2E7D32" style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <div>
+                      <strong>CRM {crmStatus.crm}/{crmStatus.uf} Válido & Ativo</strong>
+                      <div style={{ fontSize: '0.72rem' }}>{crmStatus.mensagem}</div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle size={16} color="#C62828" style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <div>
+                      <strong>CRM Não Homologado ou Inativo</strong>
+                      <div style={{ fontSize: '0.72rem' }}>{crmStatus.mensagem}</div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="form-group">
-          <label htmlFor="login-email">E-mail</label>
+          <label htmlFor="login-email">
+            {perfil === 'parceiro' ? 'E-mail do(a) Parceiro(a)' : perfil === 'profissional' ? 'E-mail Profissional (Médico / Enfermeira)' : 'E-mail da Gestante'}
+          </label>
           <div style={{ position: 'relative' }}>
             <input
               id="login-email"
               type="email"
               className="form-control"
-              placeholder="seuemail@exemplo.com"
+              placeholder={perfil === 'parceiro' ? 'parceiro@exemplo.com' : perfil === 'profissional' ? 'medico@clinica.com' : 'gestante@exemplo.com'}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -295,7 +485,7 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateRe
         </div>
 
         <div className="form-group">
-          <label htmlFor="login-senha">Senha</label>
+          <label htmlFor="login-senha">Senha de Acesso</label>
           <div style={{ position: 'relative' }}>
             <input
               id="login-senha"
@@ -334,7 +524,13 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateRe
           style={{ width: '100%', minHeight: '48px', marginTop: '10px' }}
           disabled={carregando}
         >
-          {carregando ? 'Entrando...' : 'Entrar na Plataforma'}
+          {carregando
+            ? 'Entrando...'
+            : perfil === 'parceiro'
+            ? 'Entrar como Parceiro(a)'
+            : perfil === 'profissional'
+            ? 'Entrar como Profissional'
+            : 'Entrar como Gestante'}
           <ArrowRight size={18} />
         </button>
       </form>

@@ -9,9 +9,25 @@ export function AuthProvider({ children }) {
     return saved ? JSON.parse(saved) : null;
   });
 
+  const [authMessage, setAuthMessage] = useState('');
+
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      setToken(null);
+      setUser(null);
+      localStorage.removeItem('nymphia_token');
+      localStorage.removeItem('nymphia_user');
+      setAuthMessage('Sua sessão expirou por segurança. Por favor, faça login novamente para continuar.');
+    };
+
+    window.addEventListener('nymphia:auth-expired', handleAuthExpired);
+    return () => window.removeEventListener('nymphia:auth-expired', handleAuthExpired);
+  }, []);
+
   const login = (jwtToken, userData) => {
     setToken(jwtToken);
     setUser(userData);
+    setAuthMessage('');
     localStorage.setItem('nymphia_token', jwtToken);
     localStorage.setItem('nymphia_user', JSON.stringify(userData));
   };
@@ -19,6 +35,7 @@ export function AuthProvider({ children }) {
   const logout = () => {
     setToken(null);
     setUser(null);
+    setAuthMessage('');
     localStorage.removeItem('nymphia_token');
     localStorage.removeItem('nymphia_user');
   };
@@ -36,7 +53,19 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ token, user, login, logout, updateUser, authHeaders, isAuthenticated: !!token }}>
+    <AuthContext.Provider
+      value={{
+        token,
+        user,
+        login,
+        logout,
+        updateUser,
+        authHeaders,
+        isAuthenticated: !!token,
+        authMessage,
+        clearAuthMessage: () => setAuthMessage('')
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

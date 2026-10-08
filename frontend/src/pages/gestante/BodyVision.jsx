@@ -18,12 +18,16 @@ import {
   Sparkles,
   Info,
   Maximize2,
+  Minimize2,
   Sliders,
   RefreshCw,
   Award,
   Heart,
   XCircle,
-  HelpCircle
+  HelpCircle,
+  Ruler,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import {
   speakNymphia,
@@ -63,6 +67,71 @@ export default function BodyVision({ onBack }) {
 
   // Controles de Demonstração
   const [demoInclinacaoManual, setDemoInclinacaoManual] = useState(172);
+
+  // Controles de Tela Cheia, Zoom da Câmera (0.5x, 1x, 2x) e Silhueta Guia
+  const [telaCheia, setTelaCheia] = useState(false);
+  const [zoomNivel, setZoomNivel] = useState(1); // 0.5 | 1 | 2
+  const [mostrarSilhuetaGuia, setMostrarSilhuetaGuia] = useState(true);
+  const [comoFuncionaAberto, setComoFuncionaAberto] = useState(true);
+
+  // Calibração de Medidas Corporais da Gestante para a IA
+  const [modalCalibracaoAberta, setModalCalibracaoAberta] = useState(false);
+  const [larguraOmbrosCm, setLarguraOmbrosCm] = useState(() => {
+    const salvo = localStorage.getItem('nymphia_calibracao_postura');
+    if (salvo) {
+      try { return JSON.parse(salvo).larguraOmbrosCm || 38; } catch {}
+    }
+    return 38;
+  });
+  const [alturaCm, setAlturaCm] = useState(() => {
+    const salvo = localStorage.getItem('nymphia_calibracao_postura');
+    if (salvo) {
+      try { return JSON.parse(salvo).alturaCm || 165; } catch {}
+    }
+    return 165;
+  });
+  const [semanaGestacional, setSemanaGestacional] = useState(() => {
+    const salvo = localStorage.getItem('nymphia_calibracao_postura');
+    if (salvo) {
+      try { return JSON.parse(salvo).semanaGestacional || 24; } catch {}
+    }
+    return 24;
+  });
+  const [distanciaCamera, setDistanciaCamera] = useState(() => {
+    const salvo = localStorage.getItem('nymphia_calibracao_postura');
+    if (salvo) {
+      try { return JSON.parse(salvo).distanciaCamera || 2.0; } catch {}
+    }
+    return 2.0;
+  });
+  const [desnivelOmbrosCm, setDesnivelOmbrosCm] = useState(0);
+
+  const salvarCalibracaoMedidas = (e) => {
+    e.preventDefault();
+    const dados = {
+      larguraOmbrosCm: Number(larguraOmbrosCm),
+      alturaCm: Number(alturaCm),
+      semanaGestacional: Number(semanaGestacional),
+      distanciaCamera: Number(distanciaCamera)
+    };
+    localStorage.setItem('nymphia_calibracao_postura', JSON.stringify(dados));
+    setModalCalibracaoAberta(false);
+    falarInstrucao(`Calibração atualizada com sucesso para ${larguraOmbrosCm} centímetros de ombros e ${semanaGestacional} semanas.`);
+  };
+
+  const mudarZoom = (novoZoom) => {
+    setZoomNivel(novoZoom);
+    try {
+      const track = streamRef.current?.getVideoTracks()[0];
+      if (track) {
+        const caps = track.getCapabilities ? track.getCapabilities() : {};
+        if (caps.zoom) {
+          track.applyConstraints({ advanced: [{ zoom: novoZoom }] }).catch(() => {});
+        }
+      }
+    } catch {}
+    falarInstrucao(`Zoom ${novoZoom} vezes ativado.`);
+  };
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -357,9 +426,16 @@ export default function BodyVision({ onBack }) {
     const degSpine = Math.round(180 - (radSpine * 180) / Math.PI);
     setInclinacaoGraus(degSpine);
 
-    // 2. Simetria dos Ombros (Nível Escapular)
-    const diffOmbros = Math.abs(leftShoulder.y - rightShoulder.y);
-    setSimetriaOmbros(diffOmbros < 0.035 ? 'Alinhados' : 'Desnível Leve');
+    // 2. Simetria dos Ombros com Calibração Real em Centímetros
+    const dxOmbrosPx = Math.abs(leftShoulder.x - rightShoulder.x) * width;
+    const dyOmbrosPx = Math.abs(leftShoulder.y - rightShoulder.y) * height;
+    const shoulderWidthPx = Math.hypot(dxOmbrosPx, dyOmbrosPx);
+    let pxPerCm = shoulderWidthPx / (larguraOmbrosCm || 38);
+    if (!pxPerCm || pxPerCm <= 0) pxPerCm = 3.5;
+
+    const desnivelRealCm = Number((dyOmbrosPx / pxPerCm).toFixed(1));
+    setDesnivelOmbrosCm(desnivelRealCm);
+    setSimetriaOmbros(desnivelRealCm < 1.6 ? 'Alinhados' : `Desnível de ${desnivelRealCm} cm`);
 
     // 3. Ângulo da Báscula Pélvica (Tronco -> Bacia -> Joelhos)
     let degPelvis = 175;
@@ -441,18 +517,49 @@ export default function BodyVision({ onBack }) {
     ctx.stroke();
     ctx.setLineDash([]); // reset
 
-    // 2. Conexões Anatômicas Principais
+    // 2. Conexões Anatômicas de Corpo Inteiro (Cabeça, Tronco, Membros Superiores e Inferiores)
     const conexoes = [
-      [11, 12], // ombros
-      [11, 23], [12, 24], // tronco
-      [23, 24], // pelve
-      [11, 13], [13, 15], // braço esquerdo
-      [12, 14], [14, 16], // braço direito
-      [23, 25], [25, 27], // perna esquerda
-      [24, 26], [26, 28]  // perna direita
+      [0, 11], [0, 12], // cabeça ao pescoço/ombros
+      [11, 12], // linha dos ombros
+      [11, 23], [12, 24], // laterais do tronco
+      [23, 24], // linha da bacia / pelve
+      [11, 13], [13, 15], // braço e antebraço esquerdo
+      [12, 14], [14, 16], // braço e antebraço direito
+      [15, 17], [16, 18], // mãos / punhos
+      [23, 25], [25, 27], // coxa e perna esquerda
+      [24, 26], [26, 28], // coxa e perna direita
+      [27, 31], [28, 32]  // pés / tornozelos
     ];
 
     const corEixo = score >= 90 ? '#27AE60' : score >= 80 ? '#C9A84C' : '#C2185B';
+
+    // Silhueta guia de posicionamento de corpo inteiro
+    if (mostrarSilhuetaGuia) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+      ctx.setLineDash([6, 6]);
+      ctx.lineWidth = 2;
+      // Cabeça
+      ctx.beginPath();
+      ctx.ellipse(width / 2, height * 0.15, width * 0.08, height * 0.08, 0, 0, 2 * Math.PI);
+      ctx.stroke();
+      // Tronco e abdômen gestacional
+      ctx.beginPath();
+      ctx.moveTo(width * 0.36, height * 0.25);
+      ctx.lineTo(width * 0.64, height * 0.25);
+      ctx.lineTo(width * 0.61, height * 0.54);
+      ctx.lineTo(width * 0.39, height * 0.54);
+      ctx.closePath();
+      ctx.stroke();
+      // Pernas
+      ctx.beginPath();
+      ctx.moveTo(width * 0.42, height * 0.54);
+      ctx.lineTo(width * 0.40, height * 0.94);
+      ctx.moveTo(width * 0.58, height * 0.54);
+      ctx.lineTo(width * 0.60, height * 0.94);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     ctx.lineWidth = 4;
     ctx.strokeStyle = corEixo;
@@ -467,6 +574,21 @@ export default function BodyVision({ onBack }) {
         ctx.beginPath();
         ctx.moveTo(p1.x, p1.y);
         ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
+      }
+    });
+
+    // Pontos articulares luminosos de corpo inteiro
+    const pontosArticulares = [0, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28];
+    pontosArticulares.forEach((idx) => {
+      if (lm[idx]) {
+        const pt = toPx(lm[idx]);
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 5, 0, 2 * Math.PI);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = corEixo;
         ctx.stroke();
       }
     });
@@ -727,8 +849,46 @@ export default function BodyVision({ onBack }) {
           </div>
         </div>
 
-        {/* Controles de Áudio e Personalização da Voz */}
-        <div style={{ display: 'flex', gap: '6px' }}>
+        {/* Controles de Áudio, Calibração e Tela Cheia */}
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+          <button
+            onClick={() => setModalCalibracaoAberta(true)}
+            className="btn btn-outline"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '6px 10px',
+              fontSize: '0.75rem',
+              borderRadius: 'var(--radius-full)',
+              borderColor: 'var(--color-dourado)',
+              color: 'var(--color-vinho)'
+            }}
+            title="Calibrar largura de ombros, altura e medidas da gestante"
+          >
+            <Ruler size={14} color="var(--color-dourado)" />
+            <span>Medidas</span>
+          </button>
+
+          <button
+            onClick={() => setTelaCheia(!telaCheia)}
+            className="btn btn-outline"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '6px 10px',
+              fontSize: '0.75rem',
+              borderRadius: 'var(--radius-full)',
+              borderColor: 'var(--color-vinho)',
+              color: 'var(--color-vinho)'
+            }}
+            title={telaCheia ? "Sair da Tela Cheia" : "Expandir para Tela Cheia"}
+          >
+            {telaCheia ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            <span>{telaCheia ? 'Minimizar' : 'Tela Cheia'}</span>
+          </button>
+
           <button
             onClick={() => setModalVozAberta(true)}
             className="btn btn-outline"
@@ -754,8 +914,8 @@ export default function BodyVision({ onBack }) {
               if (!vozAtiva) falarInstrucao('Voz da Nymphia ativada.', true);
               else stopNymphiaVoice();
             }}
-            className="btn btn-outline"
-            style={{ width: '38px', height: '38px', padding: 0, borderRadius: '50%' }}
+            className="btn btn-outline circle-btn"
+            style={{ width: '38px', height: '38px', minWidth: '38px', padding: 0, borderRadius: '50% !important', aspectRatio: '1/1 !important' }}
             title={vozAtiva ? 'Silenciar voz' : 'Ativar voz'}
           >
             {vozAtiva ? <Volume2 size={18} color="var(--color-rosa)" /> : <VolumeX size={18} color="var(--color-text-muted)" />}
@@ -893,52 +1053,215 @@ export default function BodyVision({ onBack }) {
         ))}
       </div>
 
-      {/* Viewport Principal com Câmera e Canvas da IA */}
+      {/* Guia Didático e Descomplicado da Visão Corporal IA */}
       <div
+        className="card"
         style={{
-          position: 'relative',
-          width: '100%',
-          aspectRatio: '4 / 3',
-          maxHeight: '440px',
-          backgroundColor: '#160B10',
-          borderRadius: 'var(--radius-lg)',
-          overflow: 'hidden',
-          boxShadow: 'var(--shadow-md)',
-          border: '2px solid var(--color-border)'
+          marginBottom: '14px',
+          padding: '12px 14px',
+          backgroundColor: '#FFFDFE',
+          border: '1.5px solid var(--color-rosa-claro)'
         }}
       >
-        {/* Vídeo da Câmera Real */}
-        <video
-          ref={videoRef}
-          playsInline
-          muted
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            transform: facingMode === 'user' ? 'scaleX(-1)' : 'none',
-            display: cameraAtiva && !modoDemo ? 'block' : 'none'
-          }}
-        />
+        <div
+          onClick={() => setComoFuncionaAberto(!comoFuncionaAberto)}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <HelpCircle size={18} color="var(--color-rosa)" />
+            <strong style={{ fontSize: '0.92rem', color: 'var(--color-vinho)' }}>
+              📖 Como Funciona a Visão Corporal IA? (3 Passos Simples)
+            </strong>
+          </div>
+          {comoFuncionaAberto ? <ChevronUp size={18} color="var(--color-vinho)" /> : <ChevronDown size={18} color="var(--color-vinho)" />}
+        </div>
 
-        {/* Canvas da Inteligência Artificial sobreposto */}
-        <canvas
-          ref={canvasRef}
-          width={640}
-          height={480}
+        {comoFuncionaAberto && (
+          <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #F5EAEB', fontSize: '0.82rem', color: 'var(--color-text)', lineHeight: 1.5 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '10px' }}>
+              <div style={{ backgroundColor: '#FAF6F7', padding: '8px 10px', borderRadius: 'var(--radius-sm)' }}>
+                <strong style={{ color: 'var(--color-vinho)', display: 'block', marginBottom: '2px' }}>
+                  1. Rastreamento de Corpo Inteiro
+                </strong>
+                Apoie o celular a cerca de <strong>1,5m a 2,5m de distância</strong>. A IA precisa visualizar desde a cabeça até os tornozelos e pés para avaliar o equilíbrio e o eixo da coluna.
+              </div>
+              <div style={{ backgroundColor: '#FAF6F7', padding: '8px 10px', borderRadius: 'var(--radius-sm)' }}>
+                <strong style={{ color: 'var(--color-vinho)', display: 'block', marginBottom: '2px' }}>
+                  2. Câmera com Zoom (0.5x, 1x, 2x) & Tela Cheia
+                </strong>
+                Se você estiver em um quarto menor, use o <strong>Zoom 0.5x (Grande-Angular)</strong>. Se estiver longe, use <strong>2x</strong>. Toque em <strong>"Tela Cheia"</strong> para ver tudo grande mesmo de pé!
+              </div>
+              <div style={{ backgroundColor: '#FAF6F7', padding: '8px 10px', borderRadius: 'var(--radius-sm)' }}>
+                <strong style={{ color: 'var(--color-vinho)', display: 'block', marginBottom: '2px' }}>
+                  3. Calibração Real em Centímetros
+                </strong>
+                No botão <strong>"📐 Medidas"</strong>, informe sua altura e largura dos ombros. Assim, a IA calcula exatamente quantos centímetros de desnível postural você apresenta em tempo real.
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Barra de Controles Rápidos da Câmera (Zoom, Silhueta, Medidas e Tela Cheia) */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '8px',
+          padding: '8px 12px',
+          backgroundColor: '#FFFFFF',
+          borderRadius: 'var(--radius-md)',
+          border: '1px solid var(--color-border)',
+          marginBottom: '10px'
+        }}
+      >
+        {/* Controles de Zoom */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-vinho)' }}>
+            Zoom da Câmera:
+          </span>
+          {[0.5, 1, 2].map((z) => (
+            <button
+              key={z}
+              onClick={() => mudarZoom(z)}
+              className={`btn ${zoomNivel === z ? 'btn-primary' : 'btn-outline'}`}
+              style={{
+                padding: '4px 10px',
+                fontSize: '0.74rem',
+                minWidth: '42px',
+                borderRadius: 'var(--radius-full)',
+                fontWeight: zoomNivel === z ? 700 : 500
+              }}
+            >
+              {z}x
+            </button>
+          ))}
+        </div>
+
+        {/* Silhueta Guia e Tela Cheia */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button
+            onClick={() => setMostrarSilhuetaGuia(!mostrarSilhuetaGuia)}
+            className="btn btn-outline"
+            style={{
+              padding: '4px 10px',
+              fontSize: '0.74rem',
+              borderRadius: 'var(--radius-full)',
+              borderColor: mostrarSilhuetaGuia ? 'var(--color-rosa)' : 'var(--color-border)',
+              color: mostrarSilhuetaGuia ? 'var(--color-rosa)' : 'var(--color-text-muted)'
+            }}
+            title="Alternar silhueta de contorno guia gestacional"
+          >
+            {mostrarSilhuetaGuia ? '👤 Silhueta: Ligada' : '👤 Silhueta: Desligada'}
+          </button>
+
+          <button
+            onClick={() => setModalCalibracaoAberta(true)}
+            className="btn btn-outline"
+            style={{
+              padding: '4px 10px',
+              fontSize: '0.74rem',
+              borderRadius: 'var(--radius-full)',
+              borderColor: 'var(--color-dourado)',
+              color: 'var(--color-vinho)'
+            }}
+            title="Ajustar largura de ombros e altura da gestante"
+          >
+            <Ruler size={13} style={{ marginRight: '4px' }} /> Medidas
+          </button>
+
+          <button
+            onClick={() => setTelaCheia(!telaCheia)}
+            className="btn btn-primary"
+            style={{
+              padding: '4px 12px',
+              fontSize: '0.74rem',
+              borderRadius: 'var(--radius-full)'
+            }}
+            title={telaCheia ? "Minimizar" : "Ocupar a tela inteira"}
+          >
+            {telaCheia ? <Minimize2 size={13} style={{ marginRight: '4px' }} /> : <Maximize2 size={13} style={{ marginRight: '4px' }} />}
+            {telaCheia ? 'Minimizar' : 'Tela Cheia'}
+          </button>
+        </div>
+      </div>
+
+      {/* Viewport Principal com Câmera e Canvas da IA (Normal ou Tela Cheia Imersiva) */}
+      <div
+        style={
+          telaCheia
+            ? {
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                width: '100vw',
+                height: '100vh',
+                zIndex: 99999,
+                backgroundColor: '#0A0507',
+                borderRadius: 0,
+                margin: 0,
+                overflow: 'hidden'
+              }
+            : {
+                position: 'relative',
+                width: '100%',
+                aspectRatio: '4 / 3',
+                maxHeight: '440px',
+                backgroundColor: '#160B10',
+                borderRadius: 'var(--radius-lg)',
+                overflow: 'hidden',
+                boxShadow: 'var(--shadow-md)',
+                border: '2px solid var(--color-border)'
+              }
+        }
+      >
+        {/* Contêiner com Zoom Aplicado por Transform */}
+        <div
           style={{
             position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'contain',
-            pointerEvents: 'none'
+            inset: 0,
+            transform: `scale(${zoomNivel})`,
+            transformOrigin: 'center center',
+            transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
           }}
-        />
+        >
+          {/* Vídeo da Câmera Real */}
+          <video
+            ref={videoRef}
+            playsInline
+            muted
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              transform: facingMode === 'user' ? 'scaleX(-1)' : 'none',
+              display: cameraAtiva && !modoDemo ? 'block' : 'none'
+            }}
+          />
+
+          {/* Canvas da Inteligência Artificial sobreposto (Corpo Inteiro) */}
+          <canvas
+            ref={canvasRef}
+            width={640}
+            height={480}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              pointerEvents: 'none'
+            }}
+          />
+        </div>
 
         {/* Estado Desativado / Call to Action */}
         {!cameraAtiva && (
@@ -953,14 +1276,16 @@ export default function BodyVision({ onBack }) {
               padding: '24px',
               textAlign: 'center',
               background: 'radial-gradient(circle at center, #2C141E 0%, #160B10 100%)',
-              color: '#FFFFFF'
+              color: '#FFFFFF',
+              zIndex: 10
             }}
           >
             <div
               style={{
                 width: '68px',
                 height: '68px',
-                borderRadius: '50%',
+                borderRadius: '50% !important',
+                aspectRatio: '1/1 !important',
                 backgroundColor: 'rgba(194, 24, 91, 0.25)',
                 display: 'flex',
                 alignItems: 'center',
@@ -977,7 +1302,7 @@ export default function BodyVision({ onBack }) {
               Ative a Câmera ou Veja a Demonstração
             </h3>
             <p style={{ fontSize: '0.84rem', color: '#D4B2BB', maxWidth: '360px', lineHeight: 1.45, marginBottom: '20px' }}>
-              A IA rastreia o alinhamento lombar, a báscula pélvica e a respiração em tempo real com alta precisão e sem tremores.
+              Rastreamento em tempo real do corpo inteiro: coluna lombar, largura de ombros, báscula pélvica e respiração.
             </p>
 
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -1029,12 +1354,13 @@ export default function BodyVision({ onBack }) {
             <div
               style={{
                 position: 'absolute',
-                top: '12px',
-                left: '12px',
-                right: '12px',
+                top: telaCheia ? '20px' : '12px',
+                left: telaCheia ? '20px' : '12px',
+                right: telaCheia ? '20px' : '12px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
+                zIndex: 20,
                 pointerEvents: 'none'
               }}
             >
@@ -1043,7 +1369,7 @@ export default function BodyVision({ onBack }) {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
-                  backgroundColor: 'rgba(22, 11, 16, 0.8)',
+                  backgroundColor: 'rgba(22, 11, 16, 0.85)',
                   backdropFilter: 'blur(8px)',
                   padding: '6px 12px',
                   borderRadius: 'var(--radius-full)',
@@ -1057,15 +1383,47 @@ export default function BodyVision({ onBack }) {
                   style={{
                     width: '8px',
                     height: '8px',
-                    borderRadius: '50%',
+                    borderRadius: '50% !important',
+                    aspectRatio: '1/1 !important',
                     backgroundColor: modoDemo ? '#C9A84C' : '#27AE60',
                     boxShadow: `0 0 10px ${modoDemo ? '#C9A84C' : '#27AE60'}`
                   }}
                 />
-                {modoDemo ? 'Modo Demonstração Interativo' : 'Rastreamento em Tempo Real'}
+                {modoDemo ? 'Demonstração Interativa' : 'Corpo Inteiro Conectado'}
+                <span style={{ opacity: 0.7 }}>• Zoom {zoomNivel}x</span>
               </div>
 
-              <div style={{ display: 'flex', gap: '6px', pointerEvents: 'auto' }}>
+              <div style={{ display: 'flex', gap: '6px', pointerEvents: 'auto', alignItems: 'center' }}>
+                {/* Seletor rápido de Zoom no HUD */}
+                <div
+                  style={{
+                    display: 'flex',
+                    backgroundColor: 'rgba(22, 11, 16, 0.85)',
+                    borderRadius: 'var(--radius-full)',
+                    padding: '2px',
+                    border: '1px solid rgba(255, 255, 255, 0.2)'
+                  }}
+                >
+                  {[0.5, 1, 2].map((z) => (
+                    <button
+                      key={z}
+                      onClick={() => mudarZoom(z)}
+                      style={{
+                        background: zoomNivel === z ? 'var(--color-rosa)' : 'transparent',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        borderRadius: 'var(--radius-full)',
+                        padding: '4px 8px',
+                        fontSize: '0.7rem',
+                        fontWeight: zoomNivel === z ? 700 : 500,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {z}x
+                    </button>
+                  ))}
+                </div>
+
                 {!modoDemo && (
                   <>
                     <button
@@ -1102,6 +1460,23 @@ export default function BodyVision({ onBack }) {
                   </>
                 )}
 
+                {/* Botão de alternar Tela Cheia diretamente dentro do HUD */}
+                <button
+                  onClick={() => setTelaCheia(!telaCheia)}
+                  className="btn btn-outline"
+                  style={{
+                    backgroundColor: 'rgba(22, 11, 16, 0.75)',
+                    color: '#FFFFFF',
+                    borderColor: 'rgba(255, 255, 255, 0.3)',
+                    padding: '6px 10px',
+                    fontSize: '0.72rem',
+                    borderRadius: 'var(--radius-full)'
+                  }}
+                  title={telaCheia ? "Sair da Tela Cheia" : "Modo Tela Cheia"}
+                >
+                  {telaCheia ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+                </button>
+
                 <button
                   onClick={pararCamera}
                   className="btn btn-outline"
@@ -1119,23 +1494,24 @@ export default function BodyVision({ onBack }) {
               </div>
             </div>
 
-            {/* HUD Inferior com Métricas de Alta Precisão */}
+            {/* HUD Inferior com Métricas de Alta Precisão (Lombar, Ombros reais em cm) */}
             <div
               style={{
                 position: 'absolute',
-                bottom: '12px',
-                left: '12px',
-                right: '12px',
-                backgroundColor: 'rgba(22, 11, 16, 0.85)',
+                bottom: telaCheia ? '24px' : '12px',
+                left: telaCheia ? '20px' : '12px',
+                right: telaCheia ? '20px' : '12px',
+                backgroundColor: 'rgba(22, 11, 16, 0.88)',
                 backdropFilter: 'blur(12px)',
-                padding: '10px 16px',
+                padding: telaCheia ? '14px 20px' : '10px 16px',
                 borderRadius: 'var(--radius-md)',
                 border: '1px solid rgba(255, 255, 255, 0.16)',
                 color: '#FFFFFF',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                gap: '12px'
+                gap: '12px',
+                zIndex: 20
               }}
             >
               <div>
@@ -1145,7 +1521,7 @@ export default function BodyVision({ onBack }) {
                   {modo === 'respiracao' && 'Fase da Respiração'}
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
-                  <span style={{ fontSize: '1.25rem', fontWeight: 700, color: '#FFFFFF' }}>
+                  <span style={{ fontSize: telaCheia ? '1.5rem' : '1.25rem', fontWeight: 700, color: '#FFFFFF' }}>
                     {modo === 'postura' && `${posturaScore}%`}
                     {modo === 'bascula' && `${repeticoes} repetições`}
                     {modo === 'respiracao' && (faseRespiracao === 'inspirando' ? 'Inspire 🌿' : 'Solte o ar 💨')}
@@ -1177,10 +1553,12 @@ export default function BodyVision({ onBack }) {
 
               <div style={{ textAlign: 'right' }}>
                 <span style={{ fontSize: '0.68rem', color: '#D4B2BB' }}>Ângulo Lombar</span>
-                <p style={{ margin: '2px 0 0 0', fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-dourado)' }}>
+                <p style={{ margin: '2px 0 0 0', fontSize: telaCheia ? '1.2rem' : '1.05rem', fontWeight: 700, color: 'var(--color-dourado)' }}>
                   {inclinacaoGraus}°
                 </p>
-                <span style={{ fontSize: '0.66rem', color: '#B09098' }}>Ombros: {simetriaOmbros}</span>
+                <span style={{ fontSize: '0.66rem', color: '#B09098' }}>
+                  Ombros: {simetriaOmbros} {desnivelOmbrosCm > 0 ? `(${desnivelOmbrosCm}cm)` : ''}
+                </span>
               </div>
             </div>
           </>
@@ -1410,6 +1788,127 @@ export default function BodyVision({ onBack }) {
                 {salvandoTriagem ? 'Calibrando...' : 'Calibrar IA com Meu Estado'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Calibração de Medidas Corporais da Gestante */}
+      {modalCalibracaoAberta && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.65)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100000,
+            padding: '16px'
+          }}
+        >
+          <div className="card" style={{ maxWidth: '440px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <Ruler size={22} color="var(--color-vinho)" />
+              <h3 style={{ margin: 0, color: 'var(--color-vinho)' }}>
+                Medidas Corporais da Gestante
+              </h3>
+            </div>
+            <p className="text-muted" style={{ fontSize: '0.82rem', margin: '0 0 14px 0' }}>
+              A IA de visão biomecânica usa suas medidas reais para calibrar a escala métrica e detectar desníveis de ombro e inclinações pélvicas em centímetros precisos.
+            </p>
+
+            <form onSubmit={salvarCalibracaoMedidas}>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ fontSize: '0.84rem', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
+                  Largura dos Ombros (cm) *
+                </label>
+                <input
+                  type="number"
+                  min="25"
+                  max="65"
+                  value={larguraOmbrosCm}
+                  onChange={(e) => setLarguraOmbrosCm(e.target.value)}
+                  className="input-field"
+                  style={{ width: '100%' }}
+                  required
+                />
+                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                  Distância entre a ponta do ombro esquerdo e direito (padrão feminino: ~36 a 42 cm).
+                </span>
+              </div>
+
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ fontSize: '0.84rem', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
+                  Sua Altura (cm) *
+                </label>
+                <input
+                  type="number"
+                  min="120"
+                  max="210"
+                  value={alturaCm}
+                  onChange={(e) => setAlturaCm(e.target.value)}
+                  className="input-field"
+                  style={{ width: '100%' }}
+                  required
+                />
+              </div>
+
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ fontSize: '0.84rem', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
+                  Semana Gestacional Atual *
+                </label>
+                <input
+                  type="number"
+                  min="4"
+                  max="42"
+                  value={semanaGestacional}
+                  onChange={(e) => setSemanaGestacional(e.target.value)}
+                  className="input-field"
+                  style={{ width: '100%' }}
+                  required
+                />
+                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                  Ajuda a IA a antecipar o deslocamento fisiológico do centro de gravidade pelo útero gravídico.
+                </span>
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ fontSize: '0.84rem', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
+                  Distância Estimada da Câmera (metros)
+                </label>
+                <select
+                  value={distanciaCamera}
+                  onChange={(e) => setDistanciaCamera(e.target.value)}
+                  className="input-field"
+                  style={{ width: '100%' }}
+                >
+                  <option value="1.5">~1,5 metros (Corpo parcial / Bacia e Tronco)</option>
+                  <option value="2.0">~2,0 metros (Corpo Inteiro Ideal)</option>
+                  <option value="2.5">~2,5 metros ou mais (Amplo)</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => setModalCalibracaoAberta(false)}
+                  className="btn btn-secondary"
+                  style={{ fontSize: '0.85rem' }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  style={{ fontSize: '0.85rem' }}
+                >
+                  Salvar Medidas na IA
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
