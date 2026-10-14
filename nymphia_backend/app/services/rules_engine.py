@@ -4,13 +4,13 @@ from typing import List, Tuple
 # Pre-compiled urgency patterns (accents handled or stripped, typo-resilient)
 URGENCY_PATTERNS = [
     (r"(sangra|sangue|hemorragia)", "Sangramento genital ativo"),
-    (r"(dor.*cabec.*(forte|intensa|insuportavel)|cefaleia.*(forte|intensa)|escotoma|pontos.*brilhante|visao.*(turva|embacada))", "Sinais neurológicos / suspeita de pré-eclâmpsia grave"),
-    (r"(dor.*(estomago|boca do estomago|barra|epigastr))", "Dor epigástrica / em barra (alerta pré-eclâmpsia)"),
-    (r"(bolsa.*(romp|estour|estor|fur)|perda.*liquido|liquido.*(escorr|escorrendo|saindo|vazando))", "Ruptura de membranas / amniorrexe prematura"),
-    (r"(bebe.*(nao|parou).*(mex|mech)|pouco.*movimento|parou.*(mexer|mecher)|sem.*movimento)", "Diminuição ou ausência de movimentação fetal"),
+    (r"(dor.*cabe[çc].*(forte|intensa|insuportavel)|cefaleia.*(forte|intensa)|escotoma|pontos.*brilhante|vis[aã]o.*(turva|emba[çc]ada))", "Sinais neurológicos / suspeita de pré-eclâmpsia grave"),
+    (r"(dor.*(est[oô]mago|boca do est[oô]mago|barra|epig[aá]str))", "Dor epigástrica / em barra (alerta pré-eclâmpsia)"),
+    (r"(bolsa.*(romp|estour|estor|fur)|perda.*l[ií]quido|l[ií]quido.*(escorr|escorrendo|saindo|vazando))", "Ruptura de membranas / amniorrexe prematura"),
+    (r"(beb[eê].*(n[aã]o|parou).*(mex|mech)|pouco.*movimento|parou.*(mexer|mecher)|sem.*movimento)", "Diminuição ou ausência de movimentação fetal"),
     (r"(febre.*(alta|38|39)|calafrio.*intenso)", "Pirexia / suspeita de infecção aguda"),
     (r"(press[aã]o|pre[çc][aã]o).*(14|15|16|17|18|alta|muito alta)", "Pico hipertensivo"),
-    (r"(convuls|desmai|perda.*conscienc)", "Crise convulsiva / síncope")
+    (r"(convuls|desmai|perda.*consci[eê]nc)", "Crise convulsiva / síncope")
 ]
 
 
