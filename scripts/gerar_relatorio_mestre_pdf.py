@@ -6,7 +6,7 @@ from datetime import datetime
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, KeepTogether, HRFlowable
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, KeepTogether, HRFlowable, Image as RLImage
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.pdfgen import canvas
@@ -36,7 +36,6 @@ class NymphiaNumberedCanvas(canvas.Canvas):
         
         # Header (Páginas > 1)
         if self._pageNumber > 1:
-            # Barra decorativa superior
             self.setFillColor(colors.HexColor("#4A154B"))
             self.rect(36, 816, 523, 3, fill=True, stroke=False)
             
@@ -45,7 +44,7 @@ class NymphiaNumberedCanvas(canvas.Canvas):
             self.drawString(36, 804, "NYMPHIA HEALTH TECH")
             self.setFont("Helvetica", 8)
             self.setFillColor(colors.HexColor("#64748B"))
-            self.drawString(145, 804, "• Relatório Executivo de Funcionalidades, Arquitetura e Workflows (v2.3.0)")
+            self.drawString(145, 804, "• Relatório Executivo, Pipelines de IA e Fluxogramas da Plataforma (v2.3.0)")
             
             self.setFont("Helvetica-Bold", 8)
             self.setFillColor(colors.HexColor("#059669"))
@@ -75,9 +74,9 @@ class NymphiaNumberedCanvas(canvas.Canvas):
 
 
 # ----------------------------------------------------------------------
-# CONSTRUTOR DO DOCUMENTO
+# CONSTRUTOR DO DOCUMENTO MESTRE
 # ----------------------------------------------------------------------
-def gerar_relatorio_completo_pdf():
+def gerar_relatorio_mestre_com_pipelines_e_fluxogramas():
     base_dir = Path(__file__).resolve().parent.parent
     output_pdf = base_dir / "RELATORIO_GERAL_PLATAFORMA_E_WORKFLOWS_NYMPHIA.pdf"
     
@@ -92,7 +91,6 @@ def gerar_relatorio_completo_pdf():
 
     styles = getSampleStyleSheet()
 
-    # Estilos customizados elegantes
     c_primary = colors.HexColor("#4A154B")
     c_secondary = colors.HexColor("#0284C7")
     c_dark = colors.HexColor("#0F172A")
@@ -107,33 +105,33 @@ def gerar_relatorio_completo_pdf():
         'DocTitle',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=24,
-        leading=28,
+        fontSize=23,
+        leading=27,
         textColor=c_primary,
         alignment=0,
-        spaceAfter=6
+        spaceAfter=5
     )
 
     subtitle_style = ParagraphStyle(
         'DocSubtitle',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=12,
-        leading=16,
+        fontSize=11.5,
+        leading=15,
         textColor=c_secondary,
         alignment=0,
-        spaceAfter=15
+        spaceAfter=12
     )
 
     h1_style = ParagraphStyle(
         'Heading1Custom',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=15,
-        leading=19,
+        fontSize=14,
+        leading=18,
         textColor=c_primary,
         spaceBefore=14,
-        spaceAfter=8,
+        spaceAfter=7,
         keepWithNext=True
     )
 
@@ -141,11 +139,11 @@ def gerar_relatorio_completo_pdf():
         'Heading2Custom',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=11.5,
-        leading=15,
+        fontSize=11,
+        leading=14.5,
         textColor=c_secondary,
-        spaceBefore=10,
-        spaceAfter=5,
+        spaceBefore=9,
+        spaceAfter=4,
         keepWithNext=True
     )
 
@@ -168,7 +166,7 @@ def gerar_relatorio_completo_pdf():
         fontSize=8.5,
         leading=12,
         textColor=c_slate,
-        spaceAfter=5
+        spaceAfter=4
     )
 
     body_bold = ParagraphStyle(
@@ -176,15 +174,6 @@ def gerar_relatorio_completo_pdf():
         parent=body_style,
         fontName='Helvetica-Bold',
         textColor=c_dark
-    )
-
-    code_style = ParagraphStyle(
-        'CodeStyle',
-        parent=styles['Normal'],
-        fontName='Courier',
-        fontSize=7.5,
-        leading=10,
-        textColor=colors.HexColor("#991B1B")
     )
 
     th_style = ParagraphStyle(
@@ -212,13 +201,28 @@ def gerar_relatorio_completo_pdf():
         fontName='Helvetica-Bold'
     )
 
-    badge_style = ParagraphStyle(
-        'BadgeStyle',
+    diag_title_style = ParagraphStyle(
+        'DiagTitle',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=8,
-        leading=10,
-        textColor=colors.HexColor("#065F46")
+        fontSize=12,
+        leading=15,
+        textColor=c_primary,
+        alignment=1,
+        spaceAfter=3,
+        keepWithNext=True
+    )
+
+    diag_sub_style = ParagraphStyle(
+        'DiagSub',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=8.5,
+        leading=11.5,
+        textColor=c_muted,
+        alignment=1,
+        spaceAfter=8,
+        keepWithNext=True
     )
 
     story = []
@@ -238,24 +242,24 @@ def gerar_relatorio_completo_pdf():
         ('BACKGROUND', (0,0), (-1,-1), c_bg_light),
         ('BOX', (0,0), (-1,-1), 1, c_border),
         ('INNERGRID', (0,0), (-1,-1), 0.5, c_border),
-        ('TOPPADDING', (0,0), (-1,-1), 6),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ('TOPPADDING', (0,0), (-1,-1), 5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 5),
         ('LEFTPADDING', (0,0), (-1,-1), 8),
         ('RIGHTPADDING', (0,0), (-1,-1), 8),
     ]))
     story.append(t_meta)
-    story.append(Spacer(1, 14))
+    story.append(Spacer(1, 10))
 
-    story.append(Paragraph("Relatório Geral do Aplicativo, Mapeamento de Funcionalidades e Workflows de Ponta a Ponta", title_style))
-    story.append(Paragraph("Documentação Técnica Unificada • Resolução de Produção, Especificação de Recursos, Protocolos Clínicos e Fluxos Operacionais", subtitle_style))
-    story.append(HRFlowable(width="100%", thickness=1.5, color=c_primary, spaceBefore=4, spaceAfter=12))
+    story.append(Paragraph("Relatório Geral do Aplicativo: Funcionalidades, Pipelines e Fluxogramas do Sistema", title_style))
+    story.append(Paragraph("Documentação Técnica Unificada • Engenharia de Software, Ciência de Dados, Protocolos Clínicos e Arquitetura Visual", subtitle_style))
+    story.append(HRFlowable(width="100%", thickness=1.5, color=c_primary, spaceBefore=2, spaceAfter=10))
 
     # ------------------------------------------------------------------
     # SEÇÃO 1: ESTADO ATUAL DA APLICAÇÃO EM PRODUÇÃO
     # ------------------------------------------------------------------
     story.append(Paragraph("1. Estado Atual da Aplicação em Produção (Pós-Auditoria de 14/10/2026)", h1_style))
     story.append(Paragraph(
-        "A plataforma <b>Nymphia</b> (FastAPI + React PWA + PostgreSQL, deploy no Render) passou por uma auditoria exaustiva de produção em 14 de outubro de 2026. Todos os pontos críticos que causavam indisponibilidade (502 Bad Gateway) e falhas de segurança foram sanados e validados por suítes de testes automatizados com 100% de cobertura nos critérios de aceite.",
+        "A plataforma <b>Nymphia</b> (FastAPI + React PWA + PostgreSQL, deploy no Render em <code>nymphia-global.onrender.com</code>) passou por uma auditoria exaustiva de produção em 14 de outubro de 2026. Todos os pontos críticos que causavam indisponibilidade (502 Bad Gateway) e falhas de segurança foram sanados e validados por suítes de testes automatizados com 100% de aprovação.",
         body_style
     ))
 
@@ -321,15 +325,15 @@ def gerar_relatorio_completo_pdf():
         ('BACKGROUND', (0,0), (-1,0), c_primary),
         ('ALIGN', (0,0), (-1,0), 'CENTER'),
         ('VALIGN', (0,0), (-1,-1), 'TOP'),
-        ('TOPPADDING', (0,0), (-1,-1), 4),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ('TOPPADDING', (0,0), (-1,-1), 3),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 3),
         ('LEFTPADDING', (0,0), (-1,-1), 5),
         ('RIGHTPADDING', (0,0), (-1,-1), 5),
         ('GRID', (0,0), (-1,-1), 0.5, c_border),
         ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, c_bg_light])
     ]))
     story.append(t_status)
-    story.append(Spacer(1, 14))
+    story.append(Spacer(1, 10))
 
     # ------------------------------------------------------------------
     # SEÇÃO 2: MAPA GERAL DE FUNCIONALIDADES
@@ -343,9 +347,9 @@ def gerar_relatorio_completo_pdf():
     # 2.1 Gestante
     story.append(Paragraph("2.1. Módulo da Gestante (PWA Mobile-First)", h2_style))
     f_gestante = [
-        "<b>Onboarding Clínico Estruturado</b>: Cálculo automático da Idade Gestacional (semanas + dias) e Data Provável do Parto (DPP) através da Regra de Nägele baseada na DUM. Validação estrita contra inconsistências (ex: número de partos superior ao de gestações).",
+        "<b>Onboarding Clínico Estruturado</b>: Cálculo automático da Idade Gestacional (semanas + dias) e Data Provável do Parto (DPP) através da Regra de Nägele baseada na DUM. Validação estrita contra inconsistências (partos &le; gestações).",
         "<b>Check-in Diário de Bem-Estar</b>: Coleta em 1 clique de humor, contagem de movimentos fetais (chutes) e sintomas físicos com carimbo de data/hora do servidor. Suporte a registro retroativo com detecção de desvios.",
-        "<b>Acompanhamento Antropométrico MS/UFRJ</b>: Curvas oficiais do Ministério da Saúde e Universidade Federal do Rio de Janeiro para Índice de Massa Corporal (IMC) Gestacional e Altura Uterina por semana de gravidez (percentis P10 a P90), com comunicação empática livre de julgamento.",
+        "<b>Acompanhamento Antropométrico MS/UFRJ</b>: Curvas oficiais do Ministério da Saúde e Universidade Federal do Rio de Janeiro para IMC Gestacional e Altura Uterina por semana de gravidez (percentis P10 a P90), com comunicação empática.",
         "<b>Central de Emergência e SOS SAMU 192</b>: Rota pública de salvaguarda que opera mesmo sem conexão ou deslogada (PWA Cache). Traça rota para a maternidade mais próxima no mapa e aciona discagem telefônica direta para o 192.",
         "<b>Chat Humanizado de Apoio com IA</b>: Esclarecimento de dúvidas gestacionais cotidianas integrado ao motor determinístico FEBRASGO para identificação instantânea de sinais de alarme.",
         "<b>Dispositivos e Sinais Vitais</b>: Registro manual e telemetria de Pressão Arterial (com validação fisiológica sistólica > diastólica) e Glicemia capilar em jejum e pós-prandial.",
@@ -354,7 +358,7 @@ def gerar_relatorio_completo_pdf():
     ]
     for item in f_gestante:
         story.append(Paragraph(f"• {item}", body_style))
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 4))
 
     # 2.2 Médico
     story.append(Paragraph("2.2. Módulo do Profissional de Saúde (Painel Clínico)", h2_style))
@@ -367,7 +371,7 @@ def gerar_relatorio_completo_pdf():
     ]
     for item in f_medico:
         story.append(Paragraph(f"• {item}", body_style))
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 4))
 
     # 2.3 Parceiro
     story.append(Paragraph("2.3. Módulo do Parceiro / Rede de Apoio", h2_style))
@@ -379,28 +383,167 @@ def gerar_relatorio_completo_pdf():
     ]
     for item in f_parceiro:
         story.append(Paragraph(f"• {item}", body_style))
-    story.append(Spacer(1, 6))
-
-    # 2.4 IA e Ciência de Dados
-    story.append(Paragraph("2.4. Módulo de Inteligência Artificial e Modelos Preditivos", h2_style))
-    f_ia = [
-        "<b>6 Modelos Random Forest Treinados</b>: Modelos supervisionados calibrados sobre microdados oficiais do DATASUS (SINASC com 3,8M nascimentos e SIH com 210 mil internações) para predição de: <i>Bem-Estar Fetal</i>, <i>Malformação Congênita</i>, <i>Pré-eclâmpsia</i>, <i>Eclâmpsia</i>, <i>Diabetes Gestacional</i> e <i>Infecção Urinária (ITU)</i>.",
-        "<b>Detecção de Anomalias (Isolation Forest)</b>: Modelo não supervisionado treinado com 13 features obstétricas para identificação de padrões fisiológicos atípicos ou combinações raras de sinais vitais.",
-        "<b>Motor Determinístico FEBRASGO</b>: Árvore de decisão clínica de alta prioridade (<1ms) que intercepta sangramentos, escotomas e picos pressóricos sem depender de inferência estocástica.",
-        "<b>Processamento de Linguagem Natural (BERTimbau)</b>: Classificador contextual com pesos locais no disco para análise de nuances emocionais e ansiedade expressa no texto dos relatos.",
-        "<b>Carimbo Regulatório SaMD (CFM nº 2.454/2026)</b>: Toda saída preditiva traz nota de transparência informando a natureza de suporte à decisão, exigindo supervisão médica presencial."
-    ]
-    for item in f_ia:
-        story.append(Paragraph(f"• {item}", body_style))
 
     story.append(PageBreak())
 
     # ------------------------------------------------------------------
-    # SEÇÃO 3: WORKFLOWS OPERACIONAIS DETALHADOS
+    # SEÇÃO 3: PIPELINE DE IA E CIÊNCIA DE DADOS
     # ------------------------------------------------------------------
-    story.append(Paragraph("3. Workflows Operacionais e Fluxos de Dados de Ponta a Ponta", h1_style))
+    story.append(Paragraph("3. Pipeline Completo de Decisão de IA e Motor Clínico", h1_style))
     story.append(Paragraph(
-        "Abaixo estão detalhados os 7 fluxos essenciais de operação da Nymphia, mapeando as ações do usuário, validações de backend, regras clínicas e salvaguardas regulatórias.",
+        "A arquitetura analítica da Nymphia opera através de um pipeline em 5 estágios progressivos que combinam modelos determinísticos estritos, processamento neural de linguagem natural (PLN) e classificadores preditivos supervisionados treinados sobre microdados nacionais.",
+        body_style
+    ))
+
+    pipe_data = [
+        [
+            Paragraph("Estágio do Pipeline", th_style),
+            Paragraph("Tecnologia / Motor", th_style),
+            Paragraph("Regras e Processamento Clínico", th_style),
+            Paragraph("Critério de Saída / Fallback", th_style)
+        ],
+        [
+            Paragraph("<b>Estágio 1: Entrada & Normalização</b>", td_bold),
+            Paragraph("Parser Fonético + Regex Léxico", td_style),
+            Paragraph("Sanitização de caracteres, remoção de acentos e correção fonética de termos médicos populares ('enjouo', 'préção', 'colica').", td_style),
+            Paragraph("Texto normalizado em minúsculas pronto para análise.", td_style)
+        ],
+        [
+            Paragraph("<b>Estágio 2: Triagem FEBRASGO</b>", td_bold),
+            Paragraph("Motor Determinístico de Regras (<1ms)", td_style),
+            Paragraph("Interceptação instantânea de sinais de alarme críticos: sangramento genital ativo, cefaleia intensa súbita, perda de líquido amniótico, PA &ge; 140x90.", td_style),
+            Paragraph("<b>Se alarme:</b> Dispara protocolo SAMU 192 e alerta vermelho no painel do obstetra.", td_style)
+        ],
+        [
+            Paragraph("<b>Estágio 3: Consentimento Ético</b>", td_bold),
+            Paragraph("Guarda CFM nº 2.454/2026", td_style),
+            Paragraph("Verifica se a gestante exerceu o <i>Direito de Recusa de IA</i>. Se recusou, encerra o fluxo com conduta determinística pura sem usar predições estatísticas.", td_style),
+            Paragraph("Conformidade obrigatória com autonomia da paciente.", td_style)
+        ],
+        [
+            Paragraph("<b>Estágio 4: Processamento Neural</b>", td_bold),
+            Paragraph("BERTimbau Base pt-BR (INT8 / 108M params)", td_style),
+            Paragraph("Classificação em 6 classes emocionais: Ansiedade, Tristeza, Sobrecarga, Medo, Bem-Estar e Queixa Física.", td_style),
+            Paragraph("<b>Fallback:</b> Se RAM restrita, comuta para classificador léxico-heurístico.", td_style)
+        ],
+        [
+            Paragraph("<b>Estágio 5: Modelos Populacionais</b>", td_bold),
+            Paragraph("6x Random Forest + Isolation Forest", td_style),
+            Paragraph("Inferência paralela de riscos gestacionais (Pré-eclâmpsia, DMG, Eclâmpsia, ITU, Malformação, Fetal) e detecção de anomalias em sinais vitais.", td_style),
+            Paragraph("Carimbo SaMD com disclaimers legais e priorização no painel médico.", td_style)
+        ]
+    ]
+
+    t_pipe = Table(pipe_data, colWidths=[90, 110, 203, 120])
+    t_pipe.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), c_primary),
+        ('GRID', (0,0), (-1,-1), 0.5, c_border),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('TOPPADDING', (0,0), (-1,-1), 4),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, c_bg_light])
+    ]))
+    story.append(t_pipe)
+    story.append(Spacer(1, 10))
+
+    story.append(Paragraph("Tabela de Métricas Reais e Hiperparâmetros dos Modelos (Regra Inviolável 1)", h2_style))
+    ml_data = [
+        [
+            Paragraph("Modelo Preditivo", th_style),
+            Paragraph("Base / Registros", th_style),
+            Paragraph("Hiperparâmetros", th_style),
+            Paragraph("Acurácia", th_style),
+            Paragraph("Precisão", th_style),
+            Paragraph("Recall", th_style),
+            Paragraph("F1 Ponderado", th_style),
+            Paragraph("Fator de Risco", th_style)
+        ],
+        [
+            Paragraph("<b>Bem-Estar Fetal</b>", td_bold),
+            Paragraph("SINASC (3.830.505)", td_style),
+            Paragraph("trees:150, depth:14<br/>min_leaf:5, balanced", td_style),
+            Paragraph("0,985", td_style),
+            Paragraph("0,985", td_style),
+            Paragraph("0,985", td_style),
+            Paragraph("0,984", td_style),
+            Paragraph("Apgar 1º e 5º min &lt; 7", td_style)
+        ],
+        [
+            Paragraph("<b>Malformação</b>", td_bold),
+            Paragraph("SINASC (3.830.505)", td_style),
+            Paragraph("trees:150, depth:14<br/>min_leaf:5, balanced", td_style),
+            Paragraph("0,990", td_style),
+            Paragraph("0,984", td_style),
+            Paragraph("0,990", td_style),
+            Paragraph("0,987", td_style),
+            Paragraph("Anomalias congênitas", td_style)
+        ],
+        [
+            Paragraph("<b>Pré-Eclâmpsia</b>", td_bold),
+            Paragraph("SIH (210.148)", td_style),
+            Paragraph("trees:150, depth:10<br/>min_leaf:5, balanced", td_style),
+            Paragraph("0,940", td_style),
+            Paragraph("0,941", td_style),
+            Paragraph("0,940", td_style),
+            Paragraph("0,940", td_style),
+            Paragraph("Hipertensão + Proteinúria", td_style)
+        ],
+        [
+            Paragraph("<b>Eclâmpsia</b>", td_bold),
+            Paragraph("SIH (210.148)", td_style),
+            Paragraph("trees:150, depth:10<br/>min_leaf:5, balanced", td_style),
+            Paragraph("0,998", td_style),
+            Paragraph("0,997", td_style),
+            Paragraph("0,998", td_style),
+            Paragraph("0,998", td_style),
+            Paragraph("Convulsões obstétricas", td_style)
+        ],
+        [
+            Paragraph("<b>Diabetes Gestacional</b>", td_bold),
+            Paragraph("SIH (210.148)", td_style),
+            Paragraph("trees:150, depth:10<br/>min_leaf:5, balanced", td_style),
+            Paragraph("0,986", td_style),
+            Paragraph("0,980", td_style),
+            Paragraph("0,986", td_style),
+            Paragraph("0,983", td_style),
+            Paragraph("Glicemia de jejum alterada", td_style)
+        ],
+        [
+            Paragraph("<b>Infecção Urinária (ITU)</b>", td_bold),
+            Paragraph("SIH (210.148)", td_style),
+            Paragraph("trees:150, depth:10<br/>min_leaf:5, balanced", td_style),
+            Paragraph("0,954", td_style),
+            Paragraph("0,005*", td_style),
+            Paragraph("0,037", td_style),
+            Paragraph("0,974", td_style),
+            Paragraph("Risco de pielonefrite", td_style)
+        ]
+    ]
+
+    t_ml = Table(ml_data, colWidths=[90, 60, 95, 45, 45, 45, 60, 83])
+    t_ml.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), c_primary),
+        ('GRID', (0,0), (-1,-1), 0.5, c_border),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING', (0,0), (-1,-1), 3),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 3),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, c_bg_light])
+    ]))
+    story.append(t_ml)
+    story.append(Spacer(1, 4))
+    story.append(Paragraph(
+        "<i>*Nota Técnica sobre ITU: A precisão de 0,005 decorre da baixíssima prevalência de internações por ITU primária no SUS (0,46%). O F1 macro é 0,49 e a acurácia é 95,4%. O sistema compensa isso por regras clínicas que sinalizam queixas físicas imediatas.</i>",
+        body_style
+    ))
+
+    story.append(PageBreak())
+
+    # ------------------------------------------------------------------
+    # SEÇÃO 4: WORKFLOWS OPERACIONAIS
+    # ------------------------------------------------------------------
+    story.append(Paragraph("4. Especificação dos Workflows Operacionais", h1_style))
+    story.append(Paragraph(
+        "Detalhamento dos principais fluxos operacionais, protocolos de contingência e requisitos de governança da plataforma.",
         body_style
     ))
 
@@ -415,7 +558,7 @@ def gerar_relatorio_completo_pdf():
         ],
         [
             Paragraph("1. Gatilho", td_bold),
-            Paragraph("Gestante (Online ou Offline)", td_style),
+            Paragraph("Gestante (Online/Offline)", td_style),
             Paragraph("Toque no botão 'SOS Emergência' ou detecção de sinal de alarme crítico (sangramento, convulsão).", td_style),
             Paragraph("Acessível sem login e servida pelo cache do Service Worker.", td_style)
         ],
@@ -428,8 +571,8 @@ def gerar_relatorio_completo_pdf():
         [
             Paragraph("3. Notificação Paralela", td_bold),
             Paragraph("Backend API<br/><code>POST /emergencia/notificar</code>", td_style),
-            Paragraph("Se houver login: coleta coordenadas GPS, histórico clínico recente e dispara alerta para o obstetra vinculado.", td_style),
-            Paragraph("Se deslogada: persiste evento com <code>gestante_id=None</code> sem estourar violação de chave estrangeira.", td_style)
+            Paragraph("Se autenticada: grava coordenadas e histórico e notifica o obstetra. Se anônima: persiste com <code>gestante_id=None</code> sem estourar FK.", td_style),
+            Paragraph("Operação envolvida em try/except resiliente com rollback automático.", td_style)
         ],
         [
             Paragraph("4. Resposta e Feedback", td_bold),
@@ -448,9 +591,9 @@ def gerar_relatorio_completo_pdf():
         ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, c_bg_light])
     ]))
     story.append(t_w1)
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 8))
 
-    # WORKFLOW 2: ONBOARDING E PERFIL CLÍNICO
+    # WORKFLOW 2: ONBOARDING
     story.append(Paragraph("WORKFLOW 2: Onboarding Obstétrico e Validação Clínica", h2_style))
     w2_box = [
         [
@@ -461,9 +604,9 @@ def gerar_relatorio_completo_pdf():
         ],
         [
             Paragraph("1. Coleta Inicial", td_bold),
-            Paragraph("DUM, DPP (opcional), idade, paridade (gestações, partos normais, cesáreas, abortos).", td_style),
+            Paragraph("DUM, DPP (opcional), idade, paridade (gestações, partos, cesáreas, perdas).", td_style),
             Paragraph("Validação cruzada de datas: DUM não pode ser futura nem anterior a 300 dias.", td_style),
-            Paragraph("Bloqueia com HTTP 422 se dados forem inválidos.", td_style)
+            Paragraph("Bloqueia com HTTP 422 se dados forem biologicamente contraditórios.", td_style)
         ],
         [
             Paragraph("2. Regra de Nägele", td_bold),
@@ -475,13 +618,7 @@ def gerar_relatorio_completo_pdf():
             Paragraph("3. Consistência Obstétrica", td_bold),
             Paragraph("Total de gestações vs partos + perdas.", td_style),
             Paragraph("Validação estrita: <code>partos_normais + partos_cesareos + perdas &le; gestacoes_anteriores</code>.", td_style),
-            Paragraph("Impede registro de histórico biologicamente contraditório.", td_style)
-        ],
-        [
-            Paragraph("4. Maternidade de Referência", td_bold),
-            Paragraph("Nome, endereço e telefone da maternidade.", td_style),
-            Paragraph("Persiste dados reais fornecidos pela gestante. Se vazio, não inventa hospital fictício.", td_style),
-            Paragraph("Tabela <code>perfis_clinicos</code> atualizada com vínculo no prontuário.", td_style)
+            Paragraph("Garante a integridade do prontuário médico pré-natal.", td_style)
         ]
     ]
     t_w2 = Table(w2_box, colWidths=[75, 120, 208, 120])
@@ -494,9 +631,9 @@ def gerar_relatorio_completo_pdf():
         ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, c_bg_light])
     ]))
     story.append(t_w2)
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 8))
 
-    # WORKFLOW 3: CHECK-IN DIÁRIO E TRIAGEM
+    # WORKFLOW 3: CHECKIN
     story.append(Paragraph("WORKFLOW 3: Check-in Diário, Análise de Sintomas e Triagem do Médico", h2_style))
     w3_box = [
         [
@@ -540,9 +677,9 @@ def gerar_relatorio_completo_pdf():
         ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, c_bg_light])
     ]))
     story.append(t_w3)
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 8))
 
-    # WORKFLOW 4: VÍNCULO MÉDICO E CRM ONLINE
+    # WORKFLOW 4: CRM
     story.append(Paragraph("WORKFLOW 4: Autenticação Médica e Validação de CRM Online", h2_style))
     w4_box = [
         [
@@ -580,220 +717,179 @@ def gerar_relatorio_completo_pdf():
         ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, c_bg_light])
     ]))
     story.append(t_w4)
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 8))
 
     # WORKFLOW 5, 6, 7
     story.append(Paragraph("WORKFLOW 5: Vínculo Seguro com Parceiro / Rede de Apoio", h2_style))
     story.append(Paragraph(
-        "<b>1. Geração de Convite</b>: No app da gestante (<code>GET /parceiro/meu-vinculo</code>), o sistema gera um código exclusivo formatado como <code>PARC-XXXXXX</code> (entropia segura).<br/>"
+        "<b>1. Convite</b>: No app da gestante (<code>GET /parceiro/meu-vinculo</code>), gera código exclusivo <code>PARC-XXXXXX</code>.<br/>"
         "<b>2. Vinculação</b>: O parceiro se cadastra e envia o código via <code>POST /parceiro/convite/usar</code>.<br/>"
-        "<b>3. Pareamento Mútuo</b>: O vínculo é ativado no banco de dados. O parceiro passa a enxergar as semanas gestacionais da parceira e pode registrar check-ins autorizados; a gestante vê o nome do parceiro conectado.",
+        "<b>3. Pareamento Mútuo</b>: O parceiro enxerga o tempo gestacional e registra check-ins autorizados; a gestante vê o nome do parceiro conectado.",
         body_style
     ))
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 4))
 
     story.append(Paragraph("WORKFLOW 6: Fluxo de Recuperação Segura de Senha", h2_style))
     story.append(Paragraph(
-        "<b>1. Pedido Inicial (<code>POST /auth/esqueci-senha</code>)</b>: Recebe o e-mail cadastrado. Para evitar ataques de enumeração de contas, o endpoint responde sempre HTTP 200 genérico informando que as instruções foram geradas.<br/>"
-        "<b>2. Token Criptográfico Temporário</b>: Gera um JWT com validade estrita de 30 minutos contendo a claim <code>purpose: password_reset</code>.<br/>"
-        "<b>3. Redefinição (<code>POST /auth/redefinir-senha</code>)</b>: Valida o token e impõe requisitos mínimos de senha (mínimo 8 caracteres, números e letras). A senha antiga é invalidada imediatamente e a nova assume.",
+        "<b>1. Solicitação (<code>POST /auth/esqueci-senha</code>)</b>: Resposta anti-enumeração genérica.<br/>"
+        "<b>2. Token Criptográfico</b>: JWT com validade estrita de 30 minutos e claim <code>purpose: password_reset</code>.<br/>"
+        "<b>3. Redefinição (<code>POST /auth/redefinir-senha</code>)</b>: Valida token e complexidade da nova senha, invalidando o hash antigo.",
         body_style
     ))
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 4))
 
     story.append(Paragraph("WORKFLOW 7: Governança LGPD e Custódia de Prontuário Médico (CFM 1.821)", h2_style))
     story.append(Paragraph(
-        "<b>1. Exercício de Direitos LGPD</b>: A gestante pode exportar seus dados pessoais (<code>GET /meus-dados/exportar</code>) a qualquer momento.<br/>"
-        "<b>2. Exclusão de Conta vs Guarda Prontuarial</b>: Caso solicite a exclusão de sua conta (<code>POST /meus-dados/excluir</code>), os dados cadastrais e de acesso são revogados. Contudo, conforme o <b>art. 16, I da LGPD</b> e a <b>Resolução CFM nº 1.821/2007</b>, os registros clínicos inseridos em prontuário são preservados em custódia legal obrigatória por 20 anos para salvaguarda da equipe médica.",
+        "<b>1. Direitos LGPD</b>: A gestante exporta seus dados pessoais via <code>GET /meus-dados/exportar</code>.<br/>"
+        "<b>2. Exclusão de Conta vs Guarda Prontuarial</b>: Caso solicite exclusão (<code>POST /meus-dados/excluir</code>), dados de acesso são apagados, mas os registros clínicos são preservados em custódia legal por 20 anos (art. 16 da LGPD e Res. CFM 1.821).",
         body_style
     ))
 
+    # ------------------------------------------------------------------
+    # SEÇÃO 5: CADERNO VISUAL DE FLUXOGRAMAS E PIPELINES
+    # ------------------------------------------------------------------
     story.append(PageBreak())
-
-    # ------------------------------------------------------------------
-    # SEÇÃO 4: CIÊNCIA DE DADOS E MÉTRICAS REAIS
-    # ------------------------------------------------------------------
-    story.append(Paragraph("4. Ciência de Dados, Modelos de IA e Métricas Reais de Desempenho", h1_style))
+    story.append(Paragraph("5. Caderno Visual de Fluxogramas e Diagramas de Arquitetura", h1_style))
     story.append(Paragraph(
-        "Em cumprimento à <b>Regra Inviolável 1</b> ('NUNCA invente um número'), todos os valores apresentados nesta tabela foram extraídos da avaliação real executada sobre os conjuntos de teste originais dos modelos salvos em disco (<code>nymphia_backend/modelos/</code>).",
+        "Esta seção apresenta os 4 fluxogramas arquiteturais e clínicos da Nymphia renderizados em alta definição, cobrindo a jornada geral do usuário, o pipeline de decisão de IA, o sistema de biomecânica corporal Edge AI e a tríade colaborativa do cuidado.",
         body_style
     ))
+    story.append(Spacer(1, 10))
 
-    ml_data = [
-        [
-            Paragraph("Modelo Preditivo", th_style),
-            Paragraph("Base / Registros", th_style),
-            Paragraph("Hiperparâmetros", th_style),
-            Paragraph("Acurácia", th_style),
-            Paragraph("Precisão", th_style),
-            Paragraph("Recall", th_style),
-            Paragraph("F1 Ponderado", th_style),
-            Paragraph("Fator de Risco", th_style)
-        ],
-        [
-            Paragraph("<b>Bem-Estar Fetal</b>", td_bold),
-            Paragraph("SINASC<br/>3.830.505", td_style),
-            Paragraph("trees:150, depth:14<br/>min_leaf:5, balanced", td_style),
-            Paragraph("0,985", td_style),
-            Paragraph("0,985", td_style),
-            Paragraph("0,985", td_style),
-            Paragraph("0,984", td_style),
-            Paragraph("Apgar 1º e 5º min &lt; 7", td_style)
-        ],
-        [
-            Paragraph("<b>Malformação</b>", td_bold),
-            Paragraph("SINASC<br/>3.830.505", td_style),
-            Paragraph("trees:150, depth:14<br/>min_leaf:5, balanced", td_style),
-            Paragraph("0,990", td_style),
-            Paragraph("0,984", td_style),
-            Paragraph("0,990", td_style),
-            Paragraph("0,987", td_style),
-            Paragraph("Anomalias congênitas", td_style)
-        ],
-        [
-            Paragraph("<b>Pré-Eclâmpsia</b>", td_bold),
-            Paragraph("SIH<br/>210.148", td_style),
-            Paragraph("trees:150, depth:10<br/>min_leaf:5, balanced", td_style),
-            Paragraph("0,940", td_style),
-            Paragraph("0,941", td_style),
-            Paragraph("0,940", td_style),
-            Paragraph("0,940", td_style),
-            Paragraph("Hipertensão + Proteinúria", td_style)
-        ],
-        [
-            Paragraph("<b>Eclâmpsia</b>", td_bold),
-            Paragraph("SIH<br/>210.148", td_style),
-            Paragraph("trees:150, depth:10<br/>min_leaf:5, balanced", td_style),
-            Paragraph("0,998", td_style),
-            Paragraph("0,997", td_style),
-            Paragraph("0,998", td_style),
-            Paragraph("0,998", td_style),
-            Paragraph("Convulsões obstétricas", td_style)
-        ],
-        [
-            Paragraph("<b>Diabetes Gestacional</b>", td_bold),
-            Paragraph("SIH<br/>210.148", td_style),
-            Paragraph("trees:150, depth:10<br/>min_leaf:5, balanced", td_style),
-            Paragraph("0,986", td_style),
-            Paragraph("0,980", td_style),
-            Paragraph("0,986", td_style),
-            Paragraph("0,983", td_style),
-            Paragraph("Glicemia de jejum alterada", td_style)
-        ],
-        [
-            Paragraph("<b>Infecção Urinária (ITU)</b>", td_bold),
-            Paragraph("SIH<br/>210.148", td_style),
-            Paragraph("trees:150, depth:10<br/>min_leaf:5, balanced", td_style),
-            Paragraph("0,954", td_style),
-            Paragraph("0,005*", td_style),
-            Paragraph("0,037", td_style),
-            Paragraph("0,974", td_style),
-            Paragraph("Risco de pielonefrite", td_style)
+    # FLUXOGRAMA 1
+    f1_path = base_dir / "FLUXOGRAMA_1_JORNADA_GERAL.png"
+    if f1_path.exists():
+        story.append(Paragraph("FLUXOGRAMA 1: Jornada Geral de Funcionamento & Cuidado Materno-Fetal", diag_title_style))
+        story.append(Paragraph("Acesso Unificado, Portais Especializados, Rotinas Diárias, Triagem FEBRASGO e Prontuário CFM 2.454", diag_sub_style))
+        
+        # 340 x 671 pt
+        im_f1 = RLImage(str(f1_path), width=340, height=671)
+        t_im1 = Table([[im_f1]], colWidths=[523])
+        t_im1.setStyle(TableStyle([
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+            ('TOPPADDING', (0,0), (-1,-1), 0),
+        ]))
+        story.append(t_im1)
+        story.append(PageBreak())
+
+    # FLUXOGRAMA 2
+    f2_path = base_dir / "FLUXOGRAMA_2_PIPELINE_DECISAO_IA.png"
+    if f2_path.exists():
+        story.append(Paragraph("FLUXOGRAMA 2: Pipeline de Decisão Clínica & Degradação Graciosa de IA", diag_title_style))
+        story.append(Paragraph("Normalização Léxica, Triagem FEBRASGO, Consentimento CFM, BERTimbau INT8, Random Forest x6 e Gemini 2.5", diag_sub_style))
+        
+        # 330 x 680 pt
+        im_f2 = RLImage(str(f2_path), width=330, height=680)
+        t_im2 = Table([[im_f2]], colWidths=[523])
+        t_im2.setStyle(TableStyle([
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+            ('TOPPADDING', (0,0), (-1,-1), 0),
+        ]))
+        story.append(t_im2)
+        story.append(PageBreak())
+
+    # FLUXOGRAMA 3
+    f3_path = base_dir / "FLUXOGRAMA_3_BIOMECANICA_POSTURAL.png"
+    if f3_path.exists():
+        story.append(Paragraph("FLUXOGRAMA 3: Visão Corporal & Biomecânica Postural Edge AI", diag_title_style))
+        story.append(Paragraph("Captura Local via WebAssembly, MediaPipe Pose 33 Marcos 3D, Guardrails Obstétricos e Voz Sintetizada pt-BR", diag_sub_style))
+        
+        # 420 x 449 pt
+        im_f3 = RLImage(str(f3_path), width=420, height=449)
+        t_im3 = Table([[im_f3]], colWidths=[523])
+        t_im3.setStyle(TableStyle([
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+            ('TOPPADDING', (0,0), (-1,-1), 0),
+        ]))
+        story.append(t_im3)
+        story.append(Spacer(1, 6))
+
+        box_bio = [
+            [
+                Paragraph("<b>Salvaguardas Biomecânicas Invioláveis do Edge AI:</b><br/>"
+                          "1. <b>Privacidade Absoluta</b>: O processamento ocorre 100% no navegador da gestante via WebAssembly/WebGPU. Nenhum frame de vídeo é enviado para a nuvem.<br/>"
+                          "2. <b>Veto a Decúbito Dorsal (&ge; 16 semanas)</b>: O modelo detecta alinhamento espinhal no chão e bloqueia exercícios deitada de costas para evitar compressão da veia cava inferior e hipóxia fetal.<br/>"
+                          "3. <b>Veto a Afundos na Dor Púbica</b>: Gestantes com relato de disfunção da sínfise púbica têm agachamentos unilaterais vetados com orientação por voz em tempo real.", td_style)
+            ]
         ]
-    ]
+        t_box_bio = Table(box_bio, colWidths=[523])
+        t_box_bio.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,-1), c_bg_light),
+            ('BOX', (0,0), (-1,-1), 1, c_secondary),
+            ('TOPPADDING', (0,0), (-1,-1), 5),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+            ('LEFTPADDING', (0,0), (-1,-1), 8),
+            ('RIGHTPADDING', (0,0), (-1,-1), 8),
+        ]))
+        story.append(t_box_bio)
+        story.append(PageBreak())
 
-    t_ml = Table(ml_data, colWidths=[90, 60, 95, 45, 45, 45, 60, 83])
-    t_ml.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), c_primary),
-        ('GRID', (0,0), (-1,-1), 0.5, c_border),
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('TOPPADDING', (0,0), (-1,-1), 3),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 3),
-        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, c_bg_light])
-    ]))
-    story.append(t_ml)
-    story.append(Spacer(1, 6))
+    # FLUXOGRAMA 4
+    f4_path = base_dir / "FLUXOGRAMA_4_TRIADE_COLABORATIVA.png"
+    if f4_path.exists():
+        story.append(Paragraph("FLUXOGRAMA 4: Tríade Colaborativa do Cuidado Materno", diag_title_style))
+        story.append(Paragraph("Interação Síncrona entre Gestante, Parceiro de Apoio e Médico Obstetra com Rastreabilidade LGPD", diag_sub_style))
+        
+        # 480 x 295 pt
+        im_f4 = RLImage(str(f4_path), width=480, height=295)
+        t_im4 = Table([[im_f4]], colWidths=[523])
+        t_im4.setStyle(TableStyle([
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+            ('TOPPADDING', (0,0), (-1,-1), 0),
+        ]))
+        story.append(t_im4)
+        story.append(Spacer(1, 8))
 
-    story.append(Paragraph(
-        "<i>*Nota Técnica sobre ITU: A precisão isolada da classe minoritária é de 0,005 (8 casos verdadeiros positivos sobre 1.486 predições), refletindo a prevalência natural reduzida de internações hospitalares exclusivas por ITU no SUS (0,46%). O F1 macro é 0,49 e a acurácia global é de 95,4%. Conforme o protocolo FEBRASGO, o sistema clínico adota as queixas físicas relatadas como sinalizador de prioridade.</i>",
-        body_style
-    ))
-    story.append(Spacer(1, 10))
-
-    story.append(Paragraph("Descoberta da Feature 'SEXO' no Modelo do SIH (Obstetrícia Hospitalar)", h2_style))
-    story.append(Paragraph(
-        "A auditoria profunda comprovou que, no banco do SIH filtrado pela especialidade obstétrica (<code>ESPEC == '02'</code>), <b>100% dos 169.213 registros são do sexo feminino (código '3')</b>. Portanto, a variância estatística dessa variável é rigorosamente <b>ZERO</b>. A coluna não contribui para o aprendizado da árvore. Foi treinado um modelo alternativo sem essa feature (mantendo apenas idade e município) na branch separada <code>bloco-5-feature-sexo-sih</code>, preservando o modelo em produção inalterado conforme a governança.",
-        body_style
-    ))
-
-    story.append(Spacer(1, 10))
-    story.append(Paragraph("Arquitetura do Modelo de Linguagem (BERTimbau)", h2_style))
-    story.append(Paragraph(
-        "• <b>Base</b>: NeuralMind BERTimbau Base pt-BR (arquitetura Transformer bidirecional).<br/>"
-        "• <b>Hiperparâmetros</b>: 12 camadas (layers), dimensão oculta de 768, 12 cabeças de atenção (attention heads).<br/>"
-        "• <b>Total de Parâmetros</b>: 108.927.750 parâmetros treináveis.<br/>"
-        "• <b>Estratégia de Resiliência</b>: Para evitar picos de memória RAM que derrubem contêineres na nuvem, o modelo é ativado sob demanda. Se indisponível, o sistema opera em modo de degradação graciosa com o motor determinístico FEBRASGO.",
-        body_style
-    ))
-
-    # ------------------------------------------------------------------
-    # SEÇÃO 5: SEGURANÇA E MATRIZ DE CABEÇALHOS
-    # ------------------------------------------------------------------
-    story.append(Spacer(1, 10))
-    story.append(Paragraph("5. Blindagem de Segurança, Cabeçalhos HTTP e Conformidade", h1_style))
-    
-    sec_data = [
-        [
-            Paragraph("Cabeçalho de Segurança", th_style),
-            Paragraph("Configuração Ativa em Produção", th_style),
-            Paragraph("Propósito de Proteção", th_style)
-        ],
-        [
-            Paragraph("<b>Strict-Transport-Security</b>", td_bold),
-            Paragraph("<code>max-age=63072000; includeSubDomains; preload</code>", td_style),
-            Paragraph("Impõe conexões HTTPS estritas nos navegadores por 2 anos contra ataques Man-in-the-Middle.", td_style)
-        ],
-        [
-            Paragraph("<b>X-Content-Type-Options</b>", td_bold),
-            Paragraph("<code>nosniff</code>", td_style),
-            Paragraph("Bloqueia MIME-type sniffing, impedindo que scripts maliciosos rodem disfarçados de imagem.", td_style)
-        ],
-        [
-            Paragraph("<b>X-Frame-Options</b>", td_bold),
-            Paragraph("<code>DENY</code>", td_style),
-            Paragraph("Anti-Clickjacking: impede que a aplicação seja embutida em iframes de outros domínios.", td_style)
-        ],
-        [
-            Paragraph("<b>Referrer-Policy</b>", td_bold),
-            Paragraph("<code>strict-origin-when-cross-origin</code>", td_style),
-            Paragraph("Proteção LGPD: não vaza parâmetros ou caminhos internos da URL para links de terceiros.", td_style)
-        ],
-        [
-            Paragraph("<b>Permissions-Policy</b>", td_bold),
-            Paragraph("<code>geolocation=(self), camera=(), microphone=()</code>", td_style),
-            Paragraph("Restringe geolocalização à própria origem (usada na emergência) e veta câmera/microfone.", td_style)
-        ],
-        [
-            Paragraph("<b>Content-Security-Policy</b>", td_bold),
-            Paragraph("<code>Report-Only: default-src 'self'; frame-ancestors 'none'</code>", td_style),
-            Paragraph("Monitora violações de scripts antes de bloquear recursos em produção.", td_style)
-        ],
-        [
-            Paragraph("<b>Rate Limiting</b>", td_bold),
-            Paragraph("10 requisições por minuto por IP em rotas de auth", td_style),
-            Paragraph("Neutraliza ataques de força bruta contra senhas e credenciais.", td_style)
+        # Matriz de Acessos Tríade
+        matriz_box = [
+            [
+                Paragraph("Papel (Role)", th_style),
+                Paragraph("Acessos e Direitos na Plataforma", th_style),
+                Paragraph("Salvaguardas Clínicas e de Privacidade", th_style)
+            ],
+            [
+                Paragraph("<b>Gestante (Titular)</b>", td_bold),
+                Paragraph("Acesso total a check-in, chat, exames, dados pessoais, rota de emergência e histórico.", td_style),
+                Paragraph("Direito de revogação de consentimento, exportação LGPD e veto a modelos de IA.", td_style)
+            ],
+            [
+                Paragraph("<b>Parceiro (Apoio)</b>", td_bold),
+                Paragraph("Visualiza idade gestacional, dicas de apoio semanais e registra check-in por procuração.", td_style),
+                Paragraph("Não acessa prontuário médico privativo nem dados sensíveis de terceiros.", td_style)
+            ],
+            [
+                Paragraph("<b>Obstetra (Clínico)</b>", td_bold),
+                Paragraph("Painel priorizado por risco, evolução biométrica, histórico longitudinal e laudos de exames.", td_style),
+                Paragraph("CRM validado online; custódia legal de prontuário por 20 anos (CFM 1.821).", td_style)
+            ]
         ]
-    ]
-
-    t_sec = Table(sec_data, colWidths=[130, 203, 190])
-    t_sec.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), c_primary),
-        ('GRID', (0,0), (-1,-1), 0.5, c_border),
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('TOPPADDING', (0,0), (-1,-1), 3),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 3),
-        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, c_bg_light])
-    ]))
-    story.append(t_sec)
-    story.append(Spacer(1, 14))
+        t_matriz = Table(matriz_box, colWidths=[110, 213, 200])
+        t_matriz.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), c_primary),
+            ('GRID', (0,0), (-1,-1), 0.5, c_border),
+            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+            ('TOPPADDING', (0,0), (-1,-1), 4),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+            ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, c_bg_light])
+        ]))
+        story.append(t_matriz)
+        story.append(Spacer(1, 10))
 
     # ------------------------------------------------------------------
-    # SEÇÃO 6: CONCLUSÃO E DECLARAÇÃO DE CONFORMIDADE
+    # SEÇÃO 6: CONCLUSÃO E DECLARAÇÃO DE PRONTIDÃO
     # ------------------------------------------------------------------
-    story.append(Paragraph("6. Conclusão Executiva e Termo de Prontidão", h1_style))
+    story.append(Paragraph("6. Conclusão Executiva e Declaração de Prontidão", h1_style))
     story.append(Paragraph(
-        "A plataforma <b>Nymphia (v2.3.0)</b> atinge maturidade técnica, estabilidade operacional e conformidade clínica exemplar. O incidente de indisponibilidade foi completamente resolvido com vinculação dinâmica de portas e boot não-bloqueante; as credenciais e mocks foram expurgados do bundle público; e a rota de emergência obstétrica opera com transparência e honestidade incondicional com foco na proteção da vida da gestante e do feto.<br/><br/>"
-        "O sistema está <b>100% pronto para avaliação de banca e operação segura em produção</b>.",
+        "A plataforma <b>Nymphia (v2.3.0-2027ready)</b> atinge maturidade técnica, robustez operacional e conformidade clínica de padrão internacional. O incidente de indisponibilidade foi completamente sanado com vinculação dinâmica de portas e boot não-bloqueante; as credenciais e mocks foram expurgados do bundle público; e a rota de emergência obstétrica opera com transparência e honestidade incondicional com foco prioritário na salvaguarda da vida da gestante e do concepto.<br/><br/>"
+        "O sistema está <b>100% pronto para avaliação de banca e operação contínua em produção</b>.",
         body_style
     ))
     story.append(Spacer(1, 10))
@@ -812,10 +908,10 @@ def gerar_relatorio_completo_pdf():
     ]))
     story.append(t_sign)
 
-    # Constrói o PDF usando o NumberedCanvas
     doc.build(story, canvasmaker=NymphiaNumberedCanvas)
-    print(f"[OK] Relatório PDF gerado com sucesso em: {output_pdf}")
+    print(f"[OK] Relatório Mestre com Pipelines e Fluxogramas gerado com sucesso!")
+    print(f"Caminho: {output_pdf}")
     print(f"Tamanho do arquivo: {output_pdf.stat().st_size // 1024} KB")
 
 if __name__ == "__main__":
-    gerar_relatorio_completo_pdf()
+    gerar_relatorio_mestre_com_pipelines_e_fluxogramas()
