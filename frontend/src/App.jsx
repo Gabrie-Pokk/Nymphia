@@ -40,7 +40,8 @@ import GenerateInvite from './pages/profissional/GenerateInvite';
 // Páginas do Parceiro
 import PartnerDashboard from './pages/parceiro/PartnerDashboard';
 
-import { Home, Activity, MessageSquare, Calendar, Shield, LogOut, Heart } from 'lucide-react';
+import { useI18n } from './context/I18nContext';
+import { Home, Activity, MessageSquare, Calendar, Shield, LogOut, Heart, Globe } from 'lucide-react';
 
 const SUBROTAS_GESTANTE = [
   '/checkin', '/conversa', '/agenda', '/prenatal-card', '/exames',
@@ -59,6 +60,7 @@ const SUBROTAS_PARCEIRO = [
 
 export default function App() {
   const { user, isAuthenticated, logout, authHeaders, login } = useAuth();
+  const { lang, setLang, t } = useI18n();
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname || '/');
   const [introViewed, setIntroViewed] = useState(() => localStorage.getItem('nymphia_intro_viewed') === 'true');
   const [onboardingCompleto, setOnboardingCompleto] = useState(false);
@@ -220,12 +222,34 @@ export default function App() {
           <LotusLogo size={26} color="#FFFFFF" />
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <h1 style={{ color: '#FFFFFF', margin: 0, fontSize: '1.18rem', fontWeight: 800, lineHeight: 1.1 }}>Nymphia</h1>
-            <span className="header-slogan" style={{ color: '#FDF0F2', opacity: 0.92, fontSize: '0.68rem', whiteSpace: 'nowrap' }}>Cada batimento importa.</span>
+            <span className="header-slogan" style={{ color: '#FDF0F2', opacity: 0.92, fontSize: '0.68rem', whiteSpace: 'nowrap' }}>
+              {lang === 'en' ? 'Every heartbeat matters.' : 'Cada batimento importa.'}
+            </span>
           </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-
+          <button
+            onClick={() => setLang(lang === 'pt' ? 'en' : 'pt')}
+            style={{
+              background: 'rgba(255,255,255,0.22)',
+              border: '1px solid rgba(255,255,255,0.4)',
+              color: '#FFFFFF',
+              padding: '3px 8px',
+              borderRadius: '9999px',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+            title={lang === 'pt' ? 'Switch to English' : 'Mudar para Português'}
+            aria-label="Alternar idioma / Toggle Language"
+          >
+            <Globe size={13} />
+            <span>{lang.toUpperCase()}</span>
+          </button>
 
           <span
             style={{
@@ -349,7 +373,7 @@ export default function App() {
             style={{ background: 'transparent', border: 'none' }}
           >
             <Home size={20} />
-            <span>Início</span>
+            <span>{t('nav_dashboard', 'Início')}</span>
           </button>
           <button
             className={`nav-item ${currentPath === '/checkin' ? 'active' : ''}`}
@@ -357,7 +381,7 @@ export default function App() {
             style={{ background: 'transparent', border: 'none' }}
           >
             <Activity size={20} />
-            <span>Check-in</span>
+            <span>{t('nav_checkin', 'Check-in')}</span>
           </button>
           <button
             className={`nav-item ${currentPath === '/conversa' ? 'active' : ''}`}
@@ -365,7 +389,7 @@ export default function App() {
             style={{ background: 'transparent', border: 'none' }}
           >
             <MessageSquare size={20} />
-            <span>Chat IA</span>
+            <span>{t('nav_chat_ia', 'Chat IA')}</span>
           </button>
           <button
             className={`nav-item ${currentPath === '/agenda' ? 'active' : ''}`}
@@ -373,7 +397,7 @@ export default function App() {
             style={{ background: 'transparent', border: 'none' }}
           >
             <Calendar size={20} />
-            <span>Agenda</span>
+            <span>{t('nav_agenda', 'Agenda')}</span>
           </button>
           <button
             className={`nav-item ${currentPath === '/meus-dados' ? 'active' : ''}`}
@@ -381,7 +405,7 @@ export default function App() {
             style={{ background: 'transparent', border: 'none' }}
           >
             <Shield size={20} />
-            <span>LGPD</span>
+            <span>{t('nav_meus_dados', 'LGPD')}</span>
           </button>
         </nav>
       )}
@@ -395,7 +419,7 @@ export default function App() {
             style={{ background: 'transparent', border: 'none' }}
           >
             <Home size={20} />
-            <span>Início</span>
+            <span>{t('nav_dashboard', 'Início')}</span>
           </button>
           <button
             className={`nav-item ${currentPath === '/checkin' ? 'active' : ''}`}
@@ -403,7 +427,7 @@ export default function App() {
             style={{ background: 'transparent', border: 'none' }}
           >
             <Activity size={20} />
-            <span>Check-in</span>
+            <span>{t('nav_checkin', 'Check-in')}</span>
           </button>
           <button
             className={`nav-item ${currentPath === '/agenda' ? 'active' : ''}`}
@@ -411,7 +435,7 @@ export default function App() {
             style={{ background: 'transparent', border: 'none' }}
           >
             <Calendar size={20} />
-            <span>Agenda</span>
+            <span>{t('nav_agenda', 'Agenda')}</span>
           </button>
           <button
             className={`nav-item ${currentPath === '/quiz-gostos' ? 'active' : ''}`}
@@ -419,7 +443,7 @@ export default function App() {
             style={{ background: 'transparent', border: 'none' }}
           >
             <Heart size={20} />
-            <span>Mimos</span>
+            <span>{lang === 'en' ? 'Gifts' : 'Mimos'}</span>
           </button>
         </nav>
       )}
