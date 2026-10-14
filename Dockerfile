@@ -48,5 +48,5 @@ RUN mkdir -p uploads_documentos
 
 EXPOSE 8000
 
-# Executa Uvicorn na porta definida pelo provedor de nuvem (Render/Railway/Cloud Run)
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Executa Uvicorn na porta definida pelo provedor de nuvem (Render/Railway/Cloud Run) sem cabeçalho identificador
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --no-server-header --proxy-headers"]

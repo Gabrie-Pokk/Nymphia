@@ -8,8 +8,7 @@ export default function EmergencyScreen({ onExit }) {
     const cached = localStorage.getItem('nymphia_maternidade_cache');
     try {
       const parsed = cached ? JSON.parse(cached) : null;
-      // Rejeita dados fictícios de demonstração herdados do cache
-      if (parsed && parsed.nome && !parsed.nome.includes("Maternidade de Referência Regional")) {
+      if (parsed && parsed.nome && parsed.nome.trim()) {
         return parsed;
       }
     } catch (e) {}
@@ -28,10 +27,10 @@ export default function EmergencyScreen({ onExit }) {
       fetch('/perfil-clinico', { headers: authHeaders() })
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
-          if (data && data.maternidade_nome && !data.maternidade_nome.includes("Maternidade de Referência Regional")) {
+          if (data && data.maternidade_nome && data.maternidade_nome.trim()) {
             const matData = {
               nome: data.maternidade_nome,
-              endereco: data.maternidade_endereco || "Endereço cadastrado no onboarding",
+              endereco: data.maternidade_endereco || "Endereço cadastrado no seu perfil",
               telefone: data.maternidade_telefone || "192",
               latitude: data.maternidade_latitude,
               longitude: data.maternidade_longitude

@@ -87,12 +87,10 @@ def carregar_modelos_ml():
     _modelos_estado["carregado"] = True
 
 
-# Inicializar tentativa de carga na importação do módulo
-carregar_modelos_ml()
-
-
 def status_modelos_ml() -> Dict[str, Any]:
     """Retorna o estado de disponibilidade dos modelos treinados."""
+    if not _modelos_estado["carregado"]:
+        carregar_modelos_ml()
     return {
         "rf_disponiveis": list(_modelos_estado["rf"].keys()),
         "isolation_forest_disponivel": _modelos_estado["isolation_forest"] is not None,

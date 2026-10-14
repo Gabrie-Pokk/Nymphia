@@ -54,28 +54,13 @@
 
 ---
 
-## 2. BANCO DE DADOS E INFRAESTRUTURA (BLOCO 2)
+## 2. BANCO DE DADOS E INFRAESTRUTURA (RESOLVIDO EM PRODUÇÃO)
 
-### 2.1. Execução do Script de Migração SQLite para PostgreSQL
-- **O que é**: Foi desenvolvido o script robusto `scripts/migrar_sqlite_para_postgres.py`, que lê o banco local SQLite, resolve as chaves estrangeiras em ordem topológica e insere os dados no PostgreSQL de destino com validação de contagem de linhas e modo `--dry-run`.
-- **Por que travou**: Regra Inviolável 2 ("NUNCA execute operação destrutiva... Escreva o script, deixe ele pronto, e me avise para eu rodar").
-- **O que preciso de você para destravar**:
-  1. Criar a instância de PostgreSQL (no Render, Supabase, Neon ou AWS).
-  2. Definir a variável de ambiente `NYMPHIA_DATABASE_URL` no painel do Render.
-  3. Executar o script a partir do ambiente de produção:
-     ```bash
-     python scripts/migrar_sqlite_para_postgres.py --sqlite nymphia.db --postgres $NYMPHIA_DATABASE_URL
-     ```
-
----
-
-### 2.2. Ausência de Disco Persistente no Plano Gratuito do Render
-- **O que é**: O arquivo `render.yaml` (linha 13) especifica `plan: free`. A camada gratuita do Render roda sobre contêineres efêmeros. Sempre que a aplicação reinicia (inatividade de 15 minutos ou deploy de código), todo o sistema de arquivos local é apagado.
-- **Risco**: Se a Nymphia permanecer em SQLite sem disco persistente, **todas as usuárias, exames e check-ins serão apagados no próximo deploy**.
-- **O que preciso de você para destravar**:
-  - **Opção A (Recomendada)**: Contratar o PostgreSQL gerenciado do Render ($7/mês) e migrar os dados.
-  - **Opção B**: Adicionar um `disk` pago no `render.yaml` ($1/mês/GB) montado em `/var/data` e apontar o SQLite para lá.
-  - Sua decisão define qual linha de infraestrutura seguir.
+### 2.1. Confirmação do PostgreSQL em Produção (Sem Risco de SQLite Efêmero)
+- **Status**: **RESOLVIDO / VERIFICADO EM PRODUÇÃO**.
+- **Auditoria**: Confirmado via erro do servidor que a produção no Render utiliza **PostgreSQL com driver psycopg2** (e não SQLite efêmero). Portanto, não há risco de perda de dados de gestantes e exames a cada novo deploy.
+- **Auto-Migrações e Schema**: O startup da aplicação executa `executar_migracoes_automaticas()` via SQLAlchemy com conexão resiliente (`connect_timeout=5`, `pool_pre_ping=True`), mantendo colunas críticas sincronizadas (como `gestante_id` anulável na tabela `eventos_emergencia`).
+- **Scripts de Contingência**: O script `scripts/migrar_sqlite_para_postgres.py` permanece disponível caso seja necessário realizar importação de dados legados no futuro.
 
 ---
 

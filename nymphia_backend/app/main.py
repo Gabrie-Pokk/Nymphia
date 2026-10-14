@@ -25,43 +25,50 @@ logging.basicConfig(
 )
 logger = logging.getLogger("nymphia")
 
-# Inicialização de tabelas e modelos de IA
-try:
-    Base.metadata.create_all(bind=engine)
-    logger.info("Tabelas do banco de dados verificadas e inicializadas com sucesso.")
-    from app.database import executar_migracoes_automaticas
-    executar_migracoes_automaticas()
-    # Seed de demonstração desativado em produção por segurança para proteger credenciais
-    env_name = (os.getenv("ENVIRONMENT") or os.getenv("ENV") or settings.ENVIRONMENT or "").lower()
-    if env_name in ["development", "dev", "local"] and os.getenv("ENABLE_DEMO_SEED", "").lower() == "true":
-        from app.seed_demo import seed_demo_accounts
-        seed_demo_accounts()
-except Exception as e:
-    logger.error(f"Erro ao inicializar tabelas do banco de dados: {e}")
-
-# Pré-carregamento dos modelos de Machine Learning (Random Forest & Isolation Forest)
-carregar_modelos_ml()
-
-# Pré-aquecimento do BERTimbau em segundo plano para que as requisições de chat respondam em milissegundos
 import threading
-def _iniciar_bertimbau_background():
-    logger.info("Disparando thread em segundo plano para inicialização e aquecimento do BERTimbau...")
-    try:
-        carregar_bertimbau()
-        logger.info("BERTimbau inicializado e pré-aquecido com sucesso.")
-    except Exception as e:
-        logger.warning(f"Exceção na inicialização do BERTimbau: {e}")
-
-threading.Thread(target=_iniciar_bertimbau_background, daemon=True, name="bertimbau-worker").start()
-
-
-from app.security.rate_limiter import auth_rate_limiter
+from contextlib import asynccontextmanager
 
 def is_dev_env() -> bool:
     env = (os.getenv("ENVIRONMENT") or os.getenv("ENV") or settings.ENVIRONMENT or "").lower()
     return env in ["development", "dev", "local"]
 
 is_prod = not is_dev_env()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Inicialização resiliente e não-bloqueante no startup
+    logger.info("Iniciando Nymphia Backend — Cada batimento importa.")
+    try:
+        from app.database import Base, engine, executar_migracoes_automaticas
+        Base.metadata.create_all(bind=engine)
+        executar_migracoes_automaticas()
+    except Exception as e:
+        logger.error(f"Aviso na inicialização do banco: {e}")
+
+    # Seed de demonstração executado apenas em desenvolvimento quando explicitamente habilitado
+    env_name = (os.getenv("ENVIRONMENT") or os.getenv("ENV") or settings.ENVIRONMENT or "").lower()
+    if env_name in ["development", "dev", "local"] and os.getenv("ENABLE_DEMO_SEED", "").lower() == "true":
+        try:
+            from app.seed_demo import seed_demo_accounts
+            seed_demo_accounts()
+        except Exception as e:
+            logger.warning(f"Aviso no seed demo: {e}")
+
+    # Pré-carregamento assíncrono em background para que o processo atenda imediatamente na porta
+    def _aquecer_modelos_background():
+        try:
+            carregar_modelos_ml()
+            if os.getenv("NYMPHIA_CARREGAR_BERTIMBAU", "0").strip().lower() in ("1", "true", "sim", "yes"):
+                carregar_bertimbau()
+        except Exception as e:
+            logger.warning(f"Aviso no pré-carregamento assíncrono: {e}")
+
+    threading.Thread(target=_aquecer_modelos_background, daemon=True, name="ml-warmup").start()
+
+    yield
+    logger.info("Encerrando Nymphia Backend.")
+
+from app.security.rate_limiter import auth_rate_limiter
 
 app = FastAPI(
     title="Nymphia — Inteligência Artificial Obstétrica",
@@ -70,6 +77,7 @@ app = FastAPI(
     openapi_url="/openapi.json" if is_dev_env() else None,
     docs_url="/docs" if is_dev_env() else None,
     redoc_url="/redoc" if is_dev_env() else None,
+    lifespan=lifespan,
 )
 
 AUTH_RATE_LIMITED_PREFIXES = (

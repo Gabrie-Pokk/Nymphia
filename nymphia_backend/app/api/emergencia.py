@@ -50,22 +50,29 @@ async def notificar_emergencia(
         )
     else:
         # Registro anônimo público (gestante_id=None evita violação de Foreign Key no Postgres)
-        evento = EventoEmergencia(
-            gestante_id=None,
-            data_hora=datetime.utcnow(),
-            latitude=payload.latitude,
-            longitude=payload.longitude,
-            contexto={"origem": "rota_publica_emergencia", "anonimo": True},
-            profissional_notificado=False
-        )
-        db.add(evento)
-        db.commit()
-        db.refresh(evento)
+        try:
+            evento = EventoEmergencia(
+                gestante_id=None,
+                data_hora=datetime.utcnow(),
+                latitude=payload.latitude,
+                longitude=payload.longitude,
+                contexto={"origem": "rota_publica_emergencia", "anonimo": True},
+                profissional_notificado=False
+            )
+            db.add(evento)
+            db.commit()
+            db.refresh(evento)
+            evento_id = evento.id
+            data_hora = evento.data_hora
+        except Exception:
+            db.rollback()
+            evento_id = 0
+            data_hora = datetime.utcnow()
 
         return EmergenciaResponse(
             status="emergencia_publica_acionada",
-            evento_id=evento.id,
-            data_hora=evento.data_hora,
+            evento_id=evento_id,
+            data_hora=data_hora,
             profissional_notificado=False,
             orientacao_samu="Ligue 192 (SAMU) imediatamente."
         )

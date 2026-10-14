@@ -132,6 +132,13 @@ def carregar_bertimbau(forcar: bool = False):
 
     _bert_estado["tentado"] = True
 
+    carregar_flag = os.getenv("NYMPHIA_CARREGAR_BERTIMBAU", "0").strip().lower()
+    if carregar_flag not in ("1", "true", "sim", "yes") and not forcar:
+        logger.info("NYMPHIA_CARREGAR_BERTIMBAU não habilitado. BERTimbau suspenso para garantir boot leve (<512MB RAM).")
+        _bert_estado["disponivel"] = False
+        _bert_estado["diagnostico"] = "suspenso_por_configuracao_regras_febrasgo_ativas"
+        return
+
     # 1. Garante que os pesos foram baixados ou descompactados no disco
     try:
         from app.services.model_downloader import garantir_bertimbau_presente
@@ -209,8 +216,8 @@ def carregar_bertimbau(forcar: bool = False):
 
 
 def bertimbau_disponivel(recarregar: bool = False) -> bool:
-    if recarregar or not _bert_estado["disponivel"]:
-        carregar_bertimbau(forcar=recarregar)
+    if recarregar:
+        carregar_bertimbau(forcar=True)
     return _bert_estado["disponivel"]
 
 

@@ -23,7 +23,8 @@ engine_kwargs = {"echo": False}
 if db_url.startswith("sqlite"):
     connect_args["check_same_thread"] = False
 else:
-    # Boas práticas para PostgreSQL em produção (conexões resilientes com healthcheck)
+    # Boas práticas para PostgreSQL em produção (conexões resilientes com healthcheck e timeout curto)
+    connect_args["connect_timeout"] = 5
     engine_kwargs["pool_pre_ping"] = True
     engine_kwargs["pool_recycle"] = 300
 
@@ -139,6 +140,12 @@ def executar_migracoes_automaticas():
                     logger.info("Migração: Permitindo gestante_id NULL em eventos_emergencia para chamadas anônimas...")
                     if not db_url.startswith("sqlite"):
                         conn.execute(text("ALTER TABLE eventos_emergencia ALTER COLUMN gestante_id DROP NOT NULL;"))
+                    else:
+                        # Em SQLite, recria a tabela preservando os dados para remover NOT NULL de gestante_id
+                        conn.execute(text("CREATE TABLE eventos_emergencia_migracao (id INTEGER PRIMARY KEY AUTOINCREMENT, gestante_id VARCHAR(36), data_hora DATETIME NOT NULL, latitude FLOAT, longitude FLOAT, contexto JSON, profissional_notificado BOOLEAN DEFAULT 0);"))
+                        conn.execute(text("INSERT INTO eventos_emergencia_migracao (id, gestante_id, data_hora, latitude, longitude, contexto, profissional_notificado) SELECT id, gestante_id, data_hora, latitude, longitude, contexto, profissional_notificado FROM eventos_emergencia;"))
+                        conn.execute(text("DROP TABLE eventos_emergencia;"))
+                        conn.execute(text("ALTER TABLE eventos_emergencia_migracao RENAME TO eventos_emergencia;"))
 
         # Garante que novas tabelas declaradas sejam criadas
         Base.metadata.create_all(bind=engine)
