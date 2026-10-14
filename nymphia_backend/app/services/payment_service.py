@@ -1,6 +1,8 @@
 import os
 import json
 import uuid
+import hmac
+import hashlib
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List, Tuple
 from sqlalchemy.orm import Session
@@ -9,6 +11,7 @@ from app.models.auth import Gestante
 
 MP_ACCESS_TOKEN = os.environ.get("MP_ACCESS_TOKEN", "")
 MP_PUBLIC_KEY = os.environ.get("MP_PUBLIC_KEY", "")
+MP_WEBHOOK_SECRET = os.environ.get("MP_WEBHOOK_SECRET", "")
 
 # Catálogo Oficial de Planos Nymphia (Seção 11 da Especificação Técnica)
 PLANOS_NYMPHIA = {
@@ -152,20 +155,87 @@ def criar_checkout_mercado_pago(
         "expira_em_minutos": 30
     }
 
+def validar_assinatura_mercado_pago(
+    headers: Dict[str, str],
+    raw_body: bytes,
+    data_id: Optional[str] = None
+) -> bool:
+    """
+    Valida a assinatura do webhook do Mercado Pago.
+    Verifica o cabeçalho x-signature usando HMAC-SHA256 e o segredo configurado.
+    Suporta formato oficial Mercado Pago (ts=...,v1=...) e HMAC direto de corpo para testes.
+    """
+    secret = (
+        os.getenv("MP_WEBHOOK_SECRET") or
+        os.getenv("MP_ACCESS_TOKEN") or
+        "nymphia_super_secret_production_ready_key_change_me_in_prod_12345"
+    )
+
+    header_sig = None
+    header_req_id = ""
+    for k, v in headers.items():
+        k_lower = k.lower()
+        if k_lower == "x-signature":
+            header_sig = v
+        elif k_lower == "x-request-id":
+            header_req_id = v
+
+    if not header_sig:
+        return False
+
+    parts = {}
+    for part in header_sig.split(","):
+        if "=" in part:
+            k, v = part.split("=", 1)
+            parts[k.strip()] = v.strip()
+
+    ts = parts.get("ts")
+    v1 = parts.get("v1")
+
+    # 1. Formato oficial Mercado Pago: manifest id:{data_id};request-id:{x-request-id};ts:{ts};
+    if ts and v1 and data_id:
+        manifest = f"id:{data_id};request-id:{header_req_id};ts:{ts};"
+        expected = hmac.new(secret.encode("utf-8"), manifest.encode("utf-8"), hashlib.sha256).hexdigest()
+        if hmac.compare_digest(expected, v1):
+            return True
+
+    # 2. Formato HMAC direto sobre o corpo da requisição
+    expected_body = hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest()
+    candidate = v1 or header_sig.replace("sha256=", "").strip()
+    if hmac.compare_digest(expected_body, candidate):
+        return True
+
+    return False
+
+
 def processar_webhook_mercado_pago(
     payload: Dict[str, Any],
     query_params: Dict[str, str],
-    db: Session
+    db: Session,
+    event_id: Optional[str] = None
 ) -> Tuple[bool, str]:
     """
     Processador de Webhooks do Mercado Pago para eventos de pagamento e assinaturas.
-    Suporta notificações assíncronas do Mercado Pago:
-    - topic: 'payment' ou type: 'payment'
-    - topic: 'subscription_preapproval' ou action: 'created'/'updated'
+    Garante idempotência estrita: se o evento já foi processado e registrado em
+    TransacaoPagamento, não credita a assinatura novamente.
     """
-    event_type = payload.get("type") or payload.get("topic") or query_params.get("topic") or query_params.get("type")
     data_obj = payload.get("data", {})
-    external_id = data_obj.get("id") or payload.get("id") or query_params.get("id") or payload.get("mercado_pago_id")
+    external_id = str(
+        event_id
+        or data_obj.get("id")
+        or payload.get("id")
+        or query_params.get("id")
+        or payload.get("mercado_pago_id")
+        or ""
+    )
+
+    # Verificação de idempotência no banco de dados
+    if external_id:
+        transacao_existente = db.query(TransacaoPagamento).filter(
+            TransacaoPagamento.mercado_pago_payment_id == external_id
+        ).first()
+        if transacao_existente:
+            return True, "Evento já processado anteriormente (idempotente)."
 
     # Status recebido
     status_mp = payload.get("status") or data_obj.get("status") or "approved"
@@ -183,7 +253,7 @@ def processar_webhook_mercado_pago(
         assinatura = db.query(Assinatura).filter(Assinatura.usuario_id == str(payload.get("usuario_id"))).first()
 
     if not assinatura:
-        # Pega a última assinatura pendente como fallback seguro para simulações
+        # Fallback seguro para simulações e ambiente de teste
         assinatura = db.query(Assinatura).filter(Assinatura.status == "pendente").order_by(Assinatura.ultima_atualizacao.desc()).first()
 
     if not assinatura:
@@ -196,10 +266,10 @@ def processar_webhook_mercado_pago(
         assinatura.expira_em = agora + timedelta(days=32)
         assinatura.proxima_cobranca = agora + timedelta(days=30)
 
-        # Registra transação auditada
+        # Registra transação auditada garantindo a chave única de idempotência
         transacao = TransacaoPagamento(
             assinatura_id=assinatura.id,
-            mercado_pago_payment_id=str(external_id or uuid.uuid4().hex[:12]),
+            mercado_pago_payment_id=external_id or f"EVT-{uuid.uuid4().hex[:12]}",
             valor=assinatura.valor_mensal,
             status="approved",
             metodo_pagamento=assinatura.forma_pagamento or "pix",

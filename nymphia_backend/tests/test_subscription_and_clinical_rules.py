@@ -174,7 +174,7 @@ def test_fluxo_checkout_e_webhook_mercado_pago():
     assert "mercado_pago_id" in checkout_data
     payment_id = checkout_data["mercado_pago_id"]
 
-    # 4. Simula o webhook do Mercado Pago com aprovação
+    # 4. Simula o webhook do Mercado Pago com aprovação e assinatura criptográfica válida
     webhook_payload = {
         "action": "payment.updated",
         "subscription_id": payment_id,
@@ -183,7 +183,16 @@ def test_fluxo_checkout_e_webhook_mercado_pago():
             "id": payment_id
         }
     }
-    webhook_resp = client.post("/pagamentos/webhook", json=webhook_payload)
+    import hmac, hashlib, json, os
+    secret = os.getenv("MP_WEBHOOK_SECRET") or os.getenv("MP_ACCESS_TOKEN") or "nymphia_super_secret_production_ready_key_change_me_in_prod_12345"
+    raw_body = json.dumps(webhook_payload).encode("utf-8")
+    sig = hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest()
+
+    webhook_resp = client.post(
+        "/pagamentos/webhook",
+        content=raw_body,
+        headers={"content-type": "application/json", "x-signature": f"v1={sig}"}
+    )
     assert webhook_resp.status_code == 200
     assert webhook_resp.json()["recebido"] is True
     assert webhook_resp.json()["processado"] is True

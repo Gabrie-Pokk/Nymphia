@@ -29,6 +29,8 @@ frontend/dist/
 # Uploads
 uploads_documentos/
 nymphia_backend/uploads_documentos/
+storage_uploads/
+nymphia_backend/storage_uploads/
 
 # Heavy Machine Learning Weights (apenas BERTimbau de 2.3 GB e tensores brutos)
 bertimbau_nymphia/

@@ -20,6 +20,13 @@ def setup_test_db():
     yield
     Base.metadata.drop_all(bind=engine)
 
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    from app.security.rate_limiter import auth_rate_limiter
+    auth_rate_limiter.reset()
+    yield
+    auth_rate_limiter.reset()
+
 @pytest.fixture
 def db_session():
     connection = engine.connect()

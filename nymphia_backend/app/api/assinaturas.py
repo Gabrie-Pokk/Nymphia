@@ -73,27 +73,74 @@ def cancelar_assinatura(
     db.commit()
     return {"status": "cancelada", "mensagem": "Renovação automática cancelada. Seu acesso aos recursos essenciais de emergência permanece sempre ativo."}
 
+import os
+import json
+from app.config import settings
+from app.models.subscription import TransacaoPagamento
+from app.services.payment_service import (
+    PLANOS_NYMPHIA, obter_ou_criar_assinatura,
+    criar_checkout_mercado_pago, processar_webhook_mercado_pago,
+    validar_assinatura_mercado_pago,
+    verificar_acesso_recurso
+)
+
+def is_dev_env() -> bool:
+    env = (os.getenv("ENVIRONMENT") or os.getenv("ENV") or settings.ENVIRONMENT or "").lower()
+    return env in ["development", "dev", "local"]
+
 @router.post("/pagamentos/webhook", status_code=status.HTTP_200_OK)
 async def webhook_mercado_pago(
     request: Request,
     db: Session = Depends(get_db)
 ):
     """
-    Webhook do Mercado Pago de alta resiliência.
-    Recebe notificações de pagamento e atualiza status de forma assíncrona.
-    Sempre retorna 200 OK para evitar reenvios desnecessários pelo Mercado Pago.
+    Webhook do Mercado Pago com validação criptográfica obrigatória de assinatura (HMAC-SHA256)
+    e idempotência garantida por identificador de evento para evitar dupla ativação/crédito.
     """
     try:
-        body = await request.json()
+        body_bytes = await request.body()
+        body = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
     except Exception:
+        body_bytes = b""
         body = {}
 
     query_params = dict(request.query_params)
-    sucesso, msg = processar_webhook_mercado_pago(body, query_params, db)
-    return {"recebido": True, "processado": sucesso, "mensagem": msg}
+    data_id = (
+        body.get("data", {}).get("id")
+        or body.get("id")
+        or query_params.get("id")
+        or query_params.get("data.id")
+    )
 
-from app.config import settings
-import os
+    # 1. Validação obrigatória da assinatura do webhook (rejeita com 401 se inválida)
+    valida = validar_assinatura_mercado_pago(
+        headers=dict(request.headers),
+        raw_body=body_bytes,
+        data_id=str(data_id) if data_id else None
+    )
+    if not valida:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Assinatura do webhook inválida ou ausente."
+        )
+
+    # 2. Idempotência por identificador único de evento
+    event_id = str(data_id or body.get("mercado_pago_id") or request.headers.get("x-request-id") or "")
+    if event_id:
+        transacao_existente = db.query(TransacaoPagamento).filter(
+            TransacaoPagamento.mercado_pago_payment_id == event_id
+        ).first()
+        if transacao_existente:
+            return {
+                "recebido": True,
+                "processado": False,
+                "idempotente": True,
+                "mensagem": "Evento já processado anteriormente. Nenhuma duplicação realizada."
+            }
+
+    sucesso, msg = processar_webhook_mercado_pago(body, query_params, db, event_id=event_id)
+    return {"recebido": True, "processado": sucesso, "mensagem": msg, "idempotente": False}
+
 
 @router.post("/assinatura/simular-webhook")
 def simular_webhook_desenvolvimento(
@@ -103,16 +150,12 @@ def simular_webhook_desenvolvimento(
 ):
     """
     Endpoint de teste restrito EXCLUSIVAMENTE a ambientes de desenvolvimento/staging.
-    Bloqueado por padrão e desativado em produção para prevenir fraudes de cobrança.
+    Em produção, retorna 404 (inexistente) para mitigar qualquer risco de fraude financeira.
     """
-    is_prod = (
-        settings.ENVIRONMENT.lower() in ["production", "producao"]
-        or os.getenv("ENV", "").lower() in ["production", "producao"]
-    )
-    if is_prod:
+    if not is_dev_env():
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="O simulador de webhook está desativado em produção por segurança financeira."
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Not Found"
         )
 
     # Restringe a simulação estritamente à conta da gestante autenticada

@@ -23,16 +23,18 @@ def test_security_headers_presentes_em_todas_as_rotas(client):
     # 4. Referrer-Policy para proteção LGPD
     assert res.headers.get("Referrer-Policy") == "strict-origin-when-cross-origin"
 
-    # 5. Permissions-Policy com câmera habilitada para 'self' (MediaPipe BodyVision)
+    # 5. Permissions-Policy
     perm_policy = res.headers.get("Permissions-Policy", "")
-    assert "camera=(self)" in perm_policy
+    assert "geolocation=(self)" in perm_policy
+    assert "camera=()" in perm_policy
     assert "microphone=()" in perm_policy
 
-    # 6. Content-Security-Policy
-    csp = res.headers.get("Content-Security-Policy", "")
-    assert "default-src 'self'" in csp
-    assert "frame-ancestors 'none'" in csp
-    assert "fonts.googleapis.com" in csp
+    # 6. Content-Security-Policy em modo Report-Only
+    csp_ro = res.headers.get("Content-Security-Policy-Report-Only", "")
+    assert "default-src 'self'" in csp_ro
+    assert "frame-ancestors 'none'" in csp_ro
+    assert "base-uri 'self'" in csp_ro
+    assert "object-src 'none'" in csp_ro
 
     # 7. Remoção de fingerprints do servidor
     assert "x-render-origin-server" not in res.headers
@@ -125,6 +127,5 @@ def test_simulador_webhook_bloqueado_em_producao(client, monkeypatch):
         json={"status": "approved", "subscription_id": "TEST_123"},
         headers=headers
     )
-    assert res.status_code == 403
-    assert "produção" in res.json()["detail"].lower()
+    assert res.status_code == 404
 

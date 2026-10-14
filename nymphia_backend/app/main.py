@@ -52,55 +52,68 @@ def _iniciar_bertimbau_background():
 threading.Thread(target=_iniciar_bertimbau_background, daemon=True, name="bertimbau-worker").start()
 
 
-is_prod = (
-    settings.ENVIRONMENT.lower() in ["production", "producao"]
-    or os.getenv("ENV", "").lower() in ["production", "producao"]
-)
+from app.security.rate_limiter import auth_rate_limiter
+
+def is_dev_env() -> bool:
+    env = (os.getenv("ENVIRONMENT") or os.getenv("ENV") or settings.ENVIRONMENT or "").lower()
+    return env in ["development", "dev", "local"]
+
+is_prod = not is_dev_env()
 
 app = FastAPI(
     title="Nymphia — Inteligência Artificial Obstétrica",
     description="Start-up de IA em saúde materno-fetal: 'Cada batimento importa.'",
     version="2.3.0-2027ready",
-    openapi_url=None if is_prod else "/openapi.json",
-    docs_url=None if is_prod else "/docs",
-    redoc_url=None if is_prod else "/redoc",
+    openapi_url="/openapi.json" if is_dev_env() else None,
+    docs_url="/docs" if is_dev_env() else None,
+    redoc_url="/redoc" if is_dev_env() else None,
 )
 
-# Middleware de Cabeçalhos de Segurança (Grau A+ de Segurança e Conformidade LGPD/CFM)
+AUTH_RATE_LIMITED_PREFIXES = (
+    "/auth/gestante/login",
+    "/auth/gestante/cadastro",
+    "/auth/profissional/login",
+    "/auth/profissional/cadastro",
+    "/auth/parceiro/login",
+    "/auth/parceiro/cadastro",
+    "/auth/login",
+)
+
+# Middleware unificado de Segurança, Governança, Rate Limiting e Bloqueio de Docs em Produção
 @app.middleware("http")
-async def cabecalhos_seguranca_middleware(request: Request, call_next):
+async def seguranca_governanca_middleware(request: Request, call_next):
+    path = request.url.path.rstrip("/").lower()
+
+    # 1. Bloqueio de documentação automática em ambiente de produção (Aceite 1.1)
+    if not is_dev_env() and path in ["/openapi.json", "/docs", "/redoc", "/openapi.yaml"]:
+        return JSONResponse(status_code=404, content={"detail": "Not Found"})
+
+    # 2. Rate limiting nos endpoints de autenticação (Aceite 1.5)
+    if any(path == p or path.startswith(p + "/") for p in AUTH_RATE_LIMITED_PREFIXES):
+        client_ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (request.client.host if request.client else "127.0.0.1")
+        if not auth_rate_limiter.is_allowed(client_ip):
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "Muitas tentativas de autenticação na mesma origem. Tente novamente mais tarde."}
+            )
+
     response = await call_next(request)
 
-    # 1. HSTS (HTTP Strict Transport Security - 2 anos com subdomínios e preload)
+    # 3. Cabeçalhos de Segurança Obrigatórios (Aceite 1.2)
     response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
-
-    # 2. X-Content-Type-Options: previne MIME-sniffing
     response.headers["X-Content-Type-Options"] = "nosniff"
-
-    # 3. Anti-clickjacking: bloqueia inclusão em frames ou iframes arbitrários
     response.headers["X-Frame-Options"] = "DENY"
-
-    # 4. Referrer-Policy: evita vazamento de URLs com IDs clínicos de gestantes em requisições externas
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(self), camera=(), microphone=()"
 
-    # 5. Permissions-Policy: restringe recursos do dispositivo; libera câmera explicitamente para o próprio domínio (necessária para MediaPipe Pose no BodyVision)
-    response.headers["Permissions-Policy"] = "geolocation=(self), camera=(self), microphone=()"
+    # 4. Content-Security-Policy em modo Report-Only
+    response.headers["Content-Security-Policy-Report-Only"] = (
+        "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; img-src 'self' data: blob:"
+    )
+    if "Content-Security-Policy" in response.headers:
+        del response.headers["Content-Security-Policy"]
 
-    # 6. Content-Security-Policy (CSP) robusta
-    csp_directives = [
-        "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:",
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-        "font-src 'self' https://fonts.gstatic.com data:",
-        "img-src 'self' data: blob:",
-        "connect-src 'self' https://api.cremesp.org.br ws: wss:",
-        "frame-ancestors 'none'",
-        "base-uri 'self'",
-        "object-src 'none'",
-    ]
-    response.headers["Content-Security-Policy"] = "; ".join(csp_directives)
-
-    # 7. Remoção de fingerprints do servidor (ofuscação de infraestrutura)
+    # 5. Remoção de fingerprints do servidor (ofuscação de infraestrutura)
     if "x-render-origin-server" in response.headers:
         del response.headers["x-render-origin-server"]
     if "server" in response.headers:
@@ -173,7 +186,11 @@ if _FRONTEND_DIST.exists():
 
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
-        # Rotas de API não devem ser capturadas pelo SPA
+        # Bloqueia documentação automática em produção para não ser capturada pelo SPA
+        normalized = full_path.strip("/").lower()
+        if not is_dev_env() and normalized in ["openapi.json", "docs", "redoc", "openapi.yaml"]:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404, detail="Not Found")
         file_path = _FRONTEND_DIST / full_path
         if file_path.is_file():
             return FileResponse(file_path)
