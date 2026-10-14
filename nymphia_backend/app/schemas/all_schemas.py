@@ -190,6 +190,27 @@ class AuthResponse(BaseModel):
     recusa_ia: Optional[bool] = False
     termos_versao: Optional[str] = None
 
+class EsqueciSenhaPayload(BaseModel):
+    email: EmailStr = Field(..., max_length=120)
+    perfil: Optional[str] = Field(None, pattern="^(gestante|profissional|parceiro)?$")
+
+class EsqueciSenhaResponse(BaseModel):
+    mensagem: str
+    sucesso: bool
+    reset_token: Optional[str] = None
+
+class RedefinirSenhaPayload(BaseModel):
+    token: str = Field(..., min_length=10)
+    nova_senha: str = Field(..., min_length=8, max_length=72)
+
+    @field_validator("nova_senha")
+    @classmethod
+    def validar_senha_bcrypt(cls, v: str) -> str:
+        if len(v.encode("utf-8")) > 72:
+            raise ValueError("A senha excede o limite seguro de 72 bytes do algoritmo de criptografia (bcrypt).")
+        return v
+
+
 class SolicitacaoRevisaoIACreate(BaseModel):
     motivo: str = Field(..., min_length=5, max_length=1000, description="Explicação da solicitação de revisão humana")
     recurso_analisado: Optional[str] = Field("escore_triagem", max_length=100)

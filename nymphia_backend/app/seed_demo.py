@@ -12,12 +12,15 @@ from app.models.relations import Vinculo, VinculoParceiro
 from app.models.interaction import EventoAgenda
 from app.auth import hash_senha
 
+import os
+import secrets
 logger = logging.getLogger("nymphia.seed")
 
 def seed_demo_accounts():
     db = SessionLocal()
     try:
-        senha_padrao = hash_senha("senhaMaternidade123")
+        senha_seed = os.getenv("DEMO_SEED_PASSWORD") or secrets.token_urlsafe(24)
+        senha_padrao = hash_senha(senha_seed)
 
         # 1. Gestante Demo
         gestante = db.query(Gestante).filter_by(email="gestante@nymphia.com.br").first()
@@ -33,7 +36,6 @@ def seed_demo_accounts():
             db.refresh(gestante)
             logger.info("Conta demo Gestante criada: gestante@nymphia.com.br")
         else:
-            gestante.senha_hash = senha_padrao
             gestante.nome = "Mariana Costa"
             db.commit()
 
@@ -126,7 +128,6 @@ def seed_demo_accounts():
             db.refresh(medico)
             logger.info("Conta demo Médico criada: medico@nymphia.com.br")
         else:
-            medico.senha_hash = senha_padrao
             medico.nome = "Dr. Carlos Silva"
             medico.status_verificacao = "aprovado"
             db.commit()
@@ -156,7 +157,6 @@ def seed_demo_accounts():
             db.refresh(parceiro)
             logger.info("Conta demo Parceiro criada: parceiro@nymphia.com.br")
         else:
-            parceiro.senha_hash = senha_padrao
             parceiro.nome = "Lucas Mendes"
             db.commit()
 

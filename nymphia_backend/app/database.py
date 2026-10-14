@@ -131,9 +131,60 @@ def executar_migracoes_automaticas():
                     logger.info("Migração: Adicionando coluna ocultado em comentarios_comunidade...")
                     conn.execute(text("ALTER TABLE comentarios_comunidade ADD COLUMN ocultado BOOLEAN DEFAULT FALSE;"))
 
+        # Migração Crítica Emergência: Permitir chamadas anônimas sem violação de FK
+        if "eventos_emergencia" in tabelas:
+            col_emerg = {c["name"]: c for c in inspector.get_columns("eventos_emergencia")}
+            if "gestante_id" in col_emerg and not col_emerg["gestante_id"]["nullable"]:
+                with engine.begin() as conn:
+                    logger.info("Migração: Permitindo gestante_id NULL em eventos_emergencia para chamadas anônimas...")
+                    if not db_url.startswith("sqlite"):
+                        conn.execute(text("ALTER TABLE eventos_emergencia ALTER COLUMN gestante_id DROP NOT NULL;"))
+
         # Garante que novas tabelas declaradas sejam criadas
         Base.metadata.create_all(bind=engine)
         logger.info("Migrações automáticas de schema concluídas com sucesso.")
+
+        # Rotaciona automaticamente credenciais que ainda utilizem a senha exposta
+        rotacionar_credenciais_vazadas_automaticamente()
     except Exception as e:
         logger.error(f"Erro ao executar migrações automáticas: {e}")
+
+
+def rotacionar_credenciais_vazadas_automaticamente(db_session=None):
+    """
+    Varre as contas e rotaciona qualquer usuário que ainda utilize a senha pública 'senhaMaternidade123',
+    exposta no commit histórico do deploy de 8 de outubro. Substitui imediatamente o hash por uma senha aleatória
+    de alta entropia, neutralizando o vetor de ataque contra a API.
+    """
+    import secrets
+    from app.models.auth import Gestante, Profissional, Parceiro
+    from app.security.jwt_auth import verify_password, hash_password
+
+    deve_fechar = False
+    if db_session is None:
+        db = SessionLocal()
+        deve_fechar = True
+    else:
+        db = db_session
+
+    try:
+        contas_alteradas = 0
+        for ModelCls in [Gestante, Profissional, Parceiro]:
+            users = db.query(ModelCls).all()
+            for u in users:
+                if u.senha_hash and verify_password("senhaMaternidade123", u.senha_hash):
+                    nova_senha = secrets.token_urlsafe(32)
+                    u.senha_hash = hash_password(nova_senha)
+                    contas_alteradas += 1
+                    logger.warning(f"[SEGURANÇA] Credencial comprometida detectada e rotacionada com sucesso para: {u.email}")
+        if contas_alteradas > 0:
+            db.commit()
+            logger.info(f"[SEGURANÇA] {contas_alteradas} conta(s) com senha exposta foram protegidas com novas credenciais aleatórias.")
+    except Exception as e:
+        logger.error(f"Erro ao rotacionar credenciais comprometidas: {e}")
+        db.rollback()
+    finally:
+        if deve_fechar:
+            db.close()
+
 

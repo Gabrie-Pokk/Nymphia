@@ -515,11 +515,11 @@ O endpoint oficial de monitoramento contínuo em tempo real (`/health`) reporta 
 
 ## 12. Credenciais de Teste e Homologação Rápida (Demo)
 
-Para avaliações por bancas examinadoras, investidores e médicos auditores, a plataforma possui contas seed pré-configuradas e inicializadas automaticamente:
+Por diretriz de conformidade e segurança (OWASP e LGPD), nenhuma credencial ou senha é mantida estática no código-fonte ou no bundle do frontend. Em ambientes de avaliação e desenvolvimento:
 
-* **Perfil Gestante Demo**: `gestante@nymphia.com.br` / `senhaMaternidade123`
-* **Perfil Médico Obstetra Demo**: `medico@nymphia.com.br` / `senhaMaternidade123`
-* **Perfil Parceiro Demo**: `parceiro@nymphia.com.br` / `senhaMaternidade123`
+* O seed de demonstração é acionado apenas quando explicitamente habilitado via variável de ambiente (`ENABLE_DEMO_SEED=true`).
+* As senhas são geradas com entropia criptográfica ou gerenciadas através do fluxo seguro de recuperação de conta (`/auth/esqueci-senha` e `/auth/redefinir-senha`).
+* Em caso de necessidade de rotação manual pelo administrador do sistema, o script utilitário `scripts/rotacionar_senhas_expostas.py` gera novas credenciais aleatórias e salva o registro seguro em `.env.credenciais_rotacionadas` (ignorado pelo controle de versão).
 
 ---
 
@@ -530,8 +530,8 @@ Para avaliações por bancas examinadoras, investidores e médicos auditores, a 
    * *Stage 2*: Monta a imagem enxuta de runtime Python 3.10-slim instalando o wheel oficial do PyTorch CPU-only (`--index-url https://download.pytorch.org/whl/cpu`) e dependências enxutas de produção (`requirements-prod.txt`).
 2. **Startup com Auto-Download e Migrações**:
    * O servidor inicializa o Uvicorn na porta pública atribuída pela nuvem.
-   * `executar_migracoes_automaticas()` garante schema íntegro no PostgreSQL.
-   * `seed_demo_accounts()` garante a presença das 3 contas demo conectadas.
+   * `executar_migracoes_automaticas()` garante schema íntegro no PostgreSQL e rotaciona automaticamente credenciais antigas comprometidas.
+   * `seed_demo_accounts()` pode ser ativado em ambiente de testes mediante `ENABLE_DEMO_SEED=true`.
    * O modelo BERTimbau é verificado e carregado em background com quantização INT8.
 3. **Variáveis de Ambiente Suportadas**:
    * `PORT`: Porta atribuída pelo provedor de hospedagem (padrão: 8000 / 10000).

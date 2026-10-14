@@ -73,7 +73,7 @@ def test_login_profissional_direto_por_crm_sem_digitar_email(client):
     client.post("/auth/profissional/cadastro", json={
         "nome": "Dr. Carlos Silva",
         "email": "carlos.crm@clinica.com",
-        "senha": "senhaMaternidade123",
+        "senha": "SenhaForteCRM2026!",
         "registro_tipo": "CRM",
         "registro_numero": "123456",
         "registro_uf": "SP"
@@ -81,7 +81,7 @@ def test_login_profissional_direto_por_crm_sem_digitar_email(client):
 
     # Login fornecendo apenas CRM, UF e senha (sem email)
     res = client.post("/auth/login", json={
-        "senha": "senhaMaternidade123",
+        "senha": "SenhaForteCRM2026!",
         "crm": "123456",
         "crm_uf": "SP",
         "perfil": "profissional"

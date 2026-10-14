@@ -82,26 +82,11 @@ export default function SubscriptionScreen({ onBack }) {
     }
   };
 
-  const handleConfirmarPagamentoSimulado = async () => {
-    if (!dadosCheckout) return;
+  const handleVerificarStatusPagamento = async () => {
     setProcessandoPagamento(true);
     try {
-      const res = await fetch('/assinatura/simular-webhook', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({
-          subscription_id: dadosCheckout.mercado_pago_id,
-          status: 'approved'
-        })
-      });
-
-      if (res.ok) {
-        setMensagemSucesso('Pagamento aprovado com sucesso pelo Mercado Pago! Seu plano está ativo.');
-        setTimeout(() => {
-          setModalCheckout(false);
-          carregarDados();
-        }, 1500);
-      }
+      await carregarDados();
+      setMensagemSucesso('Verificando confirmação do banco / Mercado Pago. Assim que a transação for liquidada, seu plano será ativado automaticamente.');
     } catch (err) {
     } finally {
       setProcessandoPagamento(false);
@@ -408,12 +393,12 @@ export default function SubscriptionScreen({ onBack }) {
                         {copiadoPix ? '✓ Código Copiado!' : 'Copiar Chave Pix'}
                       </button>
                       <button
-                        onClick={handleConfirmarPagamentoSimulado}
+                        onClick={handleVerificarStatusPagamento}
                         disabled={processandoPagamento}
                         className="btn btn-primary"
                         style={{ flex: 1, minHeight: '40px', fontSize: '0.82rem' }}
                       >
-                        {processandoPagamento ? 'Confirmando...' : 'Confirmar Pagamento'}
+                        {processandoPagamento ? 'Verificando...' : 'Já Paguei / Atualizar'}
                       </button>
                     </div>
                   </div>
@@ -435,12 +420,12 @@ export default function SubscriptionScreen({ onBack }) {
                         Abrir Checkout Mercado Pago <ExternalLink size={16} />
                       </a>
                       <button
-                        onClick={handleConfirmarPagamentoSimulado}
+                        onClick={handleVerificarStatusPagamento}
                         disabled={processandoPagamento}
                         className="btn btn-outline"
                         style={{ minHeight: '42px', fontSize: '0.84rem' }}
                       >
-                        Simular Aprovação Imediata (Ambiente de Teste)
+                        {processandoPagamento ? 'Consultando Mercado Pago...' : 'Já Concluí o Pagamento / Verificar Status'}
                       </button>
                     </div>
                   </div>

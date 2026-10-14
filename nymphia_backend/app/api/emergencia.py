@@ -49,13 +49,13 @@ async def notificar_emergencia(
             orientacao_samu="Ligue 192 (SAMU) imediatamente."
         )
     else:
-        # Registro anônimo caso chamada ocorra sem login
+        # Registro anônimo público (gestante_id=None evita violação de Foreign Key no Postgres)
         evento = EventoEmergencia(
-            gestante_id="anonima_publica",
+            gestante_id=None,
             data_hora=datetime.utcnow(),
             latitude=payload.latitude,
             longitude=payload.longitude,
-            contexto={"origem": "rota_publica_emergencia"},
+            contexto={"origem": "rota_publica_emergencia", "anonimo": True},
             profissional_notificado=False
         )
         db.add(evento)

@@ -31,8 +31,11 @@ try:
     logger.info("Tabelas do banco de dados verificadas e inicializadas com sucesso.")
     from app.database import executar_migracoes_automaticas
     executar_migracoes_automaticas()
-    from app.seed_demo import seed_demo_accounts
-    seed_demo_accounts()
+    # Seed de demonstração desativado em produção por segurança para proteger credenciais
+    env_name = (os.getenv("ENVIRONMENT") or os.getenv("ENV") or settings.ENVIRONMENT or "").lower()
+    if env_name in ["development", "dev", "local"] and os.getenv("ENABLE_DEMO_SEED", "").lower() == "true":
+        from app.seed_demo import seed_demo_accounts
+        seed_demo_accounts()
 except Exception as e:
     logger.error(f"Erro ao inicializar tabelas do banco de dados: {e}")
 
@@ -77,6 +80,8 @@ AUTH_RATE_LIMITED_PREFIXES = (
     "/auth/parceiro/login",
     "/auth/parceiro/cadastro",
     "/auth/login",
+    "/auth/esqueci-senha",
+    "/auth/redefinir-senha",
 )
 
 # Middleware unificado de Segurança, Governança, Rate Limiting e Bloqueio de Docs em Produção
@@ -162,15 +167,21 @@ app.include_router(lgpd.router)
 app.include_router(legacy.router)
 app.include_router(antropometria.router)
 
-# Tratamento Global de Exceções (Degradação Graciosa)
+# Tratamento Global de Exceções (Degradação Graciosa e Sanitização de Erros em Produção)
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Exceção não tratada na rota {request.url.path}: {exc}", exc_info=True)
+    # Em produção, nunca expor queries SQL, schemas, parâmetros de banco ou tracebacks
+    detalhe_seguro = (
+        str(exc)
+        if is_dev_env()
+        else "Ocorreu uma instabilidade interna momentânea. Os detalhes foram registrados no log e a equipe técnica foi notificada."
+    )
     return JSONResponse(
         status_code=500,
         content={
             "erro": "Falha interna no processamento",
-            "detalhe": str(exc),
+            "detalhe": detalhe_seguro,
             "degradacao_graciosa": "O sistema permanece operacional. Contate o suporte se o erro persistir."
         }
     )

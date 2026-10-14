@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import LotusLogo, { NymphiaBrandName } from '../components/LotusLogo';
-import { Eye, EyeOff, Lock, Mail, ArrowRight, Sparkles, CheckCircle, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, ArrowRight, CheckCircle, AlertTriangle, ShieldCheck, X, KeyRound, Check } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import LegalModal from '../components/LegalModal';
 
@@ -27,6 +27,17 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateRe
   const [modalLegalAberto, setModalLegalAberto] = useState(false);
   const [abaLegalInicial, setAbaLegalInicial] = useState('privacidade');
 
+  // Estados de Recuperação de Senha ("Esqueci minha senha")
+  const [modalEsqueciAberto, setModalEsqueciAberto] = useState(false);
+  const [etapaEsqueci, setEtapaEsqueci] = useState(1); // 1 = solicitar email, 2 = redefinir
+  const [emailRecuperacao, setEmailRecuperacao] = useState('');
+  const [tokenRecuperacao, setTokenRecuperacao] = useState('');
+  const [novaSenha, setNovaSenha] = useState('');
+  const [confirmarNovaSenha, setConfirmarNovaSenha] = useState('');
+  const [carregandoRecuperacao, setCarregandoRecuperacao] = useState(false);
+  const [erroRecuperacao, setErroRecuperacao] = useState('');
+  const [sucessoRecuperacao, setSucessoRecuperacao] = useState('');
+
   const verificarCrmAoDigitar = async (numDigitado, ufDigitada) => {
     const numCrm = (numDigitado !== undefined ? numDigitado : crm).trim().replace(/[^0-9]/g, '');
     const estadoUf = (ufDigitada !== undefined ? ufDigitada : crmUf).trim().toUpperCase();
@@ -46,69 +57,79 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateRe
     }
   };
 
-  const preencherDemo = async (tipo) => {
-    setPerfil(tipo);
-    clearAuthMessage && clearAuthMessage();
-    let demoEmail = 'gestante@nymphia.com.br';
-    let demoCrm = '';
-    let demoUf = 'SP';
-
-    if (tipo === 'profissional') {
-      demoEmail = 'medico@nymphia.com.br';
-      demoCrm = '123456';
-      demoUf = 'SP';
-      setCrm('123456');
-      setCrmUf('SP');
-      setCrmStatus({
-        valido: true,
-        crm: '123456',
-        uf: 'SP',
-        situacao: 'ATIVO',
-        mensagem: 'Dr. Carlos Silva • CRM Ativo e Regular no CREMESP'
-      });
-    } else {
-      setCrm('');
-      setCrmStatus(null);
+  const handleSolicitarRecuperacao = async (e) => {
+    e.preventDefault();
+    setErroRecuperacao('');
+    setSucessoRecuperacao('');
+    if (!emailRecuperacao || !emailRecuperacao.includes('@')) {
+      setErroRecuperacao('Por favor, informe um e-mail válido.');
+      return;
     }
-
-    if (tipo === 'parceiro') demoEmail = 'parceiro@nymphia.com.br';
-    const demoSenha = 'senhaMaternidade123';
-
-    setEmail(demoEmail);
-    setSenha(demoSenha);
-    setCarregando(true);
-    setErro('');
-
+    setCarregandoRecuperacao(true);
     try {
-      const payload = { email: demoEmail, senha: demoSenha, perfil: tipo };
-      if (tipo === 'profissional') {
-        payload.crm = demoCrm;
-        payload.crm_uf = demoUf;
-      }
-
-      const data = await apiFetch('/auth/login', {
+      const res = await apiFetch('/auth/esqueci-senha', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ email: emailRecuperacao.trim(), perfil }),
         skipAuth: true
       });
-
-      if (data && data.token) {
-        login(data.token, data);
-        if (onLoginSuccess) onLoginSuccess();
+      if (res && res.reset_token) {
+        setTokenRecuperacao(res.reset_token);
+        setSucessoRecuperacao('Token de redefinição validado. Digite sua nova senha abaixo:');
+        setEtapaEsqueci(2);
       } else {
-        throw new Error('Falha ao autenticar na conta demo.');
+        setSucessoRecuperacao(res.mensagem || 'Orientações enviadas. Verifique o código recebido.');
+        setEtapaEsqueci(2);
       }
     } catch (err) {
-      if (err.isTimeout || err.isNetworkError || err.status >= 500) {
-        setErro('O servidor da Nymphia está inicializando na nuvem. Aguarde cerca de 20 a 30 segundos e toque novamente no perfil desejado.');
-      } else {
-        setErro(err.message || 'Falha ao autenticar na conta de teste.');
-      }
+      setErroRecuperacao(err.message || 'Falha ao solicitar recuperação de senha.');
     } finally {
-      setCarregando(false);
+      setCarregandoRecuperacao(false);
     }
   };
+
+  const handleRedefinirSenha = async (e) => {
+    e.preventDefault();
+    setErroRecuperacao('');
+    setSucessoRecuperacao('');
+    if (!tokenRecuperacao) {
+      setErroRecuperacao('Informe o token de redefinição.');
+      return;
+    }
+    if (novaSenha.length < 8) {
+      setErroRecuperacao('A nova senha deve possuir pelo menos 8 caracteres.');
+      return;
+    }
+    if (novaSenha !== confirmarNovaSenha) {
+      setErroRecuperacao('As senhas digitadas não conferem.');
+      return;
+    }
+    setCarregandoRecuperacao(true);
+    try {
+      const res = await apiFetch('/auth/redefinir-senha', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: tokenRecuperacao.trim(), nova_senha: novaSenha }),
+        skipAuth: true
+      });
+      setSucessoRecuperacao(res.mensagem || 'Senha redefinida com sucesso!');
+      setEmail(emailRecuperacao);
+      setSenha('');
+      setTimeout(() => {
+        setModalEsqueciAberto(false);
+        setEtapaEsqueci(1);
+        setSucessoRecuperacao('');
+        setNovaSenha('');
+        setConfirmarNovaSenha('');
+        setTokenRecuperacao('');
+      }, 2000);
+    } catch (err) {
+      setErroRecuperacao(err.message || 'Falha ao salvar a nova senha.');
+    } finally {
+      setCarregandoRecuperacao(false);
+    }
+  };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -183,89 +204,7 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateRe
         </p>
       </div>
 
-      {/* SEÇÃO DE ACESSO RÁPIDO PARA TESTADORES / DEMO (1 CLIQUE) */}
-      <div
-        className="card"
-        style={{
-          backgroundColor: '#FFF8F9',
-          border: '1.5px solid var(--color-rosa)',
-          borderRadius: 'var(--radius-md)',
-          padding: '16px',
-          marginBottom: '22px'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-          <Sparkles size={18} color="var(--color-rosa)" />
-          <h2 style={{ fontSize: '0.98rem', margin: 0, color: 'var(--color-vinho)' }}>
-            Acesso Rápido para Avaliação
-          </h2>
-          <span className="badge-gold" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>1 Clique</span>
-        </div>
-        <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '12px', lineHeight: 1.4 }}>
-          <strong>Você só precisa testar 1 perfil!</strong> Escolha qual área deseja experimentar e clique abaixo para entrar instantaneamente:
-        </p>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <button
-            type="button"
-            onClick={() => preencherDemo('gestante')}
-            className="btn"
-            disabled={carregando}
-            style={{
-              backgroundColor: '#FFFFFF',
-              border: '1.5px solid var(--color-rosa)',
-              color: 'var(--color-vinho)',
-              justifyContent: 'space-between',
-              padding: '10px 14px',
-              fontSize: '0.85rem',
-              fontWeight: 600
-            }}
-          >
-            <span>🌸 1. Entrar como Gestante (Mariana)</span>
-            <span style={{ fontSize: '0.72rem', color: 'var(--color-rosa)', fontWeight: 700 }}>Testar App</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => preencherDemo('profissional')}
-            className="btn"
-            disabled={carregando}
-            style={{
-              backgroundColor: '#FFFFFF',
-              border: '1.5px solid var(--color-vinho)',
-              color: 'var(--color-vinho)',
-              justifyContent: 'space-between',
-              padding: '10px 14px',
-              fontSize: '0.85rem',
-              fontWeight: 600
-            }}
-          >
-            <span>🩺 2. Entrar como Médico (Dr. Carlos)</span>
-            <span style={{ fontSize: '0.72rem', color: 'var(--color-vinho)', fontWeight: 700 }}>Painel Clínico</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => preencherDemo('parceiro')}
-            className="btn"
-            disabled={carregando}
-            style={{
-              backgroundColor: '#FFFFFF',
-              border: '1.5px solid #27AE60',
-              color: '#1E7E34',
-              justifyContent: 'space-between',
-              padding: '10px 14px',
-              fontSize: '0.85rem',
-              fontWeight: 600
-            }}
-          >
-            <span>🤝 3. Entrar como Parceiro (Lucas)</span>
-            <span style={{ fontSize: '0.72rem', color: '#27AE60', fontWeight: 700 }}>Apoio & Quiz</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Seletor de Perfil Manual */}
+      {/* Seletor de Perfil */}
       <div style={{ display: 'flex', backgroundColor: 'var(--color-rosa-claro)', padding: '4px', borderRadius: 'var(--radius-md)', marginBottom: '20px' }}>
         <button
           type="button"
@@ -519,6 +458,30 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateRe
               {mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setEmailRecuperacao(email);
+                setErroRecuperacao('');
+                setSucessoRecuperacao('');
+                setEtapaEsqueci(1);
+                setModalEsqueciAberto(true);
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--color-vinho)',
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                fontWeight: 600,
+                textDecoration: 'underline',
+                padding: '4px 0'
+              }}
+            >
+              Esqueci minha senha
+            </button>
+          </div>
         </div>
 
         <button
@@ -598,6 +561,210 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateRe
           </div>
         </div>
       </div>
+
+      {/* Modal de Recuperação de Senha */}
+      {modalEsqueciAberto && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.55)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100,
+            padding: '16px'
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget) setModalEsqueciAberto(false); }}
+        >
+          <div
+            className="card"
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: 'var(--radius-lg)',
+              maxWidth: '420px',
+              width: '100%',
+              padding: '24px',
+              position: 'relative',
+              boxShadow: 'var(--shadow-lg)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    backgroundColor: 'var(--color-rosa-claro)',
+                    color: 'var(--color-vinho)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <KeyRound size={20} />
+                </div>
+                <h2 style={{ fontSize: '1.1rem', margin: 0, color: 'var(--color-vinho)' }}>
+                  Recuperar Senha
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalEsqueciAberto(false)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}
+                aria-label="Fechar modal"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {erroRecuperacao && (
+              <div
+                role="alert"
+                style={{
+                  padding: '10px 12px',
+                  backgroundColor: '#FDEEE9',
+                  color: '#8A2B1A',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '0.82rem',
+                  marginBottom: '14px',
+                  borderLeft: '4px solid #D9534F'
+                }}
+              >
+                {erroRecuperacao}
+              </div>
+            )}
+
+            {sucessoRecuperacao && (
+              <div
+                role="status"
+                style={{
+                  padding: '10px 12px',
+                  backgroundColor: '#E8F5E9',
+                  color: '#2E7D32',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '0.82rem',
+                  marginBottom: '14px',
+                  borderLeft: '4px solid #2E7D32'
+                }}
+              >
+                {sucessoRecuperacao}
+              </div>
+            )}
+
+            {etapaEsqueci === 1 ? (
+              <form onSubmit={handleSolicitarRecuperacao}>
+                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.5, marginBottom: '16px' }}>
+                  Digite o e-mail associado à sua conta. Geraremos um token temporário seguro para você redefinir sua senha.
+                </p>
+
+                <div className="form-group" style={{ marginBottom: '16px' }}>
+                  <label htmlFor="recupera-email" style={{ fontSize: '0.82rem', fontWeight: 600 }}>E-mail da Conta</label>
+                  <input
+                    id="recupera-email"
+                    type="email"
+                    className="form-control"
+                    placeholder="seu.email@exemplo.com"
+                    value={emailRecuperacao}
+                    onChange={(e) => setEmailRecuperacao(e.target.value)}
+                    required
+                    autoFocus
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setModalEsqueciAberto(false)}
+                    className="btn btn-outline"
+                    style={{ flex: 1, minHeight: '42px', fontSize: '0.85rem' }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={carregandoRecuperacao}
+                    style={{ flex: 1.5, minHeight: '42px', fontSize: '0.85rem' }}
+                  >
+                    {carregandoRecuperacao ? 'Processando...' : 'Avançar'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleRedefinirSenha}>
+                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.5, marginBottom: '14px' }}>
+                  Defina a sua nova senha de acesso:
+                </p>
+
+                <div className="form-group" style={{ marginBottom: '12px' }}>
+                  <label htmlFor="recupera-token" style={{ fontSize: '0.82rem', fontWeight: 600 }}>Código / Token de Validação</label>
+                  <input
+                    id="recupera-token"
+                    type="text"
+                    className="form-control"
+                    placeholder="Cole ou confirme o token recebido"
+                    value={tokenRecuperacao}
+                    onChange={(e) => setTokenRecuperacao(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: '12px' }}>
+                  <label htmlFor="recupera-nova-senha" style={{ fontSize: '0.82rem', fontWeight: 600 }}>Nova Senha (mínimo 8 caracteres)</label>
+                  <input
+                    id="recupera-nova-senha"
+                    type="password"
+                    className="form-control"
+                    placeholder="••••••••"
+                    value={novaSenha}
+                    onChange={(e) => setNovaSenha(e.target.value)}
+                    required
+                    minLength={8}
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: '18px' }}>
+                  <label htmlFor="recupera-confirma-senha" style={{ fontSize: '0.82rem', fontWeight: 600 }}>Confirmar Nova Senha</label>
+                  <input
+                    id="recupera-confirma-senha"
+                    type="password"
+                    className="form-control"
+                    placeholder="••••••••"
+                    value={confirmarNovaSenha}
+                    onChange={(e) => setConfirmarNovaSenha(e.target.value)}
+                    required
+                    minLength={8}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => { setEtapaEsqueci(1); setErroRecuperacao(''); }}
+                    className="btn btn-outline"
+                    style={{ flex: 1, minHeight: '42px', fontSize: '0.85rem' }}
+                  >
+                    Voltar
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={carregandoRecuperacao}
+                    style={{ flex: 1.5, minHeight: '42px', fontSize: '0.85rem' }}
+                  >
+                    {carregandoRecuperacao ? 'Salvando...' : 'Salvar Nova Senha'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
       <LegalModal
         isOpen={modalLegalAberto}

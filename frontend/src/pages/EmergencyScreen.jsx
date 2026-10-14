@@ -1,37 +1,49 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, Navigation, AlertCircle, ArrowLeft, ShieldCheck } from 'lucide-react';
+import { Phone, Navigation, AlertCircle, ArrowLeft, ShieldCheck, MapPin } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function EmergencyScreen({ onExit }) {
-  const { authHeaders } = useAuth();
+  const { authHeaders, isAuthenticated } = useAuth();
   const [maternidade, setMaternidade] = useState(() => {
     const cached = localStorage.getItem('nymphia_maternidade_cache');
-    return cached ? JSON.parse(cached) : {
-      nome: "Maternidade de Referência Regional",
-      endereco: "Av. Principal da Saúde, 1000 - Centro",
-      telefone: "1133334444"
-    };
+    try {
+      const parsed = cached ? JSON.parse(cached) : null;
+      // Rejeita dados fictícios de demonstração herdados do cache
+      if (parsed && parsed.nome && !parsed.nome.includes("Maternidade de Referência Regional")) {
+        return parsed;
+      }
+    } catch (e) {}
+    return null;
   });
-  const [notificado, setNotificado] = useState(false);
+
+  const [notificacaoStatus, setNotificacaoStatus] = useState({
+    enviado: false,
+    profissionalNotificado: false,
+    erro: false
+  });
 
   useEffect(() => {
     // 1. Tenta carregar dados atualizados do perfil clínico (se conectado)
-    fetch('/perfil-clinico', { headers: authHeaders() })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data && data.maternidade_nome) {
-          const matData = {
-            nome: data.maternidade_nome,
-            endereco: data.maternidade_endereco || "Endereço cadastrado no onboarding",
-            telefone: data.maternidade_telefone || "192"
-          };
-          setMaternidade(matData);
-          localStorage.setItem('nymphia_maternidade_cache', JSON.stringify(matData));
-        }
-      })
-      .catch(() => {
-        // Modo offline gracioso
-      });
+    if (isAuthenticated) {
+      fetch('/perfil-clinico', { headers: authHeaders() })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data && data.maternidade_nome && !data.maternidade_nome.includes("Maternidade de Referência Regional")) {
+            const matData = {
+              nome: data.maternidade_nome,
+              endereco: data.maternidade_endereco || "Endereço cadastrado no onboarding",
+              telefone: data.maternidade_telefone || "192",
+              latitude: data.maternidade_latitude,
+              longitude: data.maternidade_longitude
+            };
+            setMaternidade(matData);
+            localStorage.setItem('nymphia_maternidade_cache', JSON.stringify(matData));
+          }
+        })
+        .catch(() => {
+          // Modo offline gracioso
+        });
+    }
 
     // 2. Dispara notificação paralela e registro de emergência (NUNCA BLOQUEIA)
     fetch('/emergencia/notificar', {
@@ -39,11 +51,22 @@ export default function EmergencyScreen({ onExit }) {
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ momento: new Date().toISOString() })
     })
-      .then(() => setNotificado(true))
+      .then(async (res) => {
+        if (res.ok) {
+          const data = await res.json().catch(() => ({}));
+          setNotificacaoStatus({
+            enviado: true,
+            profissionalNotificado: Boolean(data.profissional_notificado),
+            erro: false
+          });
+        } else {
+          setNotificacaoStatus({ enviado: false, profissionalNotificado: false, erro: true });
+        }
+      })
       .catch(() => {
-        // Falha de rede não impede a tela do SAMU
+        setNotificacaoStatus({ enviado: false, profissionalNotificado: false, erro: true });
       });
-  }, []);
+  }, [isAuthenticated]);
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#FFFFFF', padding: '24px', display: 'flex', flexDirection: 'column' }}>
@@ -90,7 +113,7 @@ export default function EmergencyScreen({ onExit }) {
           Canal de Emergência Obstétrica
         </h1>
         <p style={{ color: 'var(--color-text-muted)', fontSize: '0.95rem' }}>
-          Se você está em trabalho de parto, sangrando ou com dores intensas, ligue imediatamente para o socorro.
+          Se você está em trabalho de parto, sangrando, com convulsão ou perda de líquido, ligue imediatamente para o socorro.
         </p>
       </div>
 
@@ -120,56 +143,87 @@ export default function EmergencyScreen({ onExit }) {
         LIGAR PARA O SAMU (192)
       </a>
 
-      {/* Cartão da Maternidade de Referência */}
-      <div className="card" style={{ border: '2px solid var(--color-border)', backgroundColor: 'var(--color-rosa-claro)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-          <ShieldCheck size={22} color="var(--color-vinho)" />
-          <h2 style={{ fontSize: '1.1rem', margin: 0 }}>Sua Maternidade de Referência</h2>
-        </div>
-        <p style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--color-vinho)', marginBottom: '4px' }}>
-          {maternidade.nome}
-        </p>
-        <p style={{ fontSize: '0.88rem', color: 'var(--color-text-muted)', marginBottom: '16px' }}>
-          {maternidade.endereco}
-        </p>
+      {/* Cartão da Maternidade de Referência ou Orientação Segura */}
+      {maternidade ? (
+        <div className="card" style={{ border: '2px solid var(--color-border)', backgroundColor: 'var(--color-rosa-claro)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <ShieldCheck size={22} color="var(--color-vinho)" />
+            <h2 style={{ fontSize: '1.1rem', margin: 0 }}>Sua Maternidade de Referência</h2>
+          </div>
+          <p style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--color-vinho)', marginBottom: '4px' }}>
+            {maternidade.nome}
+          </p>
+          <p style={{ fontSize: '0.88rem', color: 'var(--color-text-muted)', marginBottom: '16px' }}>
+            {maternidade.endereco}
+          </p>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <a
+              href={`tel:${maternidade.telefone}`}
+              className="btn btn-vinho"
+              style={{ flex: 1, textDecoration: 'none' }}
+              aria-label={`Ligar para a maternidade: ${maternidade.telefone}`}
+            >
+              <Phone size={18} />
+              Ligar ({maternidade.telefone || 'Maternidade'})
+            </a>
+            <a
+              href={maternidade.latitude && maternidade.longitude ? `geo:${maternidade.latitude},${maternidade.longitude}?q=${encodeURIComponent(maternidade.nome)}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(maternidade.endereco || maternidade.nome)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-outline"
+              style={{ flex: 1, textDecoration: 'none' }}
+              aria-label="Abrir rota no mapa até a maternidade"
+            >
+              <Navigation size={18} />
+              Ver Rota
+            </a>
+          </div>
+        </div>
+      ) : (
+        <div className="card" style={{ border: '1.5px solid var(--color-border)', backgroundColor: '#FAFAFA' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <MapPin size={22} color="var(--color-vinho)" />
+            <h2 style={{ fontSize: '1.05rem', margin: 0, color: 'var(--color-vinho)' }}>Maternidade mais Próxima</h2>
+          </div>
+          <p style={{ fontSize: '0.88rem', color: 'var(--color-text-muted)', lineHeight: 1.5, marginBottom: '14px' }}>
+            Nenhuma maternidade personalizada cadastrada no seu perfil. Em caso de urgência, dirija-se à maternidade ou pronto-socorro obstétrico mais próximo da sua localização ou aguarde as instruções do SAMU 192.
+          </p>
           <a
-            href={`tel:${maternidade.telefone}`}
-            className="btn btn-vinho"
-            style={{ flex: 1, textDecoration: 'none' }}
-            aria-label={`Ligar para a maternidade: ${maternidade.telefone}`}
-          >
-            <Phone size={18} />
-            Ligar ({maternidade.telefone || 'Maternidade'})
-          </a>
-          <a
-            href={maternidade.latitude && maternidade.longitude ? `geo:${maternidade.latitude},${maternidade.longitude}?q=${encodeURIComponent(maternidade.nome)}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(maternidade.endereco || maternidade.nome)}`}
+            href="https://www.google.com/maps/search/?api=1&query=maternidade+pronto+socorro+obstetrico"
             target="_blank"
             rel="noopener noreferrer"
             className="btn btn-outline"
-            style={{ flex: 1, textDecoration: 'none' }}
-            aria-label="Abrir rota no mapa até a maternidade"
+            style={{ width: '100%', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', minHeight: '44px' }}
+            aria-label="Buscar maternidades e prontos-socorros próximos no mapa"
           >
             <Navigation size={18} />
-            Ver Rota
+            Buscar Maternidades Próximas no Mapa
           </a>
         </div>
-      </div>
+      )}
 
       {/* Status da Notificação Paralela */}
       <div style={{ marginTop: 'auto', textAlign: 'center', paddingTop: '20px' }}>
-        <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-          {notificado ? (
+        <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+          {notificacaoStatus.enviado && notificacaoStatus.profissionalNotificado ? (
             <span style={{ color: '#27AE60', fontWeight: 600 }}>
-              ✓ Alerta transmitido em paralelo para sua equipe de saúde.
+              ✓ Alerta transmitido em paralelo para sua equipe de saúde vinculada.
+            </span>
+          ) : notificacaoStatus.enviado && !notificacaoStatus.profissionalNotificado ? (
+            <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>
+              ℹ️ Chamada de emergência pública registrada. Sem equipe médica vinculada nesta sessão — o atendimento depende exclusivamente da discagem ao SAMU 192.
+            </span>
+          ) : notificacaoStatus.erro ? (
+            <span style={{ color: 'var(--color-vermelho)', fontWeight: 600 }}>
+              ⚠️ Não foi possível registrar o evento no servidor. Disque 192 (SAMU) imediatamente no seu telefone!
             </span>
           ) : (
             <span>Conectando aos serviços de apoio em paralelo...</span>
           )}
         </p>
-        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-          A Nymphia orienta e conecta você ao socorro. A discagem é sempre confirmada por você.
+        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '6px' }}>
+          A Nymphia orienta e conecta você ao socorro. A discagem para o 192 é sempre confirmada diretamente por você no telefone.
         </p>
       </div>
     </div>

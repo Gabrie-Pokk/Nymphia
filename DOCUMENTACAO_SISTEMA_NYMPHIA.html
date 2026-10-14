@@ -1267,12 +1267,7 @@ flowchart LR
 </ol>
 <hr/>
 <h2 id="12-credenciais-de-teste-e-homologa-o-r-pida-demo">12. Credenciais de Teste e Homologação Rápida (Demo)</h2>
-<p>Para avaliações por bancas examinadoras, investidores e médicos auditores, a plataforma possui contas seed pré-configuradas e inicializadas automaticamente:</p>
-<ul>
-<li><strong>Perfil Gestante Demo</strong>: <code>gestante@nymphia.com.br</code> / <code>senhaMaternidade123</code></li>
-<li><strong>Perfil Médico Obstetra Demo</strong>: <code>medico@nymphia.com.br</code> / <code>senhaMaternidade123</code></li>
-<li><strong>Perfil Parceiro Demo</strong>: <code>parceiro@nymphia.com.br</code> / <code>senhaMaternidade123</code></li>
-</ul>
+<p>Por diretriz de conformidade e segurança (OWASP e LGPD), nenhuma credencial ou senha é mantida estática no código-fonte ou no bundle do frontend. Em ambientes de avaliação e desenvolvimento, o seed é condicionado a <code>ENABLE_DEMO_SEED=true</code> e as credenciais são administradas pelo fluxo seguro de redefinição ou pelo utilitário <code>scripts/rotacionar_senhas_expostas.py</code>.</p>
 <hr/>
 <h2 id="13-guia-de-deploy-em-produ-o-render-com">13. Guia de Deploy em Produção (Render.com)</h2>
 <ol>

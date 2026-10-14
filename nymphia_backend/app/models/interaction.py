@@ -37,7 +37,7 @@ class EventoEmergencia(Base):
     __tablename__ = "eventos_emergencia"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    gestante_id = Column(String(36), ForeignKey("gestantes.id", ondelete="CASCADE"), nullable=False, index=True)
+    gestante_id = Column(String(36), ForeignKey("gestantes.id", ondelete="CASCADE"), nullable=True, index=True)
     data_hora = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)

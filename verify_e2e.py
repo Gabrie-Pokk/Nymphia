@@ -51,7 +51,7 @@ def run_e2e_validations():
     res_cad = requests.post(f"{BACKEND_URL}/auth/gestante/cadastro", json={
         "nome": "Mariana Costa",
         "email": email_gestante,
-        "senha": "senhaMaternidade123"
+        "senha": "NymphiaSegura2026!"
     })
     gestante_data = res_cad.json()
     token_gestante = gestante_data.get("token")
@@ -333,7 +333,7 @@ def run_e2e_validations():
     res_del_acc = requests.delete(f"{BACKEND_URL}/minha-conta", headers=headers_gestante)
     res_login_pos_del = requests.post(f"{BACKEND_URL}/auth/gestante/login", json={
         "email": email_gestante,
-        "senha": "senhaMaternidade123"
+        "senha": "NymphiaSegura2026!"
     })
     log_test(
         "Eliminação definitiva de conta e dados em cascata (Art. 18 LGPD)",

@@ -9,10 +9,11 @@ from app.schemas.all_schemas import (
     GestanteRegister, GestanteLogin,
     ProfissionalRegister, ProfissionalLogin, LoginUnificadoPayload, CrmValidacaoResponse,
     ParceiroRegister, ParceiroLogin,
-    AuthResponse
+    AuthResponse,
+    EsqueciSenhaPayload, EsqueciSenhaResponse, RedefinirSenhaPayload
 )
 from app.security.jwt_auth import (
-    hash_password, verify_password, create_access_token,
+    hash_password, verify_password, create_access_token, decode_access_token,
     get_current_profissional
 )
 from app.storage.object_storage import save_uploaded_file
@@ -328,3 +329,95 @@ def login_parceiro(payload: ParceiroLogin, db: Session = Depends(get_db)):
         id=parceiro.id,
         nome=parceiro.nome
     )
+
+
+# --- RECUPERAÇÃO E REDEFINIÇÃO DE SENHA ---
+@router.post("/esqueci-senha", response_model=EsqueciSenhaResponse)
+def esqueci_senha(payload: EsqueciSenhaPayload, db: Session = Depends(get_db)):
+    """
+    Inicia o fluxo seguro de recuperação de conta.
+    Gera token assinado JWT com tempo de expiração de 30 minutos.
+    Retorna mensagem segura para mitigar enumeração de contas.
+    """
+    email_clean = payload.email.strip().lower()
+    usuario = None
+    perfil_encontrado = None
+
+    if payload.perfil == "gestante" or not payload.perfil:
+        usuario = db.query(Gestante).filter(Gestante.email == email_clean).first()
+        if usuario:
+            perfil_encontrado = "gestante"
+
+    if not usuario and (payload.perfil == "profissional" or not payload.perfil):
+        usuario = db.query(Profissional).filter(Profissional.email == email_clean).first()
+        if usuario:
+            perfil_encontrado = "profissional"
+
+    if not usuario and (payload.perfil == "parceiro" or not payload.perfil):
+        usuario = db.query(Parceiro).filter(Parceiro.email == email_clean).first()
+        if usuario:
+            perfil_encontrado = "parceiro"
+
+    reset_token = None
+    if usuario:
+        from datetime import timedelta
+        reset_token = create_access_token(
+            data={
+                "sub": usuario.id,
+                "email": usuario.email,
+                "perfil": perfil_encontrado,
+                "tipo_acao": "redefinicao_senha"
+            },
+            expires_delta=timedelta(minutes=30)
+        )
+
+    return EsqueciSenhaResponse(
+        sucesso=True,
+        mensagem="Se o e-mail informado estiver cadastrado na Nymphia, o procedimento de redefinição foi iniciado com sucesso.",
+        reset_token=reset_token
+    )
+
+@router.post("/redefinir-senha")
+def redefinir_senha(payload: RedefinirSenhaPayload, db: Session = Depends(get_db)):
+    """
+    Valida o token temporário assinado e atualiza a senha da conta com hash seguro bcrypt.
+    """
+    try:
+        dados = decode_access_token(payload.token)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Token de redefinição inválido ou expirado. Por favor, solicite uma nova redefinição."
+        )
+
+    if dados.get("tipo_acao") != "redefinicao_senha":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="O token fornecido não possui permissão para redefinição de senha."
+        )
+
+    user_id = dados.get("sub")
+    perfil = dados.get("perfil")
+
+    usuario = None
+    if perfil == "gestante":
+        usuario = db.query(Gestante).filter(Gestante.id == user_id).first()
+    elif perfil == "profissional":
+        usuario = db.query(Profissional).filter(Profissional.id == user_id).first()
+    elif perfil == "parceiro":
+        usuario = db.query(Parceiro).filter(Parceiro.id == user_id).first()
+
+    if not usuario:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="A conta associada a este pedido de redefinição não foi localizada."
+        )
+
+    usuario.senha_hash = hash_password(payload.nova_senha)
+    db.commit()
+
+    return {
+        "sucesso": True,
+        "mensagem": "Senha redefinida com sucesso! Você já pode realizar login com sua nova credencial."
+    }
+
