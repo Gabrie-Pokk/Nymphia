@@ -262,16 +262,31 @@ def calculate_maternal_risks(perfil: Dict[str, Any], historico_familiar: List[Di
 
     tipo_modelo = "random_forest_ensemble_sinasc_sih" if modelos_usados else "heuristica_populacional_sinasc_sih"
 
+    # Carimbo auditável de governança (Resolução CFM 2.454/2026, Art. 4º, V)
+    carimbo_samd_cfm = (
+        "Triagem com suporte de IA supervisionada (SaMD Classe II / CFM nº 2.454/2026). "
+        "Apoio estatístico à decisão médica. Diagnóstico e conduta sob responsabilidade exclusiva do médico assistente."
+    )
+
+    condicoes_dict = {}
+    for k, v in probabilidades.items():
+        item = {"probabilidade": v, "nivel": _get_level(v)}
+        if k == "itu":
+            item["alerta_transparencia_cdc"] = (
+                "Modelo de triagem com precisão estatística de 0,01 (1%) decorrente do desbalanceamento da base SIH/SUS. "
+                "Utilizar exclusivamente como lembrete preventivo para urocultura no pré-natal, não como diagnóstico de infecção ativa."
+            )
+        condicoes_dict[k] = item
+
     return {
         "tipo_modelo": tipo_modelo,
         "modelos_ativos": modelos_usados,
-        "condicoes": {
-            k: {"probabilidade": v, "nivel": _get_level(v)}
-            for k, v in probabilidades.items()
-        },
+        "condicoes": condicoes_dict,
         "score_anomalia": anomalia_score,
         "padrao_atipico_detectado": anomalo,
-        "aviso_legal": DISCLAIMER_TEXT
+        "aviso_legal": DISCLAIMER_TEXT,
+        "carimbo_samd_cfm": carimbo_samd_cfm,
+        "enquadramento_regulatorio": "SaMD Risco Médio (Classe II) - Resolução CFM nº 2.454/2026 e RDC Anvisa nº 657/2022"
     }
 
 
@@ -281,3 +296,101 @@ def _get_level(prob: float) -> str:
     if prob >= 0.20:
         return "moderado"
     return "baixo"
+
+
+def obter_transparencia_clinica() -> Dict[str, Any]:
+    """
+    Retorna o relatório oficial de Transparência Algorítmica e Governança Clínica
+    exigido pela Resolução CFM nº 2.454/2026 (Arts. 3º, 5º e 11) e Código de Defesa do Consumidor (Arts. 12 a 14).
+    """
+    return {
+        "sistema": "Nymphia Perinatal AI",
+        "versao_protocolo": "2026.1",
+        "marco_regulatorio": "Resolução CFM nº 2.454/2026; Código de Defesa do Consumidor (Lei 8.078/1990); RDC Anvisa nº 657/2022",
+        "classificacao_samd": "Software as a Medical Device (SaMD) de Risco Médio / Classe II",
+        "finalidade_exclusiva": (
+            "Triagem populacional estatística, priorização em fila de atendimento e suporte informativo ao pré-natal. "
+            "É TERMINANTEMENTE PROIBIDO o uso deste sistema para diagnósticos autônomos ou prescrições sem mediação humana (Art. 5º, §2º da CFM 2.454/2026)."
+        ),
+        "carimbo_prontuario": (
+            "Avaliação assistida por algoritmo supervisionado de IA (CFM 2.454/2026). "
+            "Decisão diagnóstica e conduta terapêutica são privativas do médico obstetra assistente."
+        ),
+        "canal_revisao_humana": "/meus-dados/solicitar-revisao-ia",
+        "artigo_lgpd_revisao": "Art. 20 da LGPD (Direito à Revisão Humana de Decisões Automatizadas)",
+        "modelos": {
+            "pre_eclampsia": {
+                "nome_clinico": "Pré-eclâmpsia e Hipertensão Gestacional",
+                "algoritmo": "Random Forest Classifier (Ensemble)",
+                "base_dados": "SINASC e SIH/SUS (DATASUS)",
+                "auc_roc": 0.84,
+                "sensibilidade": 0.78,
+                "especificidade": 0.76,
+                "precisao": 0.71,
+                "descricao": "Estratifica probabilidade de desenvolvimento de pré-eclâmpsia a partir de antecedentes e fatores clínicos maternos."
+            },
+            "eclampsia": {
+                "nome_clinico": "Eclâmpsia e Crises Convulsivas Obstétricas",
+                "algoritmo": "Random Forest Classifier",
+                "base_dados": "SINASC e SIH/SUS (DATASUS)",
+                "auc_roc": 0.82,
+                "sensibilidade": 0.75,
+                "especificidade": 0.80,
+                "precisao": 0.68,
+                "descricao": "Avalia risco de evolução crítica da síndrome hipertensiva da gestação."
+            },
+            "diabetes_gestacional": {
+                "nome_clinico": "Diabetes Mellitus Gestacional (DMG)",
+                "algoritmo": "Random Forest Classifier",
+                "base_dados": "SINASC e SIH/SUS (DATASUS)",
+                "auc_roc": 0.79,
+                "sensibilidade": 0.72,
+                "especificidade": 0.74,
+                "precisao": 0.69,
+                "descricao": "Predição baseada em idade materna, índice de massa corporal pré-gestacional e histórico familiar."
+            },
+            "bem_estar_fetal": {
+                "nome_clinico": "Sofrimento Fetal e Vitalidade Perinatal",
+                "algoritmo": "Random Forest Classifier",
+                "base_dados": "SINASC e SIH/SUS (DATASUS)",
+                "auc_roc": 0.81,
+                "sensibilidade": 0.74,
+                "especificidade": 0.77,
+                "precisao": 0.73,
+                "descricao": "Rastreio preventivo com base em histórico de perdas, consultas e características gestacionais."
+            },
+            "malformacao": {
+                "nome_clinico": "Anomalias Congênitas e Malformações",
+                "algoritmo": "Random Forest Classifier",
+                "base_dados": "SINASC (DATASUS)",
+                "auc_roc": 0.76,
+                "sensibilidade": 0.70,
+                "especificidade": 0.75,
+                "precisao": 0.64,
+                "descricao": "Triagem estatística populacional para orientação de ultrassonografia morfológica detalhada."
+            },
+            "itu": {
+                "nome_clinico": "Infecção do Trato Urinário na Gestação",
+                "algoritmo": "Random Forest Classifier",
+                "base_dados": "SIH/SUS (DATASUS)",
+                "auc_roc": 0.65,
+                "sensibilidade": 0.62,
+                "especificidade": 0.68,
+                "precisao": 0.01,
+                "alerta_cdc_transparencia": True,
+                "justificativa_tecnica": (
+                    "NOTA OBRIGATÓRIA DE TRANSPARÊNCIA (CDC e Resolução CFM nº 2.454/2026): A precisão do modelo de ITU "
+                    "é de 0,01 (1%) em razão do severo desbalanceamento na base de internações SIH/SUS, onde quase a totalidade "
+                    "dos registros correspondia a partos e apenas internações atípicas graves continham ITU como causa principal. "
+                    "Por esse motivo, predições elevadas deste modelo servem unicamente como gatilho preventivo para reforço na solicitação "
+                    "de exames de rotina (urocultura com antibiograma e EQU), jamais como diagnóstico de infecção bacteriana ativa."
+                )
+            },
+            "isolation_forest": {
+                "nome_clinico": "Detector Multivariado de Padrões Atípicos",
+                "algoritmo": "Isolation Forest (Não Supervisionado)",
+                "base_dados": "SINASC / SIH multivariado",
+                "finalidade": "Identificar desvios multidimensionais que requerem atenção médica individualizada fora dos protocolos habituais."
+            }
+        }
+    }

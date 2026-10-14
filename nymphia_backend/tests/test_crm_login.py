@@ -91,3 +91,30 @@ def test_login_profissional_direto_por_crm_sem_digitar_email(client):
     assert data["perfil"] == "profissional"
     assert "token" in data
     assert data["nome"] == "Dr. Carlos Silva"
+
+def test_cadastro_profissional_crm_inativo_rejeitado(client):
+    # CRM 145892/SP é real no CREMESP, mas consta com situação INATIVO
+    res = client.post("/auth/profissional/cadastro", json={
+        "nome": "Dra. Inativa Teste",
+        "email": "inativa@clinica.com",
+        "senha": "senhaSegura123",
+        "registro_tipo": "CRM",
+        "registro_numero": "145892",
+        "registro_uf": "SP"
+    })
+    assert res.status_code == 400
+    assert "inativo" in res.json()["detail"].lower() or "não foi possível validar" in res.json()["detail"].lower()
+
+def test_cadastro_profissional_crm_inexistente_rejeitado(client):
+    # CRM 99999999/SP não existe no cadastro oficial
+    res = client.post("/auth/profissional/cadastro", json={
+        "nome": "Dr. Fantasma",
+        "email": "fantasma@clinica.com",
+        "senha": "senhaSegura123",
+        "registro_tipo": "CRM",
+        "registro_numero": "99999999",
+        "registro_uf": "SP"
+    })
+    assert res.status_code == 400
+    assert "não foi localizado" in res.json()["detail"].lower() or "não foi possível validar" in res.json()["detail"].lower()
+

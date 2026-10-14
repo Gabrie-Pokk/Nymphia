@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import LotusLogo from '../components/LotusLogo';
-import { Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, ShieldCheck, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import BackButton from '../components/BackButton';
+import LegalModal from '../components/LegalModal';
 
 const NOME_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ\s'.-]{2,100}$/;
 
@@ -12,7 +13,11 @@ export default function RegisterGestante({ onBackToLogin, onRegisterSuccess }) {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [aceiteTermos, setAceiteTermos] = useState(false);
+  const [consentimentoSaude, setConsentimentoSaude] = useState(false);
   const [recusaIa, setRecusaIa] = useState(false);
+  const [modalLegalAberto, setModalLegalAberto] = useState(false);
+  const [abaLegalInicial, setAbaLegalInicial] = useState('privacidade');
   const [erro, setErro] = useState('');
   const [carregando, setCarregando] = useState(false);
 
@@ -33,6 +38,14 @@ export default function RegisterGestante({ onBackToLogin, onRegisterSuccess }) {
       setErro('A senha deve ter no máximo 72 caracteres.');
       return;
     }
+    if (!aceiteTermos) {
+      setErro('É obrigatório ler e concordar com os Termos de Uso e a Política de Privacidade.');
+      return;
+    }
+    if (!consentimentoSaude) {
+      setErro('É obrigatório fornecer o consentimento para o tratamento de dados pessoais sensíveis de saúde (Art. 11, I da LGPD).');
+      return;
+    }
 
     setCarregando(true);
     try {
@@ -43,7 +56,10 @@ export default function RegisterGestante({ onBackToLogin, onRegisterSuccess }) {
           nome: nomeTrim,
           email: email.trim().toLowerCase(),
           senha,
-          recusa_ia: recusaIa
+          recusa_ia: recusaIa,
+          aceite_termos: aceiteTermos,
+          consentimento_dados_saude: consentimentoSaude,
+          termos_versao: '1.0-2026'
         })
       });
       const data = await res.json();
@@ -150,14 +166,79 @@ export default function RegisterGestante({ onBackToLogin, onRegisterSuccess }) {
           </div>
         </div>
 
-        {/* Consentimento e Direito de Recusa de IA (Resolução CFM 2.454/2026) */}
+        {/* 1. Consentimento Específico e Destacado de Dados de Saúde (Art. 11, I da LGPD) */}
+        <div
+          style={{
+            backgroundColor: '#F7FAF8',
+            border: '1.5px solid #27AE60',
+            padding: '12px 14px',
+            borderRadius: 'var(--radius-md)',
+            marginBottom: '14px'
+          }}
+        >
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', fontSize: '0.84rem' }}>
+            <input
+              type="checkbox"
+              checked={consentimentoSaude}
+              onChange={(e) => setConsentimentoSaude(e.target.checked)}
+              required
+              style={{ marginTop: '3px', width: '18px', height: '18px', accentColor: '#27AE60' }}
+            />
+            <span style={{ color: 'var(--color-text-main)', lineHeight: 1.45 }}>
+              <strong style={{ color: '#1E7E34' }}>Consentimento de Dados de Saúde (Art. 11, I da LGPD): *</strong>{' '}
+              Consinto de forma expressa e destacada com o tratamento dos meus dados pessoais sensíveis de saúde (sinais, exames, histórico obstétrico) para acompanhamento e triagem pré-natal segura.
+            </span>
+          </label>
+        </div>
+
+        {/* 2. Aceite Obrigatório dos Termos de Uso e Política de Privacidade */}
+        <div
+          style={{
+            backgroundColor: '#FFFFFF',
+            border: '1px solid var(--color-border)',
+            padding: '12px 14px',
+            borderRadius: 'var(--radius-md)',
+            marginBottom: '14px'
+          }}
+        >
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', fontSize: '0.84rem' }}>
+            <input
+              type="checkbox"
+              checked={aceiteTermos}
+              onChange={(e) => setAceiteTermos(e.target.checked)}
+              required
+              style={{ marginTop: '3px', width: '18px', height: '18px', accentColor: 'var(--color-vinho)' }}
+            />
+            <span style={{ color: 'var(--color-text-main)', lineHeight: 1.45 }}>
+              <strong>Concordo com os *</strong>{' '}
+              <button
+                type="button"
+                onClick={() => { setAbaLegalInicial('termos'); setModalLegalAberto(true); }}
+                style={{ background: 'transparent', border: 'none', color: 'var(--color-vinho)', fontWeight: 700, padding: 0, textDecoration: 'underline', cursor: 'pointer', fontSize: '0.84rem' }}
+              >
+                Termos de Uso
+              </button>{' '}
+              e com a{' '}
+              <button
+                type="button"
+                onClick={() => { setAbaLegalInicial('privacidade'); setModalLegalAberto(true); }}
+                style={{ background: 'transparent', border: 'none', color: 'var(--color-vinho)', fontWeight: 700, padding: 0, textDecoration: 'underline', cursor: 'pointer', fontSize: '0.84rem' }}
+              >
+                Política de Privacidade
+              </button>{' '}
+              da Nymphia.
+            </span>
+          </label>
+        </div>
+
+        {/* 3. Consentimento e Direito de Recusa de IA (Resolução CFM 2.454/2026) */}
         <div
           style={{
             backgroundColor: 'var(--color-rosa-claro)',
             border: '1px solid var(--color-border)',
-            padding: '12px',
+            padding: '12px 14px',
             borderRadius: 'var(--radius-md)',
-            marginBottom: '18px'
+            marginBottom: '14px'
           }}
         >
           <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', fontSize: '0.84rem' }}>
@@ -167,10 +248,15 @@ export default function RegisterGestante({ onBackToLogin, onRegisterSuccess }) {
               onChange={(e) => setRecusaIa(e.target.checked)}
               style={{ marginTop: '3px', width: '18px', height: '18px', accentColor: 'var(--color-rosa)' }}
             />
-            <span>
-              <strong>Direito de Recusa da IA (CFM 2.454/2026):</strong> Desejo utilizar a Nymphia com base em regras clínicas e protocolos do Ministério da Saúde, recusando análises automáticas por modelos de linguagem.
+            <span style={{ lineHeight: 1.45 }}>
+              <strong>Direito de Recusa da IA (CFM 2.454/2026):</strong> Desejo utilizar a Nymphia baseando o acompanhamento estritamente em protocolos do Ministério da Saúde, recusando análises por inteligência artificial conversacional.
             </span>
           </label>
+        </div>
+
+        {/* Nota acolhedora para gestantes adolescentes */}
+        <div style={{ backgroundColor: '#FDF7EE', border: '1px solid var(--color-dourado)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', marginBottom: '18px', fontSize: '0.78rem', color: '#92400E', lineHeight: 1.4 }}>
+          <strong>🌸 Acolhimento a Gestantes Adolescentes:</strong> O acompanhamento de saúde sexual e reprodutiva é assegurado com sigilo profissional. A Nymphia não bloqueia seu cadastro e garante socorro emergencial irrestrito.
         </div>
 
         <button
@@ -183,6 +269,12 @@ export default function RegisterGestante({ onBackToLogin, onRegisterSuccess }) {
           <ArrowRight size={18} />
         </button>
       </form>
+
+      <LegalModal
+        isOpen={modalLegalAberto}
+        onClose={() => setModalLegalAberto(false)}
+        initialTab={abaLegalInicial}
+      />
     </div>
   );
 }

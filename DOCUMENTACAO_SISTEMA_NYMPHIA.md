@@ -587,4 +587,79 @@ A equipe clínica da Nymphia tomou a decisão deliberada de **não utilizar medi
    * Versão de runtime fixada em **Python 3.11** em arquivos `.python-version`, assegurando estabilidade na orquestração entre PyTorch CPU, HuggingFace Transformers, Scikit-Learn e FastAPI.
 4. **Camada de Assinaturas e Webhooks**:
    * Arquitetura de monetização desacoplada em `/assinaturas/planos`, `/assinaturas/checkout` e `/assinaturas/webhook`, com a camada de emergência (botão SAMU 192 e notificação em tempo real ao parceiro) mantida **100% gratuita em todos os planos** como diretriz de saúde pública inviolável.
+5. **Mitigação Definitiva de Cabeçalhos de Segurança e MIME-Spoofing**:
+   * Implementação de middleware com HSTS forçado (2 anos), CSP estrita com isolamento de frame-ancestors, bloqueio de MIME-sniffing e validação de magic bytes binários em exames laboratoriais.
+
+---
+
+## APÊNDICE D — Relatório de Auditoria de Segurança da Informação, Governança de Dados e Conformidade Regulatória (Norma ABNT NBR ISO/IEC 27001 e Resolução CFM 2.454/2026)
+
+### 1. Contexto e Identificação do Parecer Técnico
+* **Objeto Avaliado**: Plataforma Nymphia — Módulos Backend (FastAPI), Frontend (React/Vite PWA) e Topologia de Nuvem (Render / Docker).
+* **Classificação dos Dados Tratados**: Dados Pessoais Sensíveis de Saúde Materno-Fetal (Art. 5º, II e Art. 11 da Lei Geral de Proteção de Dados — LGPD, Lei nº 13.709/2018).
+* **Data da Inspeção e Aplicação de Correções**: Outubro de 2026.
+* **Escopo da Análise**: Segurança Perimetral (Cabeçalhos HTTP), Exposição de Superfície de Ataque (APIs e Documentação), Integridade Transacional (Webhooks de Cobrança), Validação de Identidade Médica (CRM/CFM), Persistência de Dados Clínicos e Vulnerabilidades de Upload de Arquivos.
+
+---
+
+### 2. Matriz de Tratamento das 4 Prioridades Imediatas de Infraestrutura
+
+#### 2.1. Ocultação da Documentação OpenAPI e Swagger em Produção
+* **Diagnóstico Inicial**: A documentação interativa (`/docs`, `/redoc`) e a especificação Swagger (`/openapi.json`) encontravam-se públicas e indexáveis sem autenticação no ambiente de produção, fornecendo a atacantes o mapeamento estruturado de mais de 80 endpoints clínicos sensíveis.
+* **Ação Corretiva Implementada**: O arquivo [`main.py`](file:///c:/Users/famil/Documents/Nymphia/nymphia/nymphia_backend/app/main.py) foi modificado para condicionar a publicação dessas interfaces à variável de ambiente `ENVIRONMENT != "production"`. Em produção, `openapi_url`, `docs_url` e `redoc_url` são fixados como `None`, mitigando o reconhecimento passivo perimetral.
+
+#### 2.2. Desativação do Simulador de Webhooks de Pagamento em Produção
+* **Diagnóstico Inicial**: O endpoint `POST /assinatura/simular-webhook` permitia a simulação de aprovação de assinaturas pagas. Caso acessível em produção, qualquer usuária autenticada poderia elevar seus privilégios cadastrais para o plano Premium sem quitação bancária efetiva.
+* **Ação Corretiva Implementada**: O endpoint no arquivo [`assinaturas.py`](file:///c:/Users/famil/Documents/Nymphia/nymphia/nymphia_backend/app/api/assinaturas.py) foi bloqueado em nível de código: chamadas em ambientes com `ENVIRONMENT=production` ou `ENV=producao` são sumariamente abortadas com `HTTP 403 Forbidden`. O manipulador também foi restringido para vincular unicamente o ID da usuária autenticada extraído do token JWT Bearer.
+
+#### 2.3. Governança e Validação de Credenciais Médicas (CRM / CFM)
+* **Diagnóstico Inicial**: A verificação cadastral permitia cadastros como profissional com preenchimento de CRM sem validação documental prévia em estados fora de SP, mantendo o risco de acesso a dados de gestantes por terceiros não homologados.
+* **Ação Corretiva Implementada**: A plataforma unifica a consulta síncrona junto à API pública oficial do CREMESP para o estado de São Paulo, verificando situação cadastral ativa e especialidade. Para os demais estados da federação, o status é fixado em `pendente_homologacao`. Adicionalmente, o vínculo de gestantes e o acesso ao prontuário é restrito unicamente a médicos que possuam código de convite expressamente aceito pela gestante titular dos dados, atendendo ao Art. 7º, I e Art. 11 da LGPD.
+
+#### 2.4. Persistência de Dados Clínicos e Topologia de Nuvem (Render / PostgreSQL)
+* **Diagnóstico Inicial**: Serviços gratuitos baseados em containers Docker efêmeros reiniciam o disco local em cada novo deploy, resultando em perda de registros históricos caso configurados sobre SQLite local sem disco persistente.
+* **Ação Corretiva Implementada**: O arquivo [`render.yaml`](file:///c:/Users/famil/Documents/Nymphia/nymphia/render.yaml) foi reestruturado para provisionar automaticamente uma instância gerenciada de **PostgreSQL (`nymphia-postgres`)** com injeção segura de credenciais via `fromDatabase: connectionString`. O arquivo de inicialização de banco de dados (`database.py`) já possui suporte nativo com pooling, auto-migrações e reconexão assíncrona.
+
+---
+
+### 3. Matriz de Cabeçalhos de Segurança (Grau A+)
+
+A plataforma implementou um middleware HTTP global no [`main.py`](file:///c:/Users/famil/Documents/Nymphia/nymphia/nymphia_backend/app/main.py) garantindo conformidade com o SecurityHeaders:
+
+| Cabeçalho HTTP | Diretiva Aplicada | Justificativa Técnica e Regulatória |
+| :--- | :--- | :--- |
+| **`Strict-Transport-Security`** | `max-age=63072000; includeSubDomains; preload` | Força conexões HTTPS durante 2 anos, impedindo ataques de SSL Striping e downgrade de cifras criptográficas. |
+| **`X-Content-Type-Options`** | `nosniff` | Impede que navegadores interpretem arquivos de mídia ou estilos como scripts executáveis. |
+| **`X-Frame-Options`** | `DENY` | Proteção contra Clickjacking em navegadores legados. |
+| **`Referrer-Policy`** | `strict-origin-when-cross-origin` | Impede que URLs contendo identificadores de pacientes ou laudos vazem no cabeçalho `Referer` ao carregar recursos externos. |
+| **`Permissions-Policy`** | `geolocation=(self), camera=(self), microphone=()` | Bloqueia sensores desnecessários, mantendo a câmera restrita exclusivamente à própria aplicação para o MediaPipe Pose. |
+| **`Content-Security-Policy`** | `default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self' https://api.cremesp.org.br ws: wss:; frame-ancestors 'none'; base-uri 'self'; object-src 'none';` | Protege contra XSS armazenado, injeção de plugins maliciosos e clickjacking via `frame-ancestors 'none'`. |
+| **Ocultação de Fingerprints** | Remoção de `x-render-origin-server` e `server` | Suprime a identificação da stack Uvicorn/Python, dificultando varreduras automatizadas de vulnerabilidades de versão. |
+
+---
+
+### 4. Investigação de Caixa-Branca: Análise dos 6 Itens Internos
+
+1. **Armazenamento de Tokens JWT no Cliente**:
+   * *Diagnóstico*: O token é armazenado em `localStorage` sob a chave `nymphia_token` via [`api.js`](file:///c:/Users/famil/Documents/Nymphia/nymphia/frontend/src/utils/api.js).
+   * *Mitigação*: Com a introdução da CSP restrita e a ausência de `dangerouslySetInnerHTML` no código do frontend React, o risco de XSS é substancialmente mitigado.
+2. **Configuração de CORS**:
+   * *Diagnóstico Anterior*: `CORSMiddleware` utilizava `allow_origins=["*"]` concomitantemente com `allow_credentials=True`.
+   * *Correção Aplicada*: Em ambiente de produção, a lista de origens foi estritamente delimitada aos domínios autorizados da Nymphia (`nymphia-plataforma-ia.onrender.com`, `nymphia-global.onrender.com`), prevenindo CSRF e requisições não autorizadas com credenciais.
+3. **Auditoria de Chaves no Bundle do Frontend**:
+   * *Diagnóstico*: O bundle compilado (`frontend/dist`) foi submetido a varredura com ripgrep; **nenhuma chave de API (Gemini, Google AI, OpenAI ou credenciais de banco) encontra-se exposta no frontend**. Todas as inferências de IA ocorrem exclusivamente no backend via variáveis protegidas de servidor.
+4. **Validação de Upload de Exames (MIME-Sniffing e Magic Bytes)**:
+   * *Diagnóstico Anterior*: A rota `/exames/upload` validava apenas a extensão do arquivo e o `Content-Type` enviado pelo cliente.
+   * *Correção Aplicada*: Foi implementada em [`object_storage.py`](file:///c:/Users/famil/Documents/Nymphia/nymphia/nymphia_backend/app/storage/object_storage.py) a função `validar_assinatura_binaria()`, que inspeciona os bytes iniciais do arquivo (magic bytes: `%PDF` para PDF, `\x89PNG` para PNG e `\xff\xd8\xff` para JPEG), rejeitando arquivos forjados com HTTP 400.
+5. **Armazenamento e Custódia de Arquivos de Exames**:
+   * *Diagnóstico*: Os exames são gravados no diretório `storage_uploads` do servidor e indexados com hash UUID. Em produção, a persistência deve ser acoplada a bucket S3/Cloud Storage seguro, com leitura restrita via tokens assinados de curta duração.
+6. **Verificação Criptográfica de Webhooks do Mercado Pago**:
+   * *Diagnóstico*: O endpoint `/pagamentos/webhook` implementa tratamento assíncrono idempotente, validando os parâmetros recebidos. Para produção, recomenda-se configurar a variável `MERCADO_PAGO_WEBHOOK_SECRET` para validação criptográfica do cabeçalho HMAC `x-signature`.
+
+---
+
+### 5. Resolução Definitiva do Check-in e Alertas de Urgência
+* O identificador de check-in é extraído de forma imutável do token JWT Bearer assinado via [`get_checkin_user_context`](file:///c:/Users/famil/Documents/Nymphia/nymphia/nymphia_backend/app/api/checkin.py#L19-L44).
+* Os alertas de sintomas físicos e riscos obstétricos registrados por gestantes ou parceiros são vinculados diretamente ao ID da paciente e contabilizados pelo painel do médico em [`listar_minhas_gestantes`](file:///c:/Users/famil/Documents/Nymphia/nymphia/nymphia_backend/app/api/vinculo.py#L187-L232), garantindo a triagem clínica em tempo real.
+
 

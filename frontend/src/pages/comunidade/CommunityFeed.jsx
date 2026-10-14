@@ -3,8 +3,18 @@ import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 import { 
   MessageCircle, Flag, Send, ShieldAlert, Heart, Plus, 
-  Sparkles, CheckCircle2, SlidersHorizontal, AlertTriangle, X 
+  Sparkles, CheckCircle2, SlidersHorizontal, AlertTriangle, X,
+  Shield, PhoneCall, Scale, BookOpen, HeartHandshake, HelpCircle, Check, Info
 } from 'lucide-react';
+
+const MOTIVOS_DENUNCIA = [
+  { id: 'desinformacao_saude', label: '🩺 Desinformação sobre saúde, vacinas ou parto', desc: 'Alegações médicas falsas, perigosas ou sem evidência' },
+  { id: 'automedicacao', label: '💊 Indicação de medicamentos ou fórmulas caseiras de risco', desc: 'Indicação de remédios, dosagens ou chás contraindicados na gravidez' },
+  { id: 'automutilacao_suicidio', label: '🆘 Sofrimento mental agudo / risco de ideação ou automutilação', desc: 'Aciona imediatamente o acolhimento emergencial humanizado (CVV 188)' },
+  { id: 'violencia_assedio', label: '⚠️ Discurso de ódio, assédio, julgamento materno ou agressão', desc: 'Violação às diretrizes de respeito e convivência acolhedora' },
+  { id: 'comercial_spam', label: '📢 Venda não autorizada, publicidade ou spam', desc: 'Divulgação comercial de produtos ou serviços não autorizados' },
+  { id: 'outro', label: '❓ Outro motivo', desc: 'Descreva os detalhes na caixa de texto' }
+];
 
 const OPCOES_EXPERIENCIA = [
   'Primeira gestação (Mãe de 1ª viagem)',
@@ -44,6 +54,24 @@ export default function CommunityFeed({ onBack }) {
   const [carregando, setCarregando] = useState(false);
   const [erroModeracao, setErroModeracao] = useState('');
   const [erroComentario, setErroComentario] = useState({});
+
+  // Diretrizes da Comunidade & Moderação Estruturada (STF Tema 987)
+  const [mostrarDiretrizes, setMostrarDiretrizes] = useState(false);
+  const [denunciaModal, setDenunciaModal] = useState({ aberto: false, postId: null, comentarioId: null });
+  const [denunciaMotivo, setDenunciaMotivo] = useState('desinformacao_saude');
+  const [denunciaDetalhes, setDenunciaDetalhes] = useState('');
+  const [enviandoDenuncia, setEnviandoDenuncia] = useState(false);
+
+  // Protocolo CVV 188 / Saúde Mental
+  const [modalAcolhimentoCvv, setModalAcolhimentoCvv] = useState({ aberto: false, dados: null });
+
+  // Minhas Moderações & Recursos (STF Tema 987)
+  const [modalModeracoes, setModalModeracoes] = useState(false);
+  const [minhasModeracoes, setMinhasModeracoes] = useState([]);
+  const [carregandoModeracoes, setCarregandoModeracoes] = useState(false);
+  const [recursoForm, setRecursoForm] = useState({ postId: null, justificativa: '' });
+  const [enviandoRecurso, setEnviandoRecurso] = useState(false);
+  const [msgRecurso, setMsgRecurso] = useState({ texto: '', tipo: '' });
 
   // Questionário de Preferências e Gostos
   const [mostrarQuestionario, setMostrarQuestionario] = useState(false);
@@ -196,17 +224,86 @@ export default function CommunityFeed({ onBack }) {
     }
   };
 
-  const handleDenunciar = async (postId) => {
+  const handleAbrirDenuncia = (postId, comentarioId = null) => {
+    setDenunciaModal({ aberto: true, postId, comentarioId });
+    setDenunciaMotivo('desinformacao_saude');
+    setDenunciaDetalhes('');
+  };
+
+  const handleSubmeterDenuncia = async (e) => {
+    e.preventDefault();
+    if (!denunciaModal.postId && !denunciaModal.comentarioId) return;
+
+    setEnviandoDenuncia(true);
     try {
-      const res = await fetch(`/comunidade/posts/${postId}/denunciar`, {
+      const endpoint = denunciaModal.postId
+        ? `/comunidade/posts/${denunciaModal.postId}/denunciar`
+        : `/comunidade/comentarios/${denunciaModal.comentarioId}/denunciar`;
+
+      const res = await fetch(endpoint, {
         method: 'POST',
-        headers: authHeaders()
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({
+          motivo: denunciaMotivo,
+          detalhes: denunciaDetalhes.trim() || undefined
+        })
       });
-      if (res.ok) {
-        alert('Conteúdo sinalizado com prioridade para a moderação clínica.');
-        carregarPosts(grupoSelecionado);
+
+      const data = await res.json();
+      setDenunciaModal({ aberto: false, postId: null, comentarioId: null });
+
+      if (data.protocolo_acolhimento) {
+        setModalAcolhimentoCvv({ aberto: true, dados: data.protocolo_acolhimento });
+      } else {
+        alert(data.mensagem || 'Denúncia registrada com sucesso.');
       }
-    } catch (err) {}
+      carregarPosts(grupoSelecionado);
+    } catch (err) {
+      alert('Erro ao enviar denúncia. Tente novamente.');
+    } finally {
+      setEnviandoDenuncia(false);
+    }
+  };
+
+  const carregarMinhasModeracoes = async () => {
+    setCarregandoModeracoes(true);
+    try {
+      const res = await fetch('/comunidade/minhas-moderacoes', { headers: authHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setMinhasModeracoes(data);
+      }
+    } catch (err) {
+    } finally {
+      setCarregandoModeracoes(false);
+    }
+  };
+
+  const handleSubmeterRecurso = async (e) => {
+    e.preventDefault();
+    if (!recursoForm.postId || !recursoForm.justificativa.trim()) return;
+
+    setEnviandoRecurso(true);
+    setMsgRecurso({ texto: '', tipo: '' });
+    try {
+      const res = await fetch(`/comunidade/posts/${recursoForm.postId}/recorrer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ justificativa: recursoForm.justificativa.trim() })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMsgRecurso({ texto: 'Recurso submetido com sucesso! A moderação clínica analisará sua justificativa.', tipo: 'sucesso' });
+        setRecursoForm({ postId: null, justificativa: '' });
+        carregarMinhasModeracoes();
+      } else {
+        setMsgRecurso({ texto: data.detail || 'Não foi possível submeter o recurso.', tipo: 'erro' });
+      }
+    } catch (err) {
+      setMsgRecurso({ texto: 'Erro de comunicação ao submeter recurso.', tipo: 'erro' });
+    } finally {
+      setEnviandoRecurso(false);
+    }
   };
 
   const gruposExibidos = filtroApenasRecomendados
@@ -225,21 +322,37 @@ export default function CommunityFeed({ onBack }) {
             Apoio mútuo sob anonimato protegido e moderação clínica em 3 camadas
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          <button
+            className="btn btn-outline"
+            onClick={() => setMostrarDiretrizes(true)}
+            style={{ minHeight: '36px', padding: '6px 10px', fontSize: '0.78rem', color: 'var(--color-vinho)' }}
+            title="Diretrizes de Segurança da Comunidade (STF Tema 987)"
+          >
+            <BookOpen size={14} color="var(--color-vinho)" /> Regras
+          </button>
+          <button
+            className="btn btn-outline"
+            onClick={() => { setModalModeracoes(true); carregarMinhasModeracoes(); setMsgRecurso({ texto: '', tipo: '' }); }}
+            style={{ minHeight: '36px', padding: '6px 10px', fontSize: '0.78rem', borderColor: 'var(--color-dourado)', color: 'var(--color-vinho)' }}
+            title="Ver meus conteúdos moderados e recursos (Direito de Resposta STF)"
+          >
+            <Scale size={14} color="var(--color-dourado)" /> Meus Recursos
+          </button>
           <button
             className="btn btn-outline"
             onClick={() => setMostrarQuestionario(true)}
-            style={{ minHeight: '38px', padding: '6px 12px', fontSize: '0.82rem', borderColor: 'var(--color-dourado)', color: 'var(--color-vinho)' }}
+            style={{ minHeight: '36px', padding: '6px 10px', fontSize: '0.78rem', borderColor: 'var(--color-dourado)', color: 'var(--color-vinho)' }}
             title="Personalizar comunidade conforme seus gostos"
           >
-            <Sparkles size={16} color="var(--color-dourado)" /> {preferencias.experiencia ? 'Meus Gostos' : 'Questionário de Gostos'}
+            <Sparkles size={14} color="var(--color-dourado)" /> {preferencias.experiencia ? 'Meus Gostos' : 'Questionário'}
           </button>
           <button
             className="btn btn-primary"
             onClick={() => { setMostrarNovoPost(!mostrarNovoPost); setErroModeracao(''); }}
-            style={{ minHeight: '38px', padding: '6px 14px', fontSize: '0.82rem' }}
+            style={{ minHeight: '36px', padding: '6px 12px', fontSize: '0.78rem' }}
           >
-            <Plus size={16} /> Publicar
+            <Plus size={14} /> Publicar
           </button>
         </div>
       </div>
@@ -335,10 +448,25 @@ export default function CommunityFeed({ onBack }) {
       {/* Formulário Novo Post com Moderação Visual */}
       {mostrarNovoPost && (
         <form onSubmit={handleCriarPost} className="card" style={{ border: '2px solid var(--color-rosa)', marginBottom: '16px' }}>
-          <h3 style={{ fontSize: '1rem', marginBottom: '6px', color: 'var(--color-vinho)' }}>Publicar em "{grupoSelecionado}"</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <h3 style={{ fontSize: '1rem', margin: 0, color: 'var(--color-vinho)' }}>Publicar em "{grupoSelecionado}"</h3>
+            <span style={{ fontSize: '0.72rem', backgroundColor: 'var(--color-creme)', padding: '2px 8px', borderRadius: '4px', color: 'var(--color-vinho)' }}>
+              🔒 Anonimato Protegido
+            </span>
+          </div>
+
           <p className="text-muted" style={{ fontSize: '0.78rem', marginBottom: '10px' }}>
             Seu nome real nunca é revelado. Você será identificada com um pseudônimo anônimo e seguro.
           </p>
+
+          {/* Diretriz clínica visível na caixa de postagem */}
+          <div style={{ backgroundColor: '#FFFBEB', border: '1px solid var(--color-dourado)', borderRadius: 'var(--radius-sm)', padding: '8px 12px', marginBottom: '12px', fontSize: '0.76rem', color: '#92400E', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Shield size={16} color="var(--color-dourado)" style={{ flexShrink: 0 }} />
+            <div>
+              <strong>Aviso de Segurança (CFM / STF Tema 987):</strong> É terminantemente proibido indicar dosagens,
+              medicamentos alopáticos ou receitas caseiras. Conteúdos médicos requerem avaliação do seu obstetra.
+            </div>
+          </div>
 
           {erroModeracao && (
             <div style={{ backgroundColor: '#FDEDEC', border: '1.5px solid var(--color-vermelho)', color: '#922B21', padding: '10px 14px', borderRadius: 'var(--radius-sm)', marginBottom: '12px', fontSize: '0.85rem' }}>
@@ -402,12 +530,13 @@ export default function CommunityFeed({ onBack }) {
                     {new Date(p.criado_em).toLocaleDateString('pt-BR')}
                   </span>
                   <button
-                    onClick={() => handleDenunciar(p.id)}
-                    style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '4px' }}
-                    title="Denunciar conteúdo à moderação"
+                    onClick={() => handleAbrirDenuncia(p.id)}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}
+                    title="Denunciar conteúdo com motivo estruturado à moderação"
                     aria-label="Denunciar postagem"
                   >
                     <Flag size={14} />
+                    <span style={{ fontSize: '0.7rem' }}>Denunciar</span>
                   </button>
                 </div>
               </div>
@@ -421,7 +550,16 @@ export default function CommunityFeed({ onBack }) {
                 <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
                   {p.comentarios.map((c) => (
                     <div key={c.id} style={{ backgroundColor: '#FFFFFF', padding: '8px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', fontSize: '0.82rem', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
-                      <strong style={{ color: 'var(--color-vinho)', display: 'block', fontSize: '0.78rem' }}>{c.apelido}:</strong>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                        <strong style={{ color: 'var(--color-vinho)', fontSize: '0.78rem' }}>{c.apelido}:</strong>
+                        <button
+                          onClick={() => handleAbrirDenuncia(null, c.id)}
+                          style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: 0 }}
+                          title="Denunciar comentário"
+                        >
+                          <Flag size={12} />
+                        </button>
+                      </div>
                       <span style={{ color: 'var(--color-text-main)' }}>{c.conteudo}</span>
                     </div>
                   ))}
@@ -658,6 +796,428 @@ export default function CommunityFeed({ onBack }) {
           </div>
         </div>
       )}
+
+      {/* Modal: Diretrizes de Segurança da Comunidade (STF Tema 987 & CFM) */}
+      {mostrarDiretrizes && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(34, 10, 16, 0.65)',
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          zIndex: 9999, padding: '16px'
+        }}>
+          <div className="card" style={{
+            width: '100%', maxWidth: '560px', maxHeight: '90vh', overflowY: 'auto',
+            backgroundColor: '#FFFFFF', borderRadius: 'var(--radius-lg)', padding: '24px', position: 'relative'
+          }}>
+            <button
+              onClick={() => setMostrarDiretrizes(false)}
+              style={{ position: 'absolute', top: '16px', right: '16px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}
+              aria-label="Fechar"
+            >
+              <X size={20} />
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <Shield size={22} color="var(--color-vinho)" />
+              <h3 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--color-vinho)' }}>Diretrizes da Comunidade Segura</h3>
+            </div>
+            <p className="text-muted" style={{ fontSize: '0.82rem', marginBottom: '16px' }}>
+              Fundamentadas no Marco Civil da Internet (Lei 12.965/2014), decisão do STF no Tema 987 e Resoluções CFM/COFEN.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.84rem' }}>
+              <div style={{ border: '1px solid var(--color-border)', padding: '12px', borderRadius: 'var(--radius-sm)', backgroundColor: '#FFFBEB' }}>
+                <strong style={{ color: '#92400E' }}>1. Vedação Absoluta à Automedicação</strong>
+                <p style={{ margin: '4px 0 0', color: 'var(--color-text-main)', fontSize: '0.8rem' }}>
+                  É expressamente proibido sugerir doses, indicar medicamentos alopáticos ou substâncias de risco. Trocas de experiências não substituem o obstetra.
+                </p>
+              </div>
+
+              <div style={{ border: '1px solid var(--color-border)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
+                <strong style={{ color: 'var(--color-vinho)' }}>2. Anonimato Protetivo e Sigilo</strong>
+                <p style={{ margin: '4px 0 0', color: 'var(--color-text-main)', fontSize: '0.8rem' }}>
+                  Sua identidade real nunca é exibida. Nunca divulgue números de telefone, endereços ou dados pessoais identificáveis nas postagens.
+                </p>
+              </div>
+
+              <div style={{ border: '1px solid var(--color-border)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
+                <strong style={{ color: 'var(--color-vinho)' }}>3. Respeito Mútuo e Comunicação Empática</strong>
+                <p style={{ margin: '4px 0 0', color: 'var(--color-text-main)', fontSize: '0.8rem' }}>
+                  Não toleramos julgamentos estigmatizantes sobre ganho de peso, tipo de parto ou escolhas familiares. Qualquer assédio é removido.
+                </p>
+              </div>
+
+              <div style={{ border: '1px solid var(--color-border)', padding: '12px', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--color-creme)' }}>
+                <strong style={{ color: 'var(--color-vinho)' }}>4. Direito de Recurso & Contraditório (STF Tema 987)</strong>
+                <p style={{ margin: '4px 0 0', color: 'var(--color-text-main)', fontSize: '0.8rem' }}>
+                  Caso uma publicação sua seja sinalizada ou ocultada, você tem o direito garantido de justificar o contexto e requerer revisão humana.
+                </p>
+              </div>
+
+              <div style={{ border: '1px solid var(--color-border)', padding: '12px', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--color-rosa-claro)' }}>
+                <strong style={{ color: 'var(--color-vinho)' }}>5. Protocolo de Sofrimento Mental & Acolhimento (CVV 188)</strong>
+                <p style={{ margin: '4px 0 0', color: 'var(--color-text-main)', fontSize: '0.8rem' }}>
+                  Sinais de sofrimento agudo, depressão perinatal ou ideação ativam imediata rede de apoio emergencial humanizado e gratuito.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ marginTop: '18px', textAlign: 'right' }}>
+              <button className="btn btn-primary" onClick={() => setMostrarDiretrizes(false)} style={{ minHeight: '36px', padding: '6px 16px', fontSize: '0.82rem' }}>
+                Entendi as Diretrizes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Denúncia Estruturada (STF Tema 987) */}
+      {denunciaModal.aberto && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(34, 10, 16, 0.65)',
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          zIndex: 9999, padding: '16px'
+        }}>
+          <div className="card" style={{
+            width: '100%', maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto',
+            backgroundColor: '#FFFFFF', borderRadius: 'var(--radius-lg)', padding: '24px', position: 'relative'
+          }}>
+            <button
+              onClick={() => setDenunciaModal({ aberto: false, postId: null, comentarioId: null })}
+              style={{ position: 'absolute', top: '16px', right: '16px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}
+              aria-label="Fechar"
+            >
+              <X size={20} />
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <Flag size={20} color="var(--color-vermelho)" />
+              <h3 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--color-vinho)' }}>Denunciar Conteúdo à Moderação</h3>
+            </div>
+            <p className="text-muted" style={{ fontSize: '0.82rem', marginBottom: '16px' }}>
+              Selecione o motivo da denúncia estruturada conforme as normas de segurança perinatal (STF Tema 987):
+            </p>
+
+            <form onSubmit={handleSubmeterDenuncia}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                {MOTIVOS_DENUNCIA.map((m) => (
+                  <label
+                    key={m.id}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      padding: '8px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: denunciaMotivo === m.id ? '2px solid var(--color-rosa)' : '1px solid var(--color-border)',
+                      backgroundColor: denunciaMotivo === m.id ? 'var(--color-rosa-claro)' : '#FFFFFF',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, fontSize: '0.84rem' }}>
+                      <input
+                        type="radio"
+                        name="motivo"
+                        value={m.id}
+                        checked={denunciaMotivo === m.id}
+                        onChange={(e) => setDenunciaMotivo(e.target.value)}
+                        style={{ width: 'auto !important' }}
+                      />
+                      <span>{m.label}</span>
+                    </div>
+                    <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted)', marginLeft: '22px' }}>
+                      {m.desc}
+                    </span>
+                  </label>
+                ))}
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.82rem', fontWeight: 600 }}>
+                  Detalhes adicionais (opcional):
+                </label>
+                <textarea
+                  className="form-control"
+                  rows={2}
+                  placeholder="Explique resumidamente o motivo da sinalização..."
+                  value={denunciaDetalhes}
+                  onChange={(e) => setDenunciaDetalhes(e.target.value)}
+                  maxLength={500}
+                  style={{ width: '100%', fontSize: '0.82rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  style={{ flex: 1 }}
+                  onClick={() => setDenunciaModal({ aberto: false, postId: null, comentarioId: null })}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  style={{ flex: 1, backgroundColor: 'var(--color-vermelho)', borderColor: 'var(--color-vermelho)' }}
+                  disabled={enviandoDenuncia}
+                >
+                  {enviandoDenuncia ? 'Registrando...' : 'Confirmar Denúncia'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Protocolo de Acolhimento Imediato (CVV 188 / SAMU 192) */}
+      {modalAcolhimentoCvv.aberto && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(34, 10, 16, 0.75)',
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          zIndex: 10000, padding: '16px'
+        }}>
+          <div className="card" style={{
+            width: '100%', maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto',
+            backgroundColor: '#FFFFFF', borderRadius: 'var(--radius-lg)', padding: '24px', position: 'relative',
+            border: '2px solid var(--color-dourado)'
+          }}>
+            <button
+              onClick={() => setModalAcolhimentoCvv({ aberto: false, dados: null })}
+              style={{ position: 'absolute', top: '16px', right: '16px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}
+              aria-label="Fechar"
+            >
+              <X size={20} />
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: '50%', backgroundColor: 'var(--color-rosa-claro)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <HeartHandshake size={24} color="var(--color-vinho)" />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--color-vinho)' }}>Você não está sozinha</h3>
+                <span style={{ fontSize: '0.78rem', color: 'var(--color-dourado)', fontWeight: 700 }}>
+                  Protocolo Institucional de Apoio & Acolhimento
+                </span>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '0.86rem', color: 'var(--color-text-main)', lineHeight: 1.5, marginBottom: '16px' }}>
+              A gestação e o puerpério envolvem transformações hormonais e psicológicas intensas. Se você ou alguém que você conhece está enfrentando momentos de angústia, tristeza profunda ou exaustão, há apoio gratuito e sigiloso disponível agora mesmo.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '18px' }}>
+              <a
+                href="tel:188"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '14px 16px',
+                  backgroundColor: 'var(--color-vinho)',
+                  color: '#FFFFFF',
+                  borderRadius: 'var(--radius-sm)',
+                  textDecoration: 'none',
+                  boxShadow: 'var(--shadow-sm)'
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>📞 Disque 188 — CVV (Gratuito)</div>
+                  <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>Centro de Valorização da Vida • 24 horas por dia • Sigilo Absoluto</div>
+                </div>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, backgroundColor: 'var(--color-dourado)', color: 'var(--color-vinho)', padding: '4px 10px', borderRadius: '12px' }}>
+                  LIGAR AGORA
+                </span>
+              </a>
+
+              <a
+                href="tel:192"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '12px 16px',
+                  backgroundColor: '#FEF2F2',
+                  border: '1.5px solid var(--color-vermelho)',
+                  color: '#991B1B',
+                  borderRadius: 'var(--radius-sm)',
+                  textDecoration: 'none'
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>🚑 SAMU — Disque 192</div>
+                  <div style={{ fontSize: '0.74rem' }}>Para situações de urgência médica ou risco físico imediato</div>
+                </div>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#991B1B' }}>
+                  LIGAR 192
+                </span>
+              </a>
+
+              <div style={{ padding: '10px 14px', backgroundColor: 'var(--color-creme)', borderRadius: 'var(--radius-sm)', fontSize: '0.78rem', color: 'var(--color-vinho)' }}>
+                🏥 <strong>Rede SUS:</strong> As unidades do CAPS (Centro de Atenção Psicossocial) e UPAs oferecem acolhimento psicológico multiprofissional presencial e gratuito.
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'right' }}>
+              <button
+                className="btn btn-outline"
+                onClick={() => setModalAcolhimentoCvv({ aberto: false, dados: null })}
+                style={{ minHeight: '36px', padding: '6px 16px', fontSize: '0.82rem' }}
+              >
+                Fechar Acolhimento
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Minhas Moderações & Recursos (STF Tema 987) */}
+      {modalModeracoes && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(34, 10, 16, 0.65)',
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          zIndex: 9999, padding: '16px'
+        }}>
+          <div className="card" style={{
+            width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto',
+            backgroundColor: '#FFFFFF', borderRadius: 'var(--radius-lg)', padding: '24px', position: 'relative'
+          }}>
+            <button
+              onClick={() => setModalModeracoes(false)}
+              style={{ position: 'absolute', top: '16px', right: '16px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}
+              aria-label="Fechar"
+            >
+              <X size={20} />
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <Scale size={22} color="var(--color-vinho)" />
+              <h3 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--color-vinho)' }}>Minhas Moderações & Recursos</h3>
+            </div>
+            <p className="text-muted" style={{ fontSize: '0.82rem', marginBottom: '16px' }}>
+              Direito ao devido processo legal e contraditório de moderação digital (STF Tema 987 / Marco Civil da Internet):
+            </p>
+
+            {msgRecurso.texto && (
+              <div style={{
+                padding: '10px 14px',
+                borderRadius: 'var(--radius-sm)',
+                marginBottom: '14px',
+                fontSize: '0.82rem',
+                backgroundColor: msgRecurso.tipo === 'sucesso' ? '#ECFDF5' : '#FEF2F2',
+                color: msgRecurso.tipo === 'sucesso' ? '#065F46' : '#991B1B',
+                border: `1px solid ${msgRecurso.tipo === 'sucesso' ? '#A7F3D0' : '#FECACA'}`
+              }}>
+                {msgRecurso.texto}
+              </div>
+            )}
+
+            {carregandoModeracoes ? (
+              <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '20px' }}>Carregando histórico de moderações...</p>
+            ) : minhasModeracoes.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '30px 20px', backgroundColor: 'var(--color-creme)', borderRadius: 'var(--radius-sm)' }}>
+                <CheckCircle2 size={32} color="#059669" style={{ margin: '0 auto 8px', display: 'block' }} />
+                <strong style={{ fontSize: '0.9rem', color: 'var(--color-vinho)' }}>Nenhuma publicação sua sofreu moderação</strong>
+                <p className="text-muted" style={{ fontSize: '0.8rem', margin: '4px 0 0' }}>
+                  Todas as suas postagens cumprem plenamente as Diretrizes de Segurança da Comunidade Nymphia.
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '16px' }}>
+                {minhasModeracoes.map((item) => (
+                  <div key={item.id} style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', padding: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: item.ocultado ? 'var(--color-vermelho)' : '#D97706' }}>
+                        {item.ocultado ? '🚫 Ocultado Preventivamente' : '⚠️ Sinalizado para Auditoria'}
+                      </span>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                        {new Date(item.criado_em).toLocaleDateString('pt-BR')}
+                      </span>
+                    </div>
+
+                    <p style={{ fontSize: '0.84rem', margin: '0 0 8px', color: 'var(--color-text-main)', fontStyle: 'italic' }}>
+                      "{item.conteudo}"
+                    </p>
+
+                    <div style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', marginBottom: '8px' }}>
+                      <strong>Motivo:</strong> {item.motivo_ocultacao || item.motivo_sinalizacao || 'Análise preventiva'}
+                    </div>
+
+                    {/* Situação do Recurso */}
+                    {item.recurso_status ? (
+                      <div style={{ backgroundColor: 'var(--color-creme)', padding: '8px 10px', borderRadius: '4px', fontSize: '0.78rem' }}>
+                        <strong>Status do Recurso:</strong>{' '}
+                        <span style={{ fontWeight: 700, textTransform: 'capitalize', color: item.recurso_status === 'deferido' ? '#059669' : item.recurso_status === 'indeferido' ? 'var(--color-vermelho)' : '#D97706' }}>
+                          {item.recurso_status}
+                        </span>
+                        {item.recurso_decisao && (
+                          <div style={{ marginTop: '4px' }}>
+                            <em>Decisão clínica: {item.recurso_decisao}</em>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      recursoForm.postId === item.id ? (
+                        <form onSubmit={handleSubmeterRecurso} style={{ marginTop: '8px', borderTop: '1px dashed var(--color-border)', paddingTop: '8px' }}>
+                          <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px' }}>
+                            Justificativa do Recurso (STF Tema 987):
+                          </label>
+                          <textarea
+                            className="form-control"
+                            rows={3}
+                            placeholder="Descreva o contexto da publicação e solicite reanálise humana..."
+                            value={recursoForm.justificativa}
+                            onChange={(e) => setRecursoForm({ ...recursoForm, justificativa: e.target.value })}
+                            required
+                            minLength={5}
+                            style={{ width: '100%', fontSize: '0.8rem', marginBottom: '8px' }}
+                          />
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            <button
+                              type="button"
+                              className="btn btn-outline"
+                              onClick={() => setRecursoForm({ postId: null, justificativa: '' })}
+                              style={{ flex: 1, minHeight: '30px', padding: '4px 8px', fontSize: '0.75rem' }}
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              type="submit"
+                              className="btn btn-primary"
+                              disabled={enviandoRecurso}
+                              style={{ flex: 1, minHeight: '30px', padding: '4px 8px', fontSize: '0.75rem' }}
+                            >
+                              {enviandoRecurso ? 'Submetendo...' : 'Enviar Recurso'}
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn btn-outline"
+                          onClick={() => { setRecursoForm({ postId: item.id, justificativa: '' }); setMsgRecurso({ texto: '', tipo: '' }); }}
+                          style={{ fontSize: '0.75rem', minHeight: '30px', padding: '4px 10px', borderColor: 'var(--color-dourado)', color: 'var(--color-vinho)' }}
+                        >
+                          <Scale size={13} /> Contestar / Submeter Recurso
+                        </button>
+                      )
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ textAlign: 'right' }}>
+              <button className="btn btn-outline" onClick={() => setModalModeracoes(false)} style={{ minHeight: '36px', padding: '6px 16px', fontSize: '0.82rem' }}>
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

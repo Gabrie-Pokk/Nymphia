@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query
 from sqlalchemy.orm import Session
 
@@ -41,11 +42,16 @@ def cadastrar_gestante(payload: GestanteRegister, db: Session = Depends(get_db))
     if existente:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="E-mail já cadastrado no sistema")
 
+    agora = datetime.utcnow()
     gestante = Gestante(
         nome=payload.nome.strip(),
         email=payload.email.lower(),
         senha_hash=hash_password(payload.senha),
-        recusa_ia=payload.recusa_ia
+        recusa_ia=payload.recusa_ia,
+        termos_aceitos_em=agora,
+        termos_versao=payload.termos_versao or "1.0-2026",
+        consentimento_dados_saude=payload.consentimento_dados_saude,
+        consentimento_dados_saude_em=agora
     )
     db.add(gestante)
     db.commit()
@@ -57,7 +63,8 @@ def cadastrar_gestante(payload: GestanteRegister, db: Session = Depends(get_db))
         perfil="gestante",
         id=gestante.id,
         nome=gestante.nome,
-        recusa_ia=gestante.recusa_ia
+        recusa_ia=gestante.recusa_ia,
+        termos_versao=gestante.termos_versao
     )
 
 @router.post("/gestante/login", response_model=AuthResponse)
@@ -205,7 +212,9 @@ def cadastrar_profissional(payload: ProfissionalRegister, db: Session = Depends(
         registro_tipo=payload.registro_tipo.upper(),
         registro_numero=payload.registro_numero.strip(),
         registro_uf=payload.registro_uf.upper(),
-        status_verificacao="aprovado" if payload.registro_tipo.upper() == "CRM" else "pendente"
+        status_verificacao="aprovado" if payload.registro_tipo.upper() == "CRM" else "pendente",
+        termos_aceitos_em=datetime.utcnow(),
+        termos_versao=payload.termos_versao or "1.0-2026"
     )
     db.add(prof)
     db.commit()
@@ -217,7 +226,8 @@ def cadastrar_profissional(payload: ProfissionalRegister, db: Session = Depends(
         perfil="profissional",
         id=prof.id,
         nome=prof.nome,
-        status_verificacao=prof.status_verificacao
+        status_verificacao=prof.status_verificacao,
+        termos_versao=prof.termos_versao
     )
 
 @router.post("/profissional/login", response_model=AuthResponse)
@@ -288,7 +298,9 @@ def cadastrar_parceiro(payload: ParceiroRegister, db: Session = Depends(get_db))
     parceiro = Parceiro(
         nome=payload.nome.strip(),
         email=payload.email.lower(),
-        senha_hash=hash_password(payload.senha)
+        senha_hash=hash_password(payload.senha),
+        termos_aceitos_em=datetime.utcnow(),
+        termos_versao=payload.termos_versao or "1.0-2026"
     )
     db.add(parceiro)
     db.commit()
@@ -299,7 +311,8 @@ def cadastrar_parceiro(payload: ParceiroRegister, db: Session = Depends(get_db))
         token=token,
         perfil="parceiro",
         id=parceiro.id,
-        nome=parceiro.nome
+        nome=parceiro.nome,
+        termos_versao=parceiro.termos_versao
     )
 
 @router.post("/parceiro/login", response_model=AuthResponse)

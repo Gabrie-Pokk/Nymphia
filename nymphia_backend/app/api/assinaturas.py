@@ -92,20 +92,37 @@ async def webhook_mercado_pago(
     sucesso, msg = processar_webhook_mercado_pago(body, query_params, db)
     return {"recebido": True, "processado": sucesso, "mensagem": msg}
 
+from app.config import settings
+import os
+
 @router.post("/assinatura/simular-webhook")
 def simular_webhook_desenvolvimento(
     payload: SimularWebhookRequest,
     gestante: Gestante = Depends(get_current_gestante),
     db: Session = Depends(get_db)
 ):
-    """Endpoint de teste para simular aprovação ou recusa de pagamento em ambiente de testes."""
-    uid = payload.usuario_id or gestante.id
+    """
+    Endpoint de teste restrito EXCLUSIVAMENTE a ambientes de desenvolvimento/staging.
+    Bloqueado por padrão e desativado em produção para prevenir fraudes de cobrança.
+    """
+    is_prod = (
+        settings.ENVIRONMENT.lower() in ["production", "producao"]
+        or os.getenv("ENV", "").lower() in ["production", "producao"]
+    )
+    if is_prod:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="O simulador de webhook está desativado em produção por segurança financeira."
+        )
+
+    # Restringe a simulação estritamente à conta da gestante autenticada
+    uid = gestante.id
     webhook_data = {
         "type": "payment",
         "usuario_id": uid,
         "subscription_id": payload.subscription_id,
         "status": payload.status,
-        "data": {"id": "SIMULATED_TEST_PAYMENT_123"}
+        "data": {"id": f"SIMULATED_TEST_{uid[:8]}"}
     }
     sucesso, msg = processar_webhook_mercado_pago(webhook_data, {}, db)
     return {"status": "simulado", "sucesso": sucesso, "detalhe": msg}

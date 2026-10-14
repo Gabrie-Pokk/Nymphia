@@ -1,4 +1,5 @@
 import re
+import time
 import random
 import logging
 import requests
@@ -13,6 +14,10 @@ from app.services.ai_text_service import (
 )
 
 logger = logging.getLogger("nymphia.ai_chat_service")
+
+# Timestamp de expiração do circuit-breaker para a API Gemini (evita delays quando a cota estiver esgotada)
+_GEMINI_CIRCUIT_BREAKER_TIMESTAMP: float = 0.0
+
 
 
 # Base de Conhecimento Clínico Estruturada (FEBRASGO / Ministério da Saúde / OMS)
@@ -175,14 +180,15 @@ CONHECIMENTO_CLINICO = {
         "orientacao": "Pergunte sempre à gestante como ela está se sentindo fisicamente e se sente dores ou cansaço antes de indicar qualquer posição. Você pode usar a ferramenta 'Visão Corporal & Postura IA' da Nymphia para calibrar os movimentos pela câmera com o MediaPipe."
     },
     "antropometria_peso": {
-        "resumo": "ANTROPOMETRIA E GANHO PONDERAL GESTACIONAL (MS/IOM/ATALAH): O acompanhamento do peso e altura uterina no pré-natal é uma das ferramentas mais eficazes para prevenir desfechos adversos.",
+        "resumo": "ANTROPOMETRIA E GANHO PONDERAL GESTACIONAL (UFRJ / MS 2022 / IOM): O acompanhamento do peso e altura uterina no pré-natal é uma das ferramentas mais eficazes para prevenir desfechos adversos.",
         "cuidados": [
-            "O ganho de peso ideal depende do IMC pré-gestacional: gestantes de baixo peso ganham 12,5 a 18 kg; eutróficas 11,5 a 16 kg; sobrepeso 7 a 11,5 kg; e obesidade 5 a 9 kg;",
-            "No 1º trimestre o ganho é mínimo (0,5 a 2 kg). O ganho mais ativo acontece no 2º e 3º trimestres;",
+            "O ganho de peso ideal segue as curvas vigentes da UFRJ / Ministério da Saúde (2022): baixo peso ganha 12,5 a 18 kg; adequado 11,5 a 16 kg; sobrepeso 7 a 11,5 kg; e obesidade 5 a 9 kg;",
+            "No 1º trimestre o ganho esperado é de 0,5 a 2,0 kg no total. A taxa semanal passa a contar a partir da 14ª semana;",
             "Comer por dois é mito: o feto necessita de densidade nutricional (ferro, cálcio, ácido fólico, ômega 3) e não de calorias vazias em excesso;",
-            "Atenção a ganho súbito: aumento de mais de 1 kg em uma única semana no terceiro trimestre pode indicar retenção de líquido e risco de pré-eclâmpsia."
+            "Atenção a ganho súbito: aumento de mais de 1 kg em poucos dias no segundo/terceiro trimestre pode indicar retenção de líquido e risco de pré-eclâmpsia;",
+            "Comunicação empática: o peso deve ser avaliado como dado clínico sem julgamento estético."
         ],
-        "orientacao": "Acesse a seção 'Antropometria Gestacional' na Nymphia para registrar seu peso, acompanhar a Curva de Atalah e visualizar o crescimento da altura uterina."
+        "orientacao": "Acesse a seção 'Antropometria Gestacional' na Nymphia para registrar seu peso, acompanhar a Curva UFRJ/MS e visualizar o crescimento da altura uterina."
     },
     "enxoval_maternidade": {
         "resumo": "PLANEJAMENTO DO ENXOVAL E MALA MATERNIDADE: Organizar a mala da maternidade com antecedência (por volta da 32ª à 34ª semana) traz serenidade para a reta final.",
@@ -253,7 +259,7 @@ def _buscar_tema_clinico(texto: str) -> Optional[str]:
             r"treino", r"muscula[çc][aã]o", r"caminhada", r"movimento", r"fisioterapia", r"veia cava"
         ],
         "antropometria_peso": [
-            r"antropometria", r"altura uterina", r"curva de atalah", r"atalah", r"ganho de peso",
+            r"antropometria", r"altura uterina", r"curva de atalah", r"curva ufrj", r"ufrj", r"atalah", r"ganho de peso",
             r"quanto engordar", r"engordei muito", r"peso ideal", r"imc gestacional", r"circunfer[eê]ncia"
         ],
         "dores_corpo": [
@@ -454,10 +460,10 @@ def _formatar_conversa_clinica_natural(tema: str, nome_gestante: Optional[str] =
             f"Você também pode abrir a nossa tela 'Visão Corporal & Postura IA' no menu para que a câmera com MediaPipe calibre seus movimentos e te guie em tempo real! Como você está se sentindo agora?"
         ),
         "antropometria_peso": (
-            f"Oi{vocativo}! O acompanhamento do peso na gestação é essencial para a saúde sua e do bebê, mas sem neuras ou pressões estéticas.\n\n"
-            f"A recomendação de ganho de peso depende do seu IMC antes de engravidar: gestantes que começaram com peso adequado ganham em média de 11,5 a 16 kg durante toda a gestação. "
+            f"Oi{vocativo}! O acompanhamento do peso na gestação é essencial para a saúde sua e do bebê, sem cobranças ou julgamentos sobre seu corpo.\n\n"
+            f"No Brasil, o Ministério da Saúde adota as diretrizes da UFRJ (2022), onde a faixa recomendada depende do seu IMC antes de engravidar: quem começou com peso adequado ganha em média de 11,5 a 16 kg ao longo de toda a gestação (sendo 0,5 a 2 kg no 1º trimestre e cerca de 0,35 a 0,50 kg por semana a partir da 14ª semana).\n\n"
             f"E lembre-se: 'comer por dois' é um mito! O que seu bebê precisa é de nutrientes de qualidade (ferro, cálcio, ácido fólico e ômega-3).\n\n"
-            f"Você pode acompanhar sua Curva de Atalah e registrar suas pesagens na nossa aba de 'Antropometria'. Quantos quilos você pesava antes da gravidez e em qual semana você está agora?"
+            f"Você pode acompanhar sua evolução na nossa aba de 'Antropometria'. Quantos quilos você pesava antes da gravidez e em qual semana você está agora?"
         )
     }
 
@@ -558,7 +564,8 @@ SYSTEM_PROMPT_NYMPHIA = (
     "oriente repouso imediato em decúbito lateral esquerdo e busca do pronto-atendimento. Recomende a ferramenta 'Visão Corporal & Postura IA' "
     "com MediaPipe Pose da Nymphia para orientação postural pela câmera em tempo real com total privacidade.\n"
     "4. ANTROPOMETRIA E GANHO PONDERAL: Ao falar sobre peso, desmistifique o 'comer por dois'. Explique que a qualidade nutricional "
-    "(ferro, cálcio, ácido fólico, ômega 3) é o essencial e que cada corpo tem uma faixa ideal de ganho pela Curva de Atalah.\n"
+    "(ferro, cálcio, ácido fólico, ômega 3) é o essencial e que cada corpo tem uma faixa ideal de ganho pelas curvas da UFRJ / Ministério da Saúde (2022). "
+    "Adote linguagem acolhedora e jamais de julgamento corporal.\n"
     "5. SEM AVISOS LEGAIS REPETITIVOS: Não fique mencionando resoluções (CFM), leis ou disclaimers legais repetitivos a cada resposta.\n"
     "6. CUIDADO REAL E EMBASADO: Ofereça orientações preventivas e práticas baseadas na obstetrícia humanizada sem receitar remédios."
 )
@@ -571,6 +578,11 @@ def _consultar_gemini(
     active_categories: Optional[List[str]] = None,
     dados_medico: Optional[Dict[str, Any]] = None
 ) -> Optional[str]:
+    global _GEMINI_CIRCUIT_BREAKER_TIMESTAMP
+    now = time.time()
+    if now < _GEMINI_CIRCUIT_BREAKER_TIMESTAMP:
+        return None
+
     api_key = (settings.GEMINI_API_KEY or "").strip()
     if not api_key or api_key == "COLE_SUA_CHAVE_AQUI" or len(api_key) < 10:
         return None
@@ -624,7 +636,7 @@ def _consultar_gemini(
     else:
         contents.append({"role": "user", "parts": [{"text": prompt_atual}]})
 
-    modelos = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-flash-latest", "gemini-3.5-flash-lite"]
+    modelos = ["gemini-2.5-flash", "gemini-flash-latest"]
     for modelo in modelos:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent?key={api_key}"
         payload = {
@@ -638,7 +650,7 @@ def _consultar_gemini(
             }
         }
         try:
-            resp = requests.post(url, json=payload, timeout=10)
+            resp = requests.post(url, json=payload, timeout=2.5)
             if resp.status_code == 200:
                 data = resp.json()
                 cands = data.get("candidates", [])
@@ -646,14 +658,18 @@ def _consultar_gemini(
                     texto_gerado = cands[0]["content"]["parts"][0].get("text", "").strip()
                     if texto_gerado:
                         return texto_gerado
-            elif resp.status_code == 402:
-                logger.info("Gemini API: cota pré-paga esgotada (402), verificando provedores adicionais ou motor local.")
+            elif resp.status_code in (402, 404, 429):
+                logger.info(f"Gemini API ({modelo}): status {resp.status_code}. Ativando circuit-breaker por 10 minutos para respostas instantâneas locais.")
+                _GEMINI_CIRCUIT_BREAKER_TIMESTAMP = now + 600.0
                 break
             else:
                 logger.info(f"Gemini API ({modelo}) retornou status {resp.status_code}.")
         except Exception as ex:
-            logger.info(f"Falha de conexão com Gemini ({modelo}): {ex}")
+            logger.info(f"Falha de conexão com Gemini ({modelo}): {ex}. Ativando circuit-breaker por 2 minutos.")
+            _GEMINI_CIRCUIT_BREAKER_TIMESTAMP = now + 120.0
+            break
     return None
+
 
 def _consultar_openai_compativel(
     endpoint: str,

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 import TriageDisclaimer from '../../components/TriageDisclaimer';
-import { User, Activity, AlertTriangle, FileText, MessageSquare, Plus, CheckCircle2, ShieldCheck, Heart } from 'lucide-react';
+import AiTransparencyModal from '../../components/AiTransparencyModal';
+import { User, Activity, AlertTriangle, FileText, MessageSquare, Plus, CheckCircle2, ShieldCheck, Heart, Info, Bot } from 'lucide-react';
 
 export default function PatientRecord({ patientId, onBack }) {
   const { authHeaders } = useAuth();
@@ -11,6 +12,7 @@ export default function PatientRecord({ patientId, onBack }) {
   const [carregando, setCarregando] = useState(true);
   const [salvandoObs, setSalvandoObs] = useState(false);
   const [sucessoObs, setSucessoObs] = useState('');
+  const [modalIaAberto, setModalIaAberto] = useState(false);
 
   const carregarFicha = async () => {
     setCarregando(true);
@@ -107,7 +109,23 @@ export default function PatientRecord({ patientId, onBack }) {
 
       {/* Riscos Obstétricos Calculados (6 Condições CFM 2.454) */}
       <div className="card" style={{ borderLeft: '5px solid var(--color-dourado)' }}>
-        <h3 style={{ fontSize: '1.05rem', marginBottom: '8px' }}>Rastreio Estatístico Populacional (SINASC/SIH)</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+          <div>
+            <h3 style={{ fontSize: '1.05rem', margin: 0 }}>Rastreio Estatístico Populacional (SINASC/SIH)</h3>
+            <span style={{ fontSize: '0.72rem', color: 'var(--color-vinho)', fontWeight: 600 }}>
+              🛡️ SaMD Classe II • Resolução CFM nº 2.454/2026 (Art. 4º, V)
+            </span>
+          </div>
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={() => setModalIaAberto(true)}
+            style={{ fontSize: '0.75rem', padding: '4px 8px', minHeight: '28px', borderColor: 'var(--color-dourado)' }}
+          >
+            <Bot size={14} color="var(--color-dourado)" /> Governança & Métricas de IA
+          </button>
+        </div>
+
         <p className="text-muted" style={{ fontSize: '0.78rem', marginBottom: '12px' }}>
           Triagem multivariada baseada no perfil e histórico familiar da paciente:
         </p>
@@ -126,6 +144,7 @@ export default function PatientRecord({ patientId, onBack }) {
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <strong style={{ fontSize: '0.82rem', textTransform: 'capitalize' }}>
                   {cond.replace(/_/g, ' ')}
+                  {cond === 'itu' && <span title="Precisão de 1% devido a desbalanceamento hospitalar do SUS" style={{ color: 'var(--color-dourado)', marginLeft: '4px', cursor: 'help' }}>⚠️</span>}
                 </strong>
                 <span
                   style={{
@@ -141,12 +160,14 @@ export default function PatientRecord({ patientId, onBack }) {
           ))}
         </div>
 
-        {riscos_calculados?.aviso_legal && (
-          <div style={{ marginTop: '12px', padding: '10px 12px', backgroundColor: '#FFFBEB', borderRadius: 'var(--radius-sm)', border: '1px solid #FDE68A', fontSize: '0.74rem', color: '#92400E', lineHeight: '1.4' }}>
-            <strong>Nota Jurídico-Clínica:</strong> {riscos_calculados.aviso_legal}
-          </div>
-        )}
+        {/* Carimbo de Prontuário CFM 2.454/2026 */}
+        <div style={{ marginTop: '12px', padding: '10px 12px', backgroundColor: 'var(--color-creme)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', fontSize: '0.74rem', color: 'var(--color-vinho)', lineHeight: '1.4' }}>
+          <strong>Carimbo Auditável de Prontuário (CFM 2.454/2026):</strong>{' '}
+          {riscos_calculados?.carimbo_samd_cfm || 'Triagem com suporte de IA supervisionada (SaMD Classe II / CFM nº 2.454/2026). Decisão diagnóstica privativa do médico obstetra assistente.'}
+        </div>
       </div>
+
+      <AiTransparencyModal isOpen={modalIaAberto} onClose={() => setModalIaAberto(false)} />
 
       {/* Histórico Recente de Check-ins */}
       <div className="card">

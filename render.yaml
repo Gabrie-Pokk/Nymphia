@@ -1,3 +1,10 @@
+databases:
+  - name: nymphia-postgres
+    databaseName: nymphia
+    user: nymphia_admin
+    plan: free
+    region: ohio
+
 services:
   - type: web
     name: nymphia-plataforma-ia
@@ -11,7 +18,13 @@ services:
     envVars:
       - key: NYMPHIA_SECRET_KEY
         generateValue: true
-      - key: NYMPHIA_DB_TYPE
-        value: sqlite
+      - key: ENVIRONMENT
+        value: production
+      - key: ENV
+        value: producao
+      - key: NYMPHIA_DATABASE_URL
+        fromDatabase:
+          name: nymphia-postgres
+          property: connectionString
       - key: NYMPHIA_BERTIMBAU_URL
         sync: false

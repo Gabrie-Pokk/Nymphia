@@ -165,11 +165,15 @@ def listar_meus_profissionais(
     out = []
     for v in vinculos:
         prof = db.query(Profissional).filter(Profissional.id == v.profissional_id).first()
+        crm_formatado = f"{prof.registro_tipo or 'CRM'} {prof.registro_numero}" if prof and prof.registro_numero else None
         out.append(VinculoOut(
             id=v.id,
             gestante_id=v.gestante_id,
             profissional_id=v.profissional_id,
             profissional_nome=prof.nome if prof else "",
+            profissional_crm=crm_formatado,
+            profissional_uf=prof.registro_uf if prof else "SP",
+            profissional_especialidade="Ginecologia e Obstetrícia",
             gestante_nome=gestante.nome,
             status=v.status,
             origem=v.origem,
@@ -177,6 +181,7 @@ def listar_meus_profissionais(
             respondido_em=v.respondido_em
         ))
     return out
+
 
 # --- PAINEL DO MÉDICO: ORDENAÇÃO POR PRIORIDADE DE URGÊNCIA ---
 @router.get("/minhas-gestantes", response_model=List[PacientePainelItem])

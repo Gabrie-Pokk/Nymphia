@@ -7,10 +7,14 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.auth import Gestante
-from app.models.community import PostComunidade, ComentarioComunidade, PreferenciasComunidade
+from app.models.community import (
+    PostComunidade, ComentarioComunidade, PreferenciasComunidade,
+    DenunciaComunidade, RecursoModeracao
+)
 from app.schemas.all_schemas import (
     PostCreate, PostOut, ComentarioCreate, ComentarioOut,
-    PreferenciasComunidadeCreate, PreferenciasComunidadeOut
+    PreferenciasComunidadeCreate, PreferenciasComunidadeOut,
+    DenunciaCreate, DenunciaOut, RecursoCreate, RecursoOut, ModeracaoItemOut
 )
 from app.security.jwt_auth import get_current_gestante
 from app.services.moderation_service import moderate_community_content
@@ -184,8 +188,8 @@ def listar_posts(
     gestante: Gestante = Depends(get_current_gestante),
     db: Session = Depends(get_db)
 ):
-    """Lista postagens ordenadas das mais recentes para as mais antigas."""
-    query = db.query(PostComunidade)
+    """Lista postagens não ocultadas, ordenadas das mais recentes para as mais antigas."""
+    query = db.query(PostComunidade).filter(PostComunidade.ocultado == False)
     if grupo:
         query = query.filter(PostComunidade.grupo == grupo)
 
@@ -200,7 +204,7 @@ def listar_posts(
                 conteudo=c.conteudo,
                 sinalizado=c.sinalizado,
                 criado_em=c.criado_em
-            ) for c in p.comentarios
+            ) for c in p.comentarios if not c.ocultado
         ]
         out.append(PostOut(
             id=p.id,
@@ -208,6 +212,8 @@ def listar_posts(
             grupo=p.grupo,
             conteudo=p.conteudo,
             sinalizado=p.sinalizado,
+            ocultado=p.ocultado,
+            motivo_sinalizacao=p.motivo_sinalizacao,
             criado_em=p.criado_em,
             comentarios=comentarios_out
         ))
@@ -308,17 +314,247 @@ def comentar_post(
         criado_em=comentario.criado_em
     )
 
-@router.post("/posts/{id}/denunciar")
+# Protocolo Institucional de Apoio Emocional Imediato (CVV 188 / SUS)
+PROTOCOLO_CVV_188: Dict[str, Any] = {
+    "titulo": "Acolhimento e Apoio Emocional Imediato",
+    "mensagem": (
+        "Você não está sozinha. A gestação e o puerpério trazem transformações profundas e momentos de vulnerabilidade. "
+        "Existem profissionais e voluntários capacitados prontos para ouvir você com sigilo absoluto e sem qualquer julgamento."
+    ),
+    "cvv": "188",
+    "cvv_titulo": "Centro de Valorização da Vida (CVV)",
+    "cvv_descricao": "Ligação 100% gratuita, sigilosa e disponível 24 horas por dia em todo o Brasil.",
+    "cvv_link": "tel:188",
+    "cvv_site": "https://www.cvv.org.br",
+    "samu": "192",
+    "samu_descricao": "SAMU - Serviço de Atendimento Móvel de Urgência em situações de emergência física imediata.",
+    "caps": "Unidades do CAPS (Centro de Atenção Psicossocial) e UPAs do SUS oferecem acolhimento multiprofissional imediato e gratuito."
+}
+
+DIRETRIZES_COMUNIDADE: Dict[str, Any] = {
+    "titulo": "Diretrizes de Segurança e Convivência da Comunidade Nymphia",
+    "fundamento_legal": "Marco Civil da Internet (Lei 12.965/2014), Decisão STF Tema 987 (26/06/2025) e Resoluções CFM/COFEN",
+    "regras": [
+        {
+            "topico": "Vedação Estrita à Automedicação",
+            "descricao": "É expressamente proibido sugerir doses, alterar prescrições ou indicar medicamentos alopáticos ou fórmulas caseiras de risco. Decisões clínicas cabem exclusivamente ao médico assistente."
+        },
+        {
+            "topico": "Anonimato Protetivo e Sigilo de Dados",
+            "descricao": "Suas postagens utilizam pseudônimos protetivos para resguardar sua privacidade. Nunca divulgue telefones, endereços ou dados identificáveis."
+        },
+        {
+            "topico": "Respeito e Comunicação Empática",
+            "descricao": "Não toleramos julgamentos estigmatizantes sobre parto, ganho de peso, amamentação ou escolhas familiares. Qualquer forma de ódio ou assédio é removida."
+        },
+        {
+            "topico": "Direito de Recurso (STF Tema 987)",
+            "descricao": "Se sua publicação for moderada ou ocultada, você tem o direito garantido de justificar o contexto e requerer revisão humana."
+        },
+        {
+            "topico": "Acolhimento em Sofrimento Mental (CVV 188)",
+            "descricao": "Sinais de sofrimento agudo, depressão pós-parto ou ideação acionam imediatamente a rede de acolhimento do CVV (Ligue 188) e emergências do SUS."
+        }
+    ]
+}
+
+
+@router.get("/diretrizes")
+def obter_diretrizes_comunidade():
+    """Retorna as diretrizes clínicas e de convivência segura da comunidade Nymphia."""
+    return DIRETRIZES_COMUNIDADE
+
+
+@router.post("/posts/{id}/denunciar", response_model=DenunciaOut)
 def denunciar_post(
     id: int,
+    payload: Optional[DenunciaCreate] = None,
     db: Session = Depends(get_db)
 ):
-    """Sinaliza uma postagem suspeita para análise prioritária da equipe clínica."""
+    """
+    Sinaliza postagem com motivo estruturado (STF Tema 987 & Marco Civil).
+    Caso o motivo seja 'automutilacao_suicidio', aciona ocultação preventiva imediata
+    e retorna o protocolo de acolhimento humanizado (CVV 188 e SAMU 192).
+    """
     post = db.query(PostComunidade).filter(PostComunidade.id == id).first()
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Postagem não encontrada.")
 
-    post.sinalizado = True
-    post.motivo_sinalizacao = "Denunciado por usuária para moderação clínica"
+    motivo = payload.motivo if payload else "Denunciado por usuária para moderação clínica"
+    detalhes = payload.detalhes if payload else None
+
+    # Cria registro estruturado da denúncia
+    denuncia = DenunciaComunidade(
+        post_id=post.id,
+        motivo=motivo,
+        detalhes=detalhes,
+        status="pendente",
+        criado_em=datetime.utcnow()
+    )
+
+    acao_imediata = None
+    protocolo_acolhimento = None
+
+    if motivo == "automutilacao_suicidio":
+        post.sinalizado = True
+        post.ocultado = True
+        post.motivo_sinalizacao = "Ocultado preventivamente por sofrimento mental grave / risco de ideação"
+        post.motivo_ocultacao = "Ocultação preventiva imediata para salvaguarda de integridade física e mental"
+        denuncia.status = "em_analise_prioritaria"
+        denuncia.acao_tomada = "ocultacao_preventiva_imediata"
+        acao_imediata = "ocultacao_preventiva"
+        protocolo_acolhimento = PROTOCOLO_CVV_188
+    else:
+        post.sinalizado = True
+        if not post.motivo_sinalizacao:
+            post.motivo_sinalizacao = f"Sinalizado por denúncia: {motivo}"
+        denuncia.acao_tomada = "sinalizacao_para_auditoria"
+
+    db.add(denuncia)
     db.commit()
-    return {"status": "denunciado", "mensagem": "Conteúdo enviado para moderação prioritária."}
+    db.refresh(denuncia)
+
+    return DenunciaOut(
+        id=denuncia.id,
+        status=denuncia.status,
+        mensagem="Denúncia registrada com sucesso e encaminhada à equipe de moderação clínica.",
+        acao_imediata=acao_imediata,
+        protocolo_acolhimento=protocolo_acolhimento
+    )
+
+
+@router.post("/comentarios/{id}/denunciar", response_model=DenunciaOut)
+def denunciar_comentario(
+    id: int,
+    payload: Optional[DenunciaCreate] = None,
+    db: Session = Depends(get_db)
+):
+    """Sinaliza um comentário com motivo estruturado e auditoria preventiva."""
+    comentario = db.query(ComentarioComunidade).filter(ComentarioComunidade.id == id).first()
+    if not comentario:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comentário não encontrado.")
+
+    motivo = payload.motivo if payload else "Denunciado por usuária para moderação clínica"
+    detalhes = payload.detalhes if payload else None
+
+    denuncia = DenunciaComunidade(
+        comentario_id=comentario.id,
+        motivo=motivo,
+        detalhes=detalhes,
+        status="pendente",
+        criado_em=datetime.utcnow()
+    )
+
+    acao_imediata = None
+    protocolo_acolhimento = None
+
+    if motivo == "automutilacao_suicidio":
+        comentario.sinalizado = True
+        comentario.ocultado = True
+        denuncia.status = "em_analise_prioritaria"
+        denuncia.acao_tomada = "ocultacao_preventiva_imediata"
+        acao_imediata = "ocultacao_preventiva"
+        protocolo_acolhimento = PROTOCOLO_CVV_188
+    else:
+        comentario.sinalizado = True
+        denuncia.acao_tomada = "sinalizacao_para_auditoria"
+
+    db.add(denuncia)
+    db.commit()
+    db.refresh(denuncia)
+
+    return DenunciaOut(
+        id=denuncia.id,
+        status=denuncia.status,
+        mensagem="Denúncia do comentário registrada com sucesso.",
+        acao_imediata=acao_imediata,
+        protocolo_acolhimento=protocolo_acolhimento
+    )
+
+
+@router.post("/posts/{id}/recorrer", response_model=RecursoOut, status_code=status.HTTP_201_CREATED)
+def submeter_recurso_post(
+    id: int,
+    payload: RecursoCreate,
+    gestante: Gestante = Depends(get_current_gestante),
+    db: Session = Depends(get_db)
+):
+    """
+    Submete recurso/contestação contra moderação ou ocultação de postagem (STF Tema 987).
+    Garante o devido processo legal e contraditório à autora da postagem.
+    """
+    post = db.query(PostComunidade).filter(PostComunidade.id == id).first()
+    if not post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Postagem não encontrada.")
+
+    if post.gestante_id != gestante.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas a autora da postagem pode submeter recurso.")
+
+    if not post.sinalizado and not post.ocultado:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Esta postagem não sofreu moderação ou ocultação.")
+
+    # Verifica se já existe recurso pendente
+    existente = db.query(RecursoModeracao).filter(
+        RecursoModeracao.post_id == post.id,
+        RecursoModeracao.status == "pendente"
+    ).first()
+    if existente:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Já existe um recurso pendente de análise para esta postagem.")
+
+    recurso = RecursoModeracao(
+        post_id=post.id,
+        gestante_id=gestante.id,
+        justificativa=payload.justificativa.strip(),
+        status="pendente",
+        criado_em=datetime.utcnow()
+    )
+    db.add(recurso)
+    db.commit()
+    db.refresh(recurso)
+
+    return RecursoOut(
+        id=recurso.id,
+        post_id=recurso.post_id,
+        comentario_id=recurso.comentario_id,
+        justificativa=recurso.justificativa,
+        status=recurso.status,
+        decisao_motivo=recurso.decisao_motivo,
+        criado_em=recurso.criado_em
+    )
+
+
+@router.get("/minhas-moderacoes", response_model=List[ModeracaoItemOut])
+def listar_minhas_moderacoes(
+    gestante: Gestante = Depends(get_current_gestante),
+    db: Session = Depends(get_db)
+):
+    """
+    Lista todos os conteúdos da gestante que foram sinalizados ou ocultados pela moderação,
+    apresentando o status de recursos e o motivo da ação de moderação (STF Tema 987).
+    """
+    posts = db.query(PostComunidade).filter(
+        PostComunidade.gestante_id == gestante.id,
+        (PostComunidade.sinalizado == True) | (PostComunidade.ocultado == True)
+    ).order_by(PostComunidade.criado_em.desc()).all()
+
+    resultado: List[ModeracaoItemOut] = []
+    for p in posts:
+        ultimo_recurso = db.query(RecursoModeracao).filter(
+            RecursoModeracao.post_id == p.id
+        ).order_by(RecursoModeracao.criado_em.desc()).first()
+
+        resultado.append(ModeracaoItemOut(
+            id=p.id,
+            tipo="post",
+            grupo=p.grupo,
+            conteudo=p.conteudo,
+            sinalizado=p.sinalizado,
+            ocultado=p.ocultado,
+            motivo_sinalizacao=p.motivo_sinalizacao,
+            motivo_ocultacao=p.motivo_ocultacao,
+            criado_em=p.criado_em,
+            recurso_status=ultimo_recurso.status if ultimo_recurso else None,
+            recurso_decisao=ultimo_recurso.decisao_motivo if ultimo_recurso else None
+        ))
+
+    return resultado

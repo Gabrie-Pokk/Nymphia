@@ -12,6 +12,7 @@ import RegisterGestante from './pages/RegisterGestante';
 import RegisterProfissional from './pages/RegisterProfissional';
 import RegisterParceiro from './pages/RegisterParceiro';
 import EmergencyScreen from './pages/EmergencyScreen';
+import LegalModal from './components/LegalModal';
 
 // Páginas da Gestante
 import OnboardingClinico from './pages/gestante/OnboardingClinico';
@@ -128,6 +129,20 @@ export default function App() {
     );
   }
 
+  // Rotas Públicas Legais (Acessíveis autenticado ou anônimo)
+  if (currentPath === '/politica-privacidade' || currentPath === '/termos' || currentPath === '/termos-de-uso') {
+    return (
+      <div className="app-container" style={{ padding: '24px', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <PWAInstallPrompt />
+        <LegalModal
+          isOpen={true}
+          onClose={() => navigate(isAuthenticated ? '/' : '/login')}
+          initialTab={currentPath === '/politica-privacidade' ? 'politica' : 'termos'}
+        />
+      </div>
+    );
+  }
+
   // Se não autenticado:
   if (!isAuthenticated) {
     if (!introViewed) {
@@ -210,79 +225,7 @@ export default function App() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-          {user?.perfil === 'gestante' && (
-            <button
-              onClick={async () => {
-                try {
-                  const d = await apiFetch('/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: 'parceiro@nymphia.com.br', senha: 'senhaMaternidade123' }),
-                    skipAuth: true
-                  });
-                  if (d && d.token) {
-                    login(d.token, d);
-                    navigate('/');
-                  }
-                } catch (e) {}
-              }}
-              style={{
-                backgroundColor: 'rgba(255,255,255,0.22)',
-                border: '1px solid rgba(255,255,255,0.4)',
-                borderRadius: '9999px',
-                color: '#FFFFFF',
-                fontSize: '0.72rem',
-                fontWeight: 600,
-                padding: '4px 8px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                whiteSpace: 'nowrap',
-                flexShrink: 0
-              }}
-              title="Alternar para visualização de Parceiro (Lucas)"
-            >
-              🤝 Parceiro
-            </button>
-          )}
 
-          {user?.perfil === 'parceiro' && (
-            <button
-              onClick={async () => {
-                try {
-                  const d = await apiFetch('/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: 'gestante@nymphia.com.br', senha: 'senhaMaternidade123' }),
-                    skipAuth: true
-                  });
-                  if (d && d.token) {
-                    login(d.token, d);
-                    navigate('/');
-                  }
-                } catch (e) {}
-              }}
-              style={{
-                backgroundColor: 'rgba(255,255,255,0.22)',
-                border: '1px solid rgba(255,255,255,0.4)',
-                borderRadius: '9999px',
-                color: '#FFFFFF',
-                fontSize: '0.72rem',
-                fontWeight: 600,
-                padding: '4px 8px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                whiteSpace: 'nowrap',
-                flexShrink: 0
-              }}
-              title="Alternar para visualização da Gestante (Mariana)"
-            >
-              🌸 Gestante
-            </button>
-          )}
 
           <span
             style={{

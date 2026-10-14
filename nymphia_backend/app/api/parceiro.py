@@ -34,8 +34,8 @@ _parceiro_convites: Dict[str, str] = {
 def obter_vinculo_parceiro(parceiro: Parceiro, db: Session) -> VinculoParceiro:
     """
     Localiza o vínculo ativo do parceiro com uma gestante.
-    Possui auto-recuperação resiliente para contas demo (Lucas Mendes <-> Mariana Costa)
-    e vinculação automática com a gestante principal do sistema caso o banco tenha sido resetado.
+    Contas demo (parceiro@nymphia.com.br) possuem auto-recuperação com a gestante demo.
+    Novas contas reais exigem que o parceiro insira o código de convite gerado pela gestante.
     """
     vinculo = db.query(VinculoParceiro).filter(
         VinculoParceiro.parceiro_id == parceiro.id,
@@ -43,26 +43,19 @@ def obter_vinculo_parceiro(parceiro: Parceiro, db: Session) -> VinculoParceiro:
     ).first()
 
     if not vinculo:
-        # 1. Procura conta demo de gestante
-        gestante = None
+        # Auto-recuperação APENAS para conta demo oficial
         if parceiro.email == "parceiro@nymphia.com.br":
-            gestante = db.query(Gestante).filter_by(email="gestante@nymphia.com.br").first()
-        
-        # 2. Fallback para a primeira gestante cadastrada
-        if not gestante:
-            gestante = db.query(Gestante).first()
-
-        if gestante:
-            logger.info(f"Auto-recuperando vínculo do parceiro {parceiro.email} com a gestante {gestante.email}")
-            vinculo = VinculoParceiro(
-                gestante_id=gestante.id,
-                parceiro_id=parceiro.id,
-                status="ativo",
-                criado_em=datetime.utcnow()
-            )
-            db.add(vinculo)
-            db.commit()
-            db.refresh(vinculo)
+            gestante_demo = db.query(Gestante).filter_by(email="gestante@nymphia.com.br").first()
+            if gestante_demo:
+                vinculo = VinculoParceiro(
+                    gestante_id=gestante_demo.id,
+                    parceiro_id=parceiro.id,
+                    status="ativo",
+                    criado_em=datetime.utcnow()
+                )
+                db.add(vinculo)
+                db.commit()
+                db.refresh(vinculo)
 
     if not vinculo:
         raise HTTPException(
@@ -71,6 +64,51 @@ def obter_vinculo_parceiro(parceiro: Parceiro, db: Session) -> VinculoParceiro:
         )
 
     return vinculo
+
+
+@router.get("/meu-vinculo")
+def obter_meu_vinculo_gestante(
+    gestante: Gestante = Depends(get_current_gestante),
+    db: Session = Depends(get_db)
+):
+    """
+    Retorna o status do parceiro conectado para a gestante logada,
+    junto ao seu código de convite único (ex: PARC-XXXXX).
+    """
+    # 1. Recupera código de convite existente ou gera um novo
+    codigo_atual = None
+    for cod, gid in _parceiro_convites.items():
+        if gid == gestante.id:
+            codigo_atual = cod
+            break
+    if not codigo_atual:
+        chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+        codigo_atual = "PARC-" + "".join(random.choices(chars, k=5))
+        _parceiro_convites[codigo_atual] = gestante.id
+
+    vinculo = db.query(VinculoParceiro).filter(
+        VinculoParceiro.gestante_id == gestante.id,
+        VinculoParceiro.status == "ativo"
+    ).first()
+
+    if not vinculo:
+        return {
+            "conectado": False,
+            "codigo": codigo_atual,
+            "parceiro": None
+        }
+
+    parceiro = db.query(Parceiro).filter_by(id=vinculo.parceiro_id).first()
+    return {
+        "conectado": True,
+        "codigo": codigo_atual,
+        "vinculo_id": vinculo.id,
+        "parceiro": {
+            "id": parceiro.id if parceiro else None,
+            "nome": parceiro.nome if parceiro else "Parceiro(a)",
+            "email": parceiro.email if parceiro else None
+        } if parceiro else None
+    }
 
 
 @router.get("/gestante-conectada")
@@ -89,6 +127,7 @@ def obter_dados_gestante_conectada(
     gestante = db.query(Gestante).filter_by(id=vinculo.gestante_id).first()
     if not gestante:
         return {"conectado": False, "mensagem": "Gestante não encontrada"}
+
 
     perfil = db.query(PerfilClinico).filter_by(gestante_id=gestante.id).first()
     semana = 24

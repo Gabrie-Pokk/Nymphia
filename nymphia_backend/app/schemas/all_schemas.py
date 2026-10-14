@@ -20,6 +20,17 @@ class GestanteRegister(BaseModel):
     email: EmailStr = Field(..., max_length=120)
     senha: str = Field(..., min_length=8, max_length=72)
     recusa_ia: bool = False
+    aceite_termos: bool = Field(True, description="Aceite dos Termos de Uso e Política de Privacidade")
+    consentimento_dados_saude: bool = Field(True, description="Consentimento específico para tratamento de dados de saúde (Art. 11, I da LGPD)")
+    termos_versao: Optional[str] = "1.0-2026"
+
+    @model_validator(mode="after")
+    def validar_consentimentos_obrigatorios(self) -> "GestanteRegister":
+        if not self.aceite_termos:
+            raise ValueError("É obrigatório aceitar os Termos de Uso e a Política de Privacidade para cadastrar uma conta.")
+        if not self.consentimento_dados_saude:
+            raise ValueError("É obrigatório consentir com o tratamento de dados pessoais sensíveis de saúde para o acompanhamento pré-natal (Art. 11, I da LGPD).")
+        return self
 
     @field_validator("senha")
     @classmethod
@@ -51,6 +62,17 @@ class ProfissionalRegister(BaseModel):
     nome: str = Field(..., min_length=2, max_length=100)
     email: EmailStr = Field(..., max_length=120)
     senha: str = Field(..., min_length=8, max_length=72)
+    registro_tipo: str = Field(..., pattern="^(CRM|COREN)$")
+    registro_numero: str = Field(..., min_length=3, max_length=12)
+    registro_uf: str = Field(..., min_length=2, max_length=2)
+    aceite_termos: bool = Field(True, description="Aceite dos Termos de Uso do Profissional e Política de Privacidade")
+    termos_versao: Optional[str] = "1.0-2026"
+
+    @model_validator(mode="after")
+    def validar_termos(self) -> "ProfissionalRegister":
+        if not self.aceite_termos:
+            raise ValueError("É obrigatório aceitar os Termos de Uso e a Política de Privacidade para cadastrar uma conta profissional.")
+        return self
 
     @field_validator("senha")
     @classmethod
@@ -58,9 +80,6 @@ class ProfissionalRegister(BaseModel):
         if len(v.encode("utf-8")) > 72:
             raise ValueError("A senha excede o limite seguro de 72 bytes do algoritmo de criptografia (bcrypt).")
         return v
-    registro_tipo: str = Field(..., pattern="^(CRM|COREN)$")
-    registro_numero: str = Field(..., min_length=3, max_length=12)
-    registro_uf: str = Field(..., min_length=2, max_length=2)
 
     @field_validator("nome")
     @classmethod
@@ -127,6 +146,14 @@ class ParceiroRegister(BaseModel):
     nome: str = Field(..., min_length=2, max_length=100)
     email: EmailStr = Field(..., max_length=120)
     senha: str = Field(..., min_length=8, max_length=72)
+    aceite_termos: bool = Field(True, description="Aceite dos Termos de Uso e Política de Privacidade")
+    termos_versao: Optional[str] = "1.0-2026"
+
+    @model_validator(mode="after")
+    def validar_termos(self) -> "ParceiroRegister":
+        if not self.aceite_termos:
+            raise ValueError("É obrigatório aceitar os Termos de Uso e a Política de Privacidade para cadastrar uma conta parceira.")
+        return self
 
     @field_validator("senha")
     @classmethod
@@ -161,6 +188,23 @@ class AuthResponse(BaseModel):
     nome: str
     status_verificacao: Optional[str] = None
     recusa_ia: Optional[bool] = False
+    termos_versao: Optional[str] = None
+
+class SolicitacaoRevisaoIACreate(BaseModel):
+    motivo: str = Field(..., min_length=5, max_length=1000, description="Explicação da solicitação de revisão humana")
+    recurso_analisado: Optional[str] = Field("escore_triagem", max_length=100)
+
+class SolicitacaoRevisaoIAOut(BaseModel):
+    id: int
+    gestante_id: str
+    motivo: str
+    recurso_analisado: str
+    status: str
+    resposta_revisao: Optional[str] = None
+    criado_em: datetime
+    respondido_em: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 # --- Clinical Schemas ---
 class PerfilClinicoBase(BaseModel):
@@ -439,6 +483,9 @@ class VinculoOut(BaseModel):
     gestante_id: str
     profissional_id: str
     profissional_nome: Optional[str] = None
+    profissional_crm: Optional[str] = None
+    profissional_uf: Optional[str] = None
+    profissional_especialidade: Optional[str] = None
     gestante_nome: Optional[str] = None
     status: str
     origem: str
@@ -446,6 +493,7 @@ class VinculoOut(BaseModel):
     respondido_em: Optional[datetime]
 
     model_config = ConfigDict(from_attributes=True)
+
 
 class PacientePainelItem(BaseModel):
     gestante_id: str
@@ -462,15 +510,16 @@ class ParceiroCodigoConviteOut(BaseModel):
     codigo: str
 
 class ParceiroUsarCodigoRequest(BaseModel):
-    codigo: str = Field(..., min_length=8, max_length=8)
+    codigo: str = Field(..., min_length=4, max_length=24)
 
     @field_validator("codigo")
     @classmethod
     def validar_codigo(cls, v: str) -> str:
         v_clean = v.strip().upper()
-        if not CODIGO_REGEX.match(v_clean):
-            raise ValueError("Código de convite inválido. Deve possuir 8 caracteres.")
+        if len(v_clean) < 4:
+            raise ValueError("Código de convite de parceiro inválido.")
         return v_clean
+
 
 # --- Comunidade Schemas ---
 class PostCreate(BaseModel):
@@ -512,10 +561,50 @@ class PostOut(BaseModel):
     grupo: str
     conteudo: str
     sinalizado: bool
+    ocultado: bool = False
+    motivo_sinalizacao: Optional[str] = None
     criado_em: datetime
     comentarios: List[ComentarioOut] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
+
+class DenunciaCreate(BaseModel):
+    motivo: str = Field(..., max_length=100, description="Motivo da denúncia estruturada")
+    detalhes: Optional[str] = Field(None, max_length=1000, description="Detalhes adicionais contextuais")
+
+class DenunciaOut(BaseModel):
+    id: int
+    status: str
+    mensagem: str
+    acao_imediata: Optional[str] = None
+    protocolo_acolhimento: Optional[Dict[str, Any]] = None
+
+class RecursoCreate(BaseModel):
+    justificativa: str = Field(..., min_length=5, max_length=1500, description="Justificativa da usuária para contestação de moderação")
+
+class RecursoOut(BaseModel):
+    id: int
+    post_id: Optional[int] = None
+    comentario_id: Optional[int] = None
+    justificativa: str
+    status: str
+    decisao_motivo: Optional[str] = None
+    criado_em: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class ModeracaoItemOut(BaseModel):
+    id: int
+    tipo: str  # "post" ou "comentario"
+    grupo: Optional[str] = None
+    conteudo: str
+    sinalizado: bool
+    ocultado: bool
+    motivo_sinalizacao: Optional[str] = None
+    motivo_ocultacao: Optional[str] = None
+    criado_em: datetime
+    recurso_status: Optional[str] = None
+    recurso_decisao: Optional[str] = None
 
 class PreferenciasComunidadeCreate(BaseModel):
     experiencia: Optional[str] = Field(None, max_length=100)
@@ -647,7 +736,7 @@ class RegistroAntropometricoCreate(BaseModel):
     altura_uterina_cm: Optional[float] = Field(None, ge=5.0, le=60.0)
     circunferencia_abdominal_cm: Optional[float] = Field(None, ge=40.0, le=200.0)
     pressao_arterial: Optional[str] = None
-    edema: Optional[str] = Field("ausente", pattern="^(ausente|\+/4\+|\+\+/4\+|\+\+\+/4\+|\+\+\+\+/4\+)$")
+    edema: Optional[str] = Field("ausente", pattern=r"^(ausente|\+/4\+|\+\+/4\+|\+\+\+/4\+|\+\+\+\+/4\+)$")
     observacoes: Optional[str] = None
 
 class RegistroAntropometricoOut(BaseModel):
@@ -677,6 +766,7 @@ class PainelAntropometriaResponse(BaseModel):
     ganho_peso_acumulado_kg: Optional[float] = None
     imc_atual: Optional[float] = None
     semana_gestacional_atual: int
+    avaliacao_ganho_ufrj: Optional[Dict[str, Any]] = None
     avaliacao_atalah: Optional[Dict[str, Any]] = None
     avaliacao_altura_uterina: Optional[Dict[str, Any]] = None
     historico_registros: List[RegistroAntropometricoOut] = Field(default_factory=list)

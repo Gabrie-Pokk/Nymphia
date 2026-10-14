@@ -48,3 +48,39 @@ class IntegracaoLaboratorial(Base):
     conteudo_fhir = Column(JSON, nullable=False)
     status_processamento = Column(String(50), default="processado", nullable=False)
     recebido_em = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class SolicitacaoRevisaoIA(Base):
+    """
+    Direito de revisão de decisão tomada unicamente por tratamento automatizado (Art. 20 da LGPD).
+    Permite solicitação formal de reavaliação humana por profissional de saúde.
+    """
+    __tablename__ = "solicitacoes_revisao_ia"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    gestante_id = Column(String(36), ForeignKey("gestantes.id", ondelete="CASCADE"), nullable=False, index=True)
+    motivo = Column(Text, nullable=False)
+    recurso_analisado = Column(String(100), default="escore_triagem", nullable=False)
+    status = Column(String(20), default="pendente", nullable=False)  # pendente | em_analise | concluido
+    resposta_revisao = Column(Text, nullable=True)
+    criado_em = Column(DateTime, default=datetime.utcnow, nullable=False)
+    respondido_em = Column(DateTime, nullable=True)
+
+    gestante = relationship("Gestante")
+
+
+class CustodiaProntuario(Base):
+    """
+    Guarda permanente e irrevogável de anotações médicas sob custódia clínica
+    (Resolução CFM 1.821/2007 Art. 7º e Art. 16, I da LGPD).
+    Mesmo com a exclusão da conta pelo titular, os pareceres médicos formais permanecem preservados.
+    """
+    __tablename__ = "custodia_prontuarios"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    profissional_id = Column(String(36), nullable=False, index=True)
+    gestante_id_anonimizado = Column(String(64), nullable=False, index=True)
+    observacao = Column(Text, nullable=False)
+    data_original = Column(DateTime, nullable=False)
+    arquivado_em = Column(DateTime, default=datetime.utcnow, nullable=False)
+

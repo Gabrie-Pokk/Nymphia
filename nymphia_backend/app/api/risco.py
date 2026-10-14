@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.services.ai_risk_service import calculate_maternal_risks, DISCLAIMER_TEXT
+from app.services.ai_risk_service import calculate_maternal_risks, DISCLAIMER_TEXT, obter_transparencia_clinica
 from app.models.auth import Gestante
 from app.models.clinical import PerfilClinico, HistoricoFamiliar
 from app.security.jwt_auth import get_current_gestante
@@ -78,3 +78,14 @@ def detectar_anomalia_clinica(dados: Dict[str, Any]):
         "recomendacao": "Avaliação clínica detalhada recomendada" if res["padrao_atipico_detectado"] else "Padrão dentro dos desvios usuais",
         "aviso_legal": DISCLAIMER_TEXT
     }
+
+@router.get("/modelos/transparencia-clinica")
+@router.get("/risco/transparencia-clinica")
+def obter_relatorio_transparencia_modelos():
+    """
+    Exposição pública e documentada da matriz de governança clínica e métricas dos modelos de IA,
+    em estrito cumprimento à Resolução CFM nº 2.454/2026 (Arts. 3º, 5º e 11) e Código de Defesa do Consumidor (Arts. 12 a 14).
+    Inclui justificativa do modelo de ITU com precisão de 0,01 decorrente do desbalanceamento no DATASUS.
+    """
+    return obter_transparencia_clinica()
+

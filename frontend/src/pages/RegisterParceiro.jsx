@@ -3,6 +3,7 @@ import LotusLogo from '../components/LotusLogo';
 import { ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import BackButton from '../components/BackButton';
+import LegalModal from '../components/LegalModal';
 
 const NOME_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ\s'.-]{2,100}$/;
 
@@ -11,8 +12,16 @@ export default function RegisterParceiro({ onBackToLogin, onRegisterSuccess }) {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [aceiteTermos, setAceiteTermos] = useState(false);
+  const [modalLegalAberto, setModalLegalAberto] = useState(false);
+  const [abaLegalInicial, setAbaLegalInicial] = useState('termos');
   const [erro, setErro] = useState('');
   const [carregando, setCarregando] = useState(false);
+
+  const abrirLegal = (aba) => {
+    setAbaLegalInicial(aba);
+    setModalLegalAberto(true);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -27,6 +36,10 @@ export default function RegisterParceiro({ onBackToLogin, onRegisterSuccess }) {
       setErro('A senha deve ter entre 8 e 72 caracteres.');
       return;
     }
+    if (!aceiteTermos) {
+      setErro('É necessário ler e aceitar os Termos de Uso e a Política de Privacidade para criar sua conta de apoio.');
+      return;
+    }
 
     setCarregando(true);
     try {
@@ -36,7 +49,8 @@ export default function RegisterParceiro({ onBackToLogin, onRegisterSuccess }) {
         body: JSON.stringify({
           nome: nomeTrim,
           email: email.trim().toLowerCase(),
-          senha
+          senha,
+          aceite_termos: true
         })
       });
       const data = await res.json();
@@ -123,6 +137,71 @@ export default function RegisterParceiro({ onBackToLogin, onRegisterSuccess }) {
           />
         </div>
 
+        {/* Consentimento Legal e Termos de Uso (LGPD) */}
+        <div
+          style={{
+            padding: '12px',
+            backgroundColor: '#FAFAFA',
+            border: '1px solid #E0E0E0',
+            borderRadius: '8px',
+            marginBottom: '16px'
+          }}
+        >
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '10px',
+              fontSize: '0.85rem',
+              color: '#333',
+              cursor: 'pointer'
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={aceiteTermos}
+              onChange={(e) => setAceiteTermos(e.target.checked)}
+              style={{ marginTop: '3px', cursor: 'pointer' }}
+              required
+            />
+            <span>
+              Li e concordo com os{' '}
+              <button
+                type="button"
+                onClick={() => abrirLegal('termos')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--color-primary, #5C1A2A)',
+                  textDecoration: 'underline',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: 0
+                }}
+              >
+                Termos de Uso
+              </button>{' '}
+              e com a{' '}
+              <button
+                type="button"
+                onClick={() => abrirLegal('politica')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--color-primary, #5C1A2A)',
+                  textDecoration: 'underline',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: 0
+                }}
+              >
+                Política de Privacidade
+              </button>
+              , compreendendo o propósito de apoio à gestante na plataforma.
+            </span>
+          </label>
+        </div>
+
         <button
           type="submit"
           className="btn btn-primary"
@@ -133,6 +212,13 @@ export default function RegisterParceiro({ onBackToLogin, onRegisterSuccess }) {
           <ArrowRight size={18} />
         </button>
       </form>
+
+      {/* Modal Institucional de Termos e LGPD */}
+      <LegalModal
+        isOpen={modalLegalAberto}
+        onClose={() => setModalLegalAberto(false)}
+        initialTab={abaLegalInicial}
+      />
     </div>
   );
 }

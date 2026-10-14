@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import LotusLogo, { NymphiaBrandName } from '../components/LotusLogo';
 import { Eye, EyeOff, Lock, Mail, ArrowRight, Sparkles, CheckCircle, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import LegalModal from '../components/LegalModal';
 
 import { apiFetch } from '../utils/api';
 
@@ -23,6 +24,8 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateRe
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erro, setErro] = useState('');
   const [carregando, setCarregando] = useState(false);
+  const [modalLegalAberto, setModalLegalAberto] = useState(false);
+  const [abaLegalInicial, setAbaLegalInicial] = useState('privacidade');
 
   const verificarCrmAoDigitar = async (numDigitado, ufDigitada) => {
     const numCrm = (numDigitado !== undefined ? numDigitado : crm).trim().replace(/[^0-9]/g, '');
@@ -567,7 +570,40 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateRe
             </button>
           </div>
         </div>
+
+        {/* Rodapé Institucional & Governança LGPD */}
+        <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--color-border)', fontSize: '0.76rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginBottom: '6px' }}>
+            <button
+              type="button"
+              onClick={() => { setAbaLegalInicial('privacidade'); setModalLegalAberto(true); }}
+              style={{ background: 'transparent', border: 'none', color: 'var(--color-vinho)', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline', fontSize: '0.78rem' }}
+            >
+              Política de Privacidade (LGPD)
+            </button>
+            <span>•</span>
+            <button
+              type="button"
+              onClick={() => { setAbaLegalInicial('termos'); setModalLegalAberto(true); }}
+              style={{ background: 'transparent', border: 'none', color: 'var(--color-vinho)', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline', fontSize: '0.78rem' }}
+            >
+              Termos de Uso
+            </button>
+          </div>
+          <div>
+            Encarregado de Privacidade (DPO): <a href="mailto:privacidade@nymphia.com.br" style={{ color: 'var(--color-rosa)', fontWeight: 600 }}>privacidade@nymphia.com.br</a>
+          </div>
+          <div style={{ marginTop: '2px', opacity: 0.85 }}>
+            Conforme Leis 13.709/2018 (LGPD), Resoluções CFM 2.454/2026 e CFM 1.821/2007.
+          </div>
+        </div>
       </div>
+
+      <LegalModal
+        isOpen={modalLegalAberto}
+        onClose={() => setModalLegalAberto(false)}
+        initialTab={abaLegalInicial}
+      />
     </div>
   );
 }

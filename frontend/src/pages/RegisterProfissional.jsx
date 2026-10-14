@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import LotusLogo from '../components/LotusLogo';
-import { ArrowRight, UploadCloud, CheckCircle } from 'lucide-react';
+import { ArrowRight, UploadCloud, CheckCircle, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import BackButton from '../components/BackButton';
+import LegalModal from '../components/LegalModal';
 
 const NOME_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ\s'.-]{2,100}$/;
 const REGISTRO_REGEX = /^[0-9]{3,10}(-[A-Za-z0-9])?$/;
@@ -25,9 +26,37 @@ export default function RegisterProfissional({ onBackToLogin, onRegisterSuccess 
   const [registroNumero, setRegistroNumero] = useState('');
   const [registroUf, setRegistroUf] = useState('SP');
   const [arquivo, setArquivo] = useState(null);
+  const [aceiteTermos, setAceiteTermos] = useState(false);
+  const [modalLegalAberto, setModalLegalAberto] = useState(false);
+  const [abaLegalInicial, setAbaLegalInicial] = useState('termos');
 
   const [erro, setErro] = useState('');
   const [carregando, setCarregando] = useState(false);
+  const [crmStatus, setCrmStatus] = useState(null);
+  const [verificandoCrm, setVerificandoCrm] = useState(false);
+
+  const checarCrmOnline = async (num, uf) => {
+    const numLimpo = (num !== undefined ? num : registroNumero).replace(/[^0-9]/g, '');
+    const ufLimpa = (uf !== undefined ? uf : registroUf).toUpperCase();
+    if (registroTipo !== 'CRM' || !numLimpo || numLimpo.length < 3) {
+      setCrmStatus(null);
+      return;
+    }
+    setVerificandoCrm(true);
+    try {
+      const res = await fetch(`/auth/profissional/validar-crm?crm=${numLimpo}&uf=${ufLimpa}`);
+      const data = await res.json();
+      setCrmStatus(data);
+      if (data.valido && data.nome_medico && !nome.trim()) {
+        setNome(`Dr(a). ${data.nome_medico}`);
+      }
+    } catch (e) {
+      setCrmStatus({ valido: false, mensagem: 'Falha ao consultar CRM na internet.' });
+    } finally {
+      setVerificandoCrm(false);
+    }
+  };
+
 
   const handleCadastro = async (e) => {
     e.preventDefault();
@@ -50,6 +79,11 @@ export default function RegisterProfissional({ onBackToLogin, onRegisterSuccess 
       return;
     }
 
+    if (!aceiteTermos) {
+      setErro('É obrigatório concordar com os Termos de Uso e a Política de Privacidade para cadastrar uma conta profissional.');
+      return;
+    }
+
     setCarregando(true);
     try {
       const res = await fetch('/auth/profissional/cadastro', {
@@ -61,7 +95,9 @@ export default function RegisterProfissional({ onBackToLogin, onRegisterSuccess 
           senha,
           registro_tipo: registroTipo,
           registro_numero: regTrim,
-          registro_uf: registroUf.toUpperCase()
+          registro_uf: registroUf.toUpperCase(),
+          aceite_termos: aceiteTermos,
+          termos_versao: '1.0-2026'
         })
       });
       const data = await res.json();
@@ -187,7 +223,11 @@ export default function RegisterProfissional({ onBackToLogin, onRegisterSuccess 
                 placeholder="123456"
                 value={registroNumero}
                 maxLength={10}
-                onChange={(e) => setRegistroNumero(e.target.value.replace(/[^0-9-]/g, ''))}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^0-9]/g, '');
+                  setRegistroNumero(val);
+                  checarCrmOnline(val, registroUf);
+                }}
                 required
               />
             </div>
@@ -198,7 +238,11 @@ export default function RegisterProfissional({ onBackToLogin, onRegisterSuccess 
                 id="reg-prof-uf"
                 className="form-control"
                 value={registroUf}
-                onChange={(e) => setRegistroUf(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setRegistroUf(val);
+                  checarCrmOnline(registroNumero, val);
+                }}
               >
                 {UFS_BRASIL.map((uf) => (
                   <option key={uf} value={uf}>{uf}</option>
@@ -206,6 +250,45 @@ export default function RegisterProfissional({ onBackToLogin, onRegisterSuccess 
               </select>
             </div>
           </div>
+
+          {/* Feedback de Validação Real de CRM na Internet */}
+          {verificandoCrm && (
+            <p style={{ fontSize: '0.78rem', color: 'var(--color-vinho)', marginTop: '-8px', marginBottom: '12px' }}>
+              🔍 Consultando Conselho Regional de Medicina na internet...
+            </p>
+          )}
+          {crmStatus && !verificandoCrm && (
+            <div
+              style={{
+                marginTop: '-8px',
+                marginBottom: '14px',
+                padding: '8px 12px',
+                borderRadius: 'var(--radius-sm)',
+                backgroundColor: crmStatus.valido ? '#E8F8F0' : '#FDEEE9',
+                border: crmStatus.valido ? '1px solid #27AE60' : '1px solid #E74C3C',
+                color: crmStatus.valido ? '#1E7E34' : '#8A2B1A',
+                fontSize: '0.8rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              {crmStatus.valido ? (
+                <>
+                  <CheckCircle size={16} color="#1E7E34" style={{ flexShrink: 0 }} />
+                  <div>
+                    <strong>Registro Ativo no CRM:</strong> {crmStatus.nome_medico || ''} ({crmStatus.conselho || 'CREMESP'})
+                    {crmStatus.especialidade && <div><span style={{ fontSize: '0.74rem', opacity: 0.9 }}>{crmStatus.especialidade}</span></div>}
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <strong>Não Válido:</strong> {crmStatus.mensagem}
+                </div>
+              )}
+            </div>
+          )}
+
 
           <div className="form-group">
             <label htmlFor="reg-prof-senha">Senha (8 a 72 caracteres)</label>
@@ -220,6 +303,71 @@ export default function RegisterProfissional({ onBackToLogin, onRegisterSuccess 
               minLength={8}
               maxLength={72}
             />
+          </div>
+
+          {/* Consentimento Legal e Termos de Uso (LGPD e CFM) */}
+          <div
+            style={{
+              padding: '12px',
+              backgroundColor: '#FAFAFA',
+              border: '1px solid #E0E0E0',
+              borderRadius: '8px',
+              marginBottom: '16px'
+            }}
+          >
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '10px',
+                fontSize: '0.85rem',
+                color: '#333',
+                cursor: 'pointer'
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={aceiteTermos}
+                onChange={(e) => setAceiteTermos(e.target.checked)}
+                style={{ marginTop: '3px', cursor: 'pointer' }}
+                required
+              />
+              <span>
+                Li e aceito os{' '}
+                <button
+                  type="button"
+                  onClick={() => abrirLegal('termos')}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--color-primary, #5C1A2A)',
+                    textDecoration: 'underline',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    padding: 0
+                  }}
+                >
+                  Termos de Uso
+                </button>{' '}
+                e a{' '}
+                <button
+                  type="button"
+                  onClick={() => abrirLegal('politica')}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--color-primary, #5C1A2A)',
+                    textDecoration: 'underline',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    padding: 0
+                  }}
+                >
+                  Política de Privacidade
+                </button>
+                , comprometendo-me a zelar pelo sigilo profissional (CFM/COREN) e proteção de dados de saúde das pacientes (LGPD).
+              </span>
+            </label>
           </div>
 
           <button
@@ -286,6 +434,13 @@ export default function RegisterProfissional({ onBackToLogin, onRegisterSuccess 
           </form>
         </div>
       )}
+
+      {/* Modal Institucional de Termos e LGPD */}
+      <LegalModal
+        isOpen={modalLegalAberto}
+        onClose={() => setModalLegalAberto(false)}
+        initialTab={abaLegalInicial}
+      />
     </div>
   );
 }

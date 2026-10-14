@@ -71,7 +71,7 @@ export default function AiChat({ onBack }) {
         body: JSON.stringify({ texto })
       });
       const data = await res.json();
-      if (res.ok) {
+      if (res.ok && data?.resposta) {
         const iaMsgId = Date.now() + 1;
         setMensagens((prev) => [
           ...prev,
@@ -94,12 +94,37 @@ export default function AiChat({ onBack }) {
             onError: () => setSpeakingMsgId(null)
           });
         }
+      } else {
+        const erroMsg = data?.detail || "Tive uma breve oscilação na conexão com os servidores clínicos. Pode repetir sua mensagem com carinho?";
+        setMensagens((prev) => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            papel: 'ia',
+            conteudo: erroMsg,
+            data_hora: new Date().toISOString(),
+            alerta_emergencia: false,
+            autorizado_compartilhar: false
+          }
+        ]);
       }
     } catch (err) {
+      setMensagens((prev) => [
+        ...prev,
+        {
+          id: Date.now() + 1,
+          papel: 'ia',
+          conteudo: "Houve uma oscilação na comunicação com os servidores. Estou aqui com você — por favor, tente enviar novamente!",
+          data_hora: new Date().toISOString(),
+          alerta_emergencia: false,
+          autorizado_compartilhar: false
+        }
+      ]);
     } finally {
       setCarregando(false);
     }
   };
+
 
   const handleToggleVoz = (msgId, texto) => {
     if (speakingMsgId === msgId) {

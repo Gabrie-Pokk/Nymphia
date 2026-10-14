@@ -18,6 +18,7 @@ from app.security.jwt_auth import get_current_gestante
 from app.services.anthropometry_service import (
     calcular_imc,
     classificar_imc_pre_gestacional,
+    classificar_ganho_ponderal_ufrj_ms,
     classificar_curva_atalah,
     avaliar_altura_uterina,
     obter_guia_educativo_antropometria
@@ -42,7 +43,8 @@ def obter_painel_antropometria(
     Retorna o painel clínico antropométrico completo da gestante:
     - Altura e peso pré-gestacional com IMC e categoria
     - Última pesagem e ganho ponderal total acumulado
-    - Avaliação da Curva de Atalah para a semana gestacional atual
+    - Avaliação das Curvas Nacionais UFRJ / Ministério da Saúde (2022)
+    - Avaliação da Curva de Atalah (retrocompatibilidade clínica)
     - Avaliação da Altura Uterina (P10-P90)
     - Alerta de ganho rápido súbito (possível edema/pré-eclâmpsia)
     - Guia educativo rico sobre nutrição, mitos e distribuição de peso
@@ -58,6 +60,7 @@ def obter_painel_antropometria(
     semana_atual = _calcular_semana_atual(perfil.dum if perfil else None)
     altura_cm = perfil.altura_cm if perfil else None
     peso_pre = perfil.peso_pre_gestacional if perfil else None
+    idade_gestante = perfil.idade if (perfil and perfil.idade) else 28
 
     # Valores pré-gestacionais
     imc_pre = calcular_imc(peso_pre, altura_cm) if (peso_pre and altura_cm) else None
@@ -75,10 +78,27 @@ def obter_painel_antropometria(
 
     imc_atual = calcular_imc(peso_atual, altura_cm) if (peso_atual and altura_cm) else None
     
-    # Avaliação Atalah e Altura Uterina
+    # Avaliação UFRJ / MS (2022) e Atalah
+    avaliacao_ganho_ufrj = None
+    if peso_atual is not None:
+        avaliacao_ganho_ufrj = classificar_ganho_ponderal_ufrj_ms(
+            semana=semana_atual,
+            peso_atual_kg=peso_atual,
+            peso_pre_kg=peso_pre,
+            altura_cm=altura_cm,
+            idade_gestante=idade_gestante
+        )
+
     avaliacao_atalah = None
-    if imc_atual:
-        avaliacao_atalah = classificar_curva_atalah(semana_atual, imc_atual)
+    if imc_atual or peso_atual:
+        avaliacao_atalah = classificar_curva_atalah(
+            semana=semana_atual,
+            imc_atual=imc_atual or (imc_pre or 22.0),
+            peso_atual_kg=peso_atual,
+            peso_pre_kg=peso_pre,
+            altura_cm=altura_cm,
+            idade_gestante=idade_gestante
+        )
 
     avaliacao_au = None
     if au_atual:
@@ -111,6 +131,7 @@ def obter_painel_antropometria(
         ganho_peso_acumulado_kg=ganho_acumulado,
         imc_atual=imc_atual,
         semana_gestacional_atual=semana_atual,
+        avaliacao_ganho_ufrj=avaliacao_ganho_ufrj,
         avaliacao_atalah=avaliacao_atalah,
         avaliacao_altura_uterina=avaliacao_au,
         historico_registros=registros,

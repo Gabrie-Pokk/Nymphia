@@ -53,13 +53,25 @@ export default function PartnerDashboard({ onNavigateEmergency, onNavigateQuiz, 
 
   const carregarDadosParceiro = async () => {
     try {
-      // 1. Verifica dados da gestante conectada
       const resG = await fetch('/parceiro/gestante-conectada', { headers: authHeaders() });
       if (resG.ok) {
         const dG = await resG.json();
         if (dG.conectado) {
           setGestanteConectada(dG);
           setConectado(true);
+
+          // Carrega marcos, agenda e check-ins somente quando houver vínculo ativo
+          const [resMarcos, resAgenda, resCheck] = await Promise.all([
+            fetch('/parceiro/marcos', { headers: authHeaders() }),
+            fetch('/parceiro/agenda', { headers: authHeaders() }),
+            fetch('/parceiro/checkin/historico?limite=3', { headers: authHeaders() })
+          ]);
+          if (resMarcos.ok) setMarcos(await resMarcos.json());
+          if (resAgenda.ok) setAgenda(await resAgenda.json());
+          if (resCheck.ok) setCheckinsHoje(await resCheck.json());
+        } else {
+          setGestanteConectada(null);
+          setConectado(false);
         }
       }
 
@@ -68,28 +80,6 @@ export default function PartnerDashboard({ onNavigateEmergency, onNavigateQuiz, 
       if (resEmerg.ok) {
         const dEmerg = await resEmerg.json();
         setEmergenciaAtiva(dEmerg.alerta_ativo ? dEmerg : null);
-      }
-
-      // 3. Carrega marcos
-      const resMarcos = await fetch('/parceiro/marcos', { headers: authHeaders() });
-      if (resMarcos.ok) {
-        const dMarcos = await resMarcos.json();
-        setMarcos(dMarcos);
-        setConectado(true);
-      }
-
-      // 4. Carrega agenda de apoio logístico (todos os eventos)
-      const resAgenda = await fetch('/parceiro/agenda', { headers: authHeaders() });
-      if (resAgenda.ok) {
-        const dAgenda = await resAgenda.json();
-        setAgenda(dAgenda);
-      }
-
-      // 5. Carrega histórico de check-ins recentes
-      const resCheck = await fetch('/parceiro/checkin/historico?limite=3', { headers: authHeaders() });
-      if (resCheck.ok) {
-        const dCheck = await resCheck.json();
-        setCheckinsHoje(dCheck);
       }
     } catch (err) {}
   };
@@ -101,25 +91,30 @@ export default function PartnerDashboard({ onNavigateEmergency, onNavigateQuiz, 
     return () => clearInterval(interval);
   }, []);
 
-  const handleConectarGestante = async (e) => {
+  const handleConectarGestante = async (e, codigoManual) => {
     if (e) e.preventDefault();
     setErro('');
     setSucesso('');
 
-    const codLimpo = (codigoConvite || 'PARC-MARIANA').trim().toUpperCase();
+    const codFinal = (codigoManual || codigoConvite || '').trim().toUpperCase();
+    if (!codFinal) {
+      setErro('Por favor, digite o código de convite gerado no aplicativo da gestante (ex: PARC-XXXXX).');
+      return;
+    }
+
     setCarregando(true);
     try {
       const res = await fetch('/parceiro/convite/usar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ codigo: codLimpo })
+        body: JSON.stringify({ codigo: codFinal })
       });
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.detail || 'Código de parceiro inválido.');
+        throw new Error(data.detail || 'Código de parceiro inválido ou expirado.');
       }
-      setSucesso('Conectado à sua parceira com sucesso!');
+      setSucesso('Conectado à sua parceira gestante com sucesso!');
       setCodigoConvite('');
       await carregarDadosParceiro();
     } catch (err) {
@@ -128,6 +123,7 @@ export default function PartnerDashboard({ onNavigateEmergency, onNavigateQuiz, 
       setCarregando(false);
     }
   };
+
 
   const handleSalvarCheckinRapido = async (e) => {
     e.preventDefault();
@@ -240,22 +236,8 @@ export default function PartnerDashboard({ onNavigateEmergency, onNavigateQuiz, 
     }
   };
 
-  const alternarParaContaGestante = async () => {
-    try {
-      const res = await fetch('/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'gestante@nymphia.com.br', senha: 'senhaMaternidade123' })
-      });
-      const data = await res.json();
-      if (data.token) {
-        login(data.token, data);
-        window.location.href = '/';
-      }
-    } catch (e) {}
-  };
-
   return (
+
     <div style={{ paddingBottom: '70px' }}>
       {/* Cabeçalho do Parceiro */}
       <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -263,27 +245,11 @@ export default function PartnerDashboard({ onNavigateEmergency, onNavigateQuiz, 
           <span style={{ fontSize: '0.8rem', color: '#1E7E34', fontWeight: 700, textTransform: 'uppercase' }}>
             🤝 Rede de Apoio & Parceiro
           </span>
-          <h2 style={{ margin: '2px 0 0 0' }}>Olá, {user?.nome || 'Lucas'}</h2>
+          <h2 style={{ margin: '2px 0 0 0' }}>Olá, {user?.nome || 'Parceiro(a)'}</h2>
           <p className="text-muted" style={{ fontSize: '0.85rem', margin: '2px 0 0 0' }}>
             Apoio logístico, check-ins de bem-estar e canal de emergência
           </p>
         </div>
-
-        <button
-          onClick={alternarParaContaGestante}
-          className="btn"
-          style={{
-            backgroundColor: '#FFF0F3',
-            border: '1px solid var(--color-rosa)',
-            color: 'var(--color-vinho)',
-            fontSize: '0.75rem',
-            padding: '6px 10px',
-            borderRadius: 'var(--radius-sm)'
-          }}
-          title="Alternar para ver o aplicativo com a visão da Gestante (Mariana)"
-        >
-          🌸 Ver como Gestante
-        </button>
       </div>
 
       {sucesso && (
@@ -326,52 +292,51 @@ export default function PartnerDashboard({ onNavigateEmergency, onNavigateQuiz, 
             </div>
             <div>
               <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: conectado ? '#1E7E34' : '#D35400' }}>
-                {conectado ? 'Parceira Conectada' : 'Vínculo Pendente'}
+                {conectado ? 'Parceira Gestante Conectada' : 'Aguardando Vínculo'}
               </span>
               <h3 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--color-vinho)' }}>
-                {gestanteConectada?.gestante_nome || 'Mariana Costa'}
+                {conectado ? (gestanteConectada?.gestante_nome || 'Gestante Conectada') : 'Nenhuma gestante conectada'}
               </h3>
             </div>
           </div>
 
-          {conectado ? (
+          {conectado && (
             <span className="badge-gold" style={{ fontSize: '0.75rem', padding: '4px 8px' }}>
               Semana {gestanteConectada?.semana_atual || marcos?.semana_atual || 24}
             </span>
-          ) : (
-            <button
-              onClick={() => handleConectarGestante(null)}
-              className="btn btn-primary"
-              style={{ fontSize: '0.78rem', padding: '6px 12px' }}
-            >
-              Conectar Demo
-            </button>
           )}
         </div>
 
         {!conectado && (
-          <form onSubmit={handleConectarGestante} style={{ marginTop: '12px' }}>
-            <p style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', marginBottom: '8px' }}>
-              Digite o código de parceiro gerado no perfil da gestante:
+          <form onSubmit={(e) => handleConectarGestante(e)} style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #F5D3B3' }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--color-text)', marginBottom: '8px' }}>
+              Digite o código de convite único gerado pela gestante na tela inicial dela:
             </p>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <input
                 type="text"
                 className="form-control"
                 placeholder="Ex: PARC-XXXXX"
                 value={codigoConvite}
                 onChange={(e) => setCodigoConvite(e.target.value.toUpperCase())}
-                style={{ flex: 1 }}
+                style={{ flex: 1, minWidth: '160px' }}
               />
-              <button type="submit" className="btn btn-primary" disabled={carregando}>
-                {carregando ? 'Ativando...' : 'Ativar'}
+              <button
+                type="submit"
+                disabled={carregando}
+                className="btn btn-primary"
+                style={{ backgroundColor: '#1E7E34', whiteSpace: 'nowrap' }}
+              >
+                {carregando ? 'Conectando...' : 'Conectar à Gestante'}
               </button>
             </div>
           </form>
         )}
       </div>
 
+
       {/* ALERTA DE EMERGÊNCIA EM TEMPO REAL */}
+
       {emergenciaAtiva ? (
         <div
           role="alert"

@@ -12,6 +12,10 @@ class Gestante(Base):
     email = Column(String(255), unique=True, index=True, nullable=False)
     senha_hash = Column(String(255), nullable=False)
     recusa_ia = Column(Boolean, default=False)
+    termos_aceitos_em = Column(DateTime, nullable=True)
+    termos_versao = Column(String(20), default="1.0-2026", nullable=True)
+    consentimento_dados_saude = Column(Boolean, default=False, nullable=True)
+    consentimento_dados_saude_em = Column(DateTime, nullable=True)
     criado_em = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     perfil_clinico = relationship("PerfilClinico", back_populates="gestante", uselist=False, cascade="all, delete-orphan")
@@ -43,6 +47,8 @@ class Profissional(Base):
     registro_uf = Column(String(2), nullable=False)
     documento_comprovante_path = Column(String(500), nullable=True)
     status_verificacao = Column(String(20), default="pendente", nullable=False)  # pendente | aprovado | rejeitado
+    termos_aceitos_em = Column(DateTime, nullable=True)
+    termos_versao = Column(String(20), default="1.0-2026", nullable=True)
     criado_em = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     vinculos = relationship("Vinculo", back_populates="profissional", cascade="all, delete-orphan")
@@ -57,6 +63,8 @@ class Parceiro(Base):
     nome = Column(String(255), nullable=False)
     email = Column(String(255), unique=True, index=True, nullable=False)
     senha_hash = Column(String(255), nullable=False)
+    termos_aceitos_em = Column(DateTime, nullable=True)
+    termos_versao = Column(String(20), default="1.0-2026", nullable=True)
     criado_em = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     vinculos = relationship("VinculoParceiro", back_populates="parceiro", cascade="all, delete-orphan")
