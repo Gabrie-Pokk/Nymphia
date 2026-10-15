@@ -194,3 +194,48 @@ def test_health_mostra_modelos_desligados_por_memoria(client, modelos_zerados):
     modelos_zerados["desligados_por_memoria"] = ["bem_estar_fetal", "malformacao"]
     res = client.get("/health")
     assert res.json()["modelos_desligados_por_memoria"] == ["bem_estar_fetal", "malformacao"]
+
+
+# --- Coolify (Hostinger) e endereço do banco ---
+
+def test_no_coolify_sem_environment_e_producao(monkeypatch):
+    from app.config import ambiente_de_desenvolvimento
+    for nome in ("ENVIRONMENT", "ENV", "RENDER"):
+        monkeypatch.delenv(nome, raising=False)
+    monkeypatch.setenv("COOLIFY_URL", "https://app.nymphia.com.br")
+    assert ambiente_de_desenvolvimento() is False
+
+
+def test_link_de_redefinicao_usa_o_endereco_do_coolify(monkeypatch):
+    from app.api.auth import _url_publica
+    for nome in ("NYMPHIA_URL_PUBLICA", "RENDER_EXTERNAL_URL"):
+        monkeypatch.delenv(nome, raising=False)
+    monkeypatch.setenv("COOLIFY_URL", "https://app.nymphia.com.br,https://www.nymphia.com.br")
+    assert _url_publica() == "https://app.nymphia.com.br"
+    monkeypatch.setenv("COOLIFY_URL", "app.nymphia.com.br")
+    assert _url_publica() == "https://app.nymphia.com.br"
+
+
+def test_url_publica_explicita_vence_o_coolify(monkeypatch):
+    from app.api.auth import _url_publica
+    monkeypatch.setenv("COOLIFY_URL", "https://abc.sslip.io")
+    monkeypatch.setenv("NYMPHIA_URL_PUBLICA", "https://app.nymphia.com.br/")
+    assert _url_publica() == "https://app.nymphia.com.br"
+
+
+@pytest.mark.parametrize("colado", [
+    "psql 'postgresql://u:p@ep-x.us-west-2.aws.neon.tech/neondb?sslmode=require'",
+    "  \"postgresql://u:p@ep-x.us-west-2.aws.neon.tech/neondb?sslmode=require\"  ",
+    "postgres://u:p@ep-x.us-west-2.aws.neon.tech/neondb?sslmode=require",
+])
+def test_endereco_do_banco_colado_de_varios_jeitos(colado):
+    from app.config import limpar_endereco_do_banco
+    assert limpar_endereco_do_banco(colado) == "postgresql://u:p@ep-x.us-west-2.aws.neon.tech/neondb?sslmode=require"
+
+
+def test_link_de_site_no_lugar_do_banco_e_explicado_sem_mostrar_o_valor():
+    from app.config import limpar_endereco_do_banco
+    with pytest.raises(RuntimeError) as erro:
+        limpar_endereco_do_banco("https://console.neon.tech/app/projects/segredo-123")
+    assert "postgresql://" in str(erro.value)
+    assert "segredo-123" not in str(erro.value)

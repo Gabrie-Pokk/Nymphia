@@ -1,7 +1,7 @@
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
-from app.config import settings
+from app.config import settings, limpar_endereco_do_banco
 
 raw_url = (
     os.getenv("DATABASE_URL")
@@ -11,11 +11,8 @@ raw_url = (
     or "sqlite:///./nymphia.db"
 )
 
-# Normaliza URLs geradas por provedores de nuvem (Render/Heroku usam postgres://, mas SQLAlchemy exige postgresql://)
-if raw_url.startswith("postgres://"):
-    db_url = raw_url.replace("postgres://", "postgresql://", 1)
-else:
-    db_url = raw_url
+# postgres:// vira postgresql://, aspas e "psql" na frente saem; link de site é recusado com explicação
+db_url = limpar_endereco_do_banco(raw_url)
 
 connect_args = {}
 engine_kwargs = {"echo": False}
