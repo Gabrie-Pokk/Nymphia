@@ -1,4 +1,4 @@
-import random
+import secrets
 import string
 from typing import List, Optional
 from datetime import datetime, timedelta
@@ -17,7 +17,7 @@ from app.schemas.all_schemas import (
     ResponderVinculoRequest, VinculoOut, PacientePainelItem,
     ObservacaoProfissionalCreate, ObservacaoProfissionalOut
 )
-from app.security.jwt_auth import get_current_gestante, get_current_profissional
+from app.security.jwt_auth import get_current_gestante, get_current_profissional, get_current_profissional_aprovado
 from app.services.ai_risk_service import calculate_maternal_risks
 
 router = APIRouter(prefix="/vinculo", tags=["Vínculo Gestante-Profissional e Painel"])
@@ -26,12 +26,12 @@ def generate_random_code(length: int = 8) -> str:
     chars = string.ascii_uppercase + string.digits
     # Avoid ambiguous characters (0, O, 1, I)
     clean_chars = "".join([c for c in chars if c not in "0O1I"])
-    return "".join(random.choices(clean_chars, k=length))
+    return "".join(secrets.choice(clean_chars) for _ in range(length))
 
 # --- PROFISSIONAL: GERAR CÓDIGO DE CONVITE ---
 @router.post("/convite/gerar", response_model=CodigoConviteOut)
 def gerar_codigo_convite(
-    prof: Profissional = Depends(get_current_profissional),
+    prof: Profissional = Depends(get_current_profissional_aprovado),
     db: Session = Depends(get_db)
 ):
     """
@@ -186,7 +186,7 @@ def listar_meus_profissionais(
 # --- PAINEL DO MÉDICO: ORDENAÇÃO POR PRIORIDADE DE URGÊNCIA ---
 @router.get("/minhas-gestantes", response_model=List[PacientePainelItem])
 def listar_minhas_gestantes(
-    prof: Profissional = Depends(get_current_profissional),
+    prof: Profissional = Depends(get_current_profissional_aprovado),
     db: Session = Depends(get_db)
 ):
     """
@@ -299,7 +299,7 @@ def listar_minhas_gestantes(
 @router.get("/paciente/{gestante_id}/ficha")
 def obter_ficha_paciente(
     gestante_id: str,
-    prof: Profissional = Depends(get_current_profissional),
+    prof: Profissional = Depends(get_current_profissional_aprovado),
     db: Session = Depends(get_db)
 ):
     # Verifica vínculo ativo
@@ -372,7 +372,7 @@ def obter_ficha_paciente(
 def adicionar_observacao_medica(
     gestante_id: str,
     payload: ObservacaoProfissionalCreate,
-    prof: Profissional = Depends(get_current_profissional),
+    prof: Profissional = Depends(get_current_profissional_aprovado),
     db: Session = Depends(get_db)
 ):
     """

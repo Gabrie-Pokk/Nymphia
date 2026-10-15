@@ -2,21 +2,32 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Users, AlertTriangle, Calendar, Clock, ChevronRight, UserPlus, RefreshCw } from 'lucide-react';
 import TriageDisclaimer from '../../components/TriageDisclaimer';
+import { apiFetch } from '../../utils/api';
 
 export default function DoctorDashboard({ onSelectPatient, onNavigateGenerateInvite }) {
   const { user, authHeaders } = useAuth();
   const [pacientes, setPacientes] = useState([]);
   const [carregando, setCarregando] = useState(true);
+  const [avisoConferencia, setAvisoConferencia] = useState(
+    user?.status_verificacao === 'pendente'
+      ? 'Seu registro profissional está em conferência pela equipe Nymphia. O acesso a pacientes é liberado depois da aprovação, e você recebe um e-mail quando isso acontecer.'
+      : ''
+  );
+  const [erroCarregamento, setErroCarregamento] = useState('');
 
   const carregarPacientes = async () => {
     setCarregando(true);
+    setErroCarregamento('');
     try {
-      const res = await fetch('/vinculo/minhas-gestantes', { headers: authHeaders() });
-      if (res.ok) {
-        const data = await res.json();
-        setPacientes(data);
-      }
+      const data = await apiFetch('/vinculo/minhas-gestantes');
+      setPacientes(Array.isArray(data) ? data : []);
+      setAvisoConferencia('');
     } catch (err) {
+      if (err.status === 403) {
+        setAvisoConferencia(err.message);
+      } else {
+        setErroCarregamento(err.message || 'Não foi possível carregar suas pacientes agora.');
+      }
     } finally {
       setCarregando(false);
     }
@@ -45,6 +56,21 @@ export default function DoctorDashboard({ onSelectPatient, onNavigateGenerateInv
           <UserPlus size={16} /> Gerar Convite
         </button>
       </div>
+
+      {avisoConferencia && (
+        <div
+          role="status"
+          className="card"
+          style={{ borderLeft: '4px solid #E67E22', backgroundColor: '#FEF5E7', padding: '14px 16px', marginBottom: '16px', fontSize: '0.88rem', lineHeight: 1.5 }}
+        >
+          <strong>Registro em conferência.</strong> {avisoConferencia}
+        </div>
+      )}
+      {erroCarregamento && (
+        <div role="alert" className="card" style={{ borderLeft: '4px solid var(--color-vermelho)', padding: '12px 16px', marginBottom: '16px', fontSize: '0.85rem' }}>
+          {erroCarregamento}
+        </div>
+      )}
 
       {/* Resumo de Urgência no Topo */}
       <div

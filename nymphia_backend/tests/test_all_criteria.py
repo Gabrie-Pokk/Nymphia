@@ -6,6 +6,8 @@ from datetime import datetime, timedelta, date
 # ==========================================
 def test_cadastro_gestante_cria_conta_e_retorna_token(client):
     res = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Maria Silva",
         "email": "maria@teste.com",
         "senha": "senhaSegura123"
@@ -18,6 +20,8 @@ def test_cadastro_gestante_cria_conta_e_retorna_token(client):
 
 def test_login_com_senha_errada_retorna_401(client):
     client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Carla Dias",
         "email": "carla@teste.com",
         "senha": "senhaCorreta123"
@@ -30,11 +34,15 @@ def test_login_com_senha_errada_retorna_401(client):
 
 def test_cadastro_com_email_repetido_retorna_409(client):
     client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Ana Lima",
         "email": "ana@teste.com",
         "senha": "senhaSegura123"
     })
     res = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Ana Lima Santos",
         "email": "ana@teste.com",
         "senha": "outraSenha456"
@@ -43,6 +51,7 @@ def test_cadastro_com_email_repetido_retorna_409(client):
 
 def test_conta_profissional_nao_acessa_rota_gestante(client):
     res_prof = client.post("/auth/profissional/cadastro", json={
+        "aceite_termos": True,
         "nome": "Dr. Lucas",
         "email": "lucas@med.com",
         "senha": "senhaMed123",
@@ -61,6 +70,8 @@ def test_conta_profissional_nao_acessa_rota_gestante(client):
 # ==========================================
 def test_onboarding_dum_dpp_e_historico_familiar(client):
     reg = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Juliana Santos",
         "email": "juliana@teste.com",
         "senha": "senhaSegura123"
@@ -124,6 +135,8 @@ def test_onboarding_dum_dpp_e_historico_familiar(client):
 # ==========================================
 def test_checkin_timestamp_servidor_e_alerta_urgencia(client):
     reg = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Patricia Oliveira",
         "email": "patricia@teste.com",
         "senha": "senhaSegura123"
@@ -167,6 +180,8 @@ def test_checkin_timestamp_servidor_e_alerta_urgencia(client):
 
 def test_isolamento_checkin_entre_gestantes(client):
     regA = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Gestante A",
         "email": "gestanteA@teste.com",
         "senha": "senhaSegura123"
@@ -174,6 +189,8 @@ def test_isolamento_checkin_entre_gestantes(client):
     tokenA = regA.json()["token"]
 
     regB = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Gestante B",
         "email": "gestanteB@teste.com",
         "senha": "senhaSegura123"
@@ -192,6 +209,8 @@ def test_isolamento_checkin_entre_gestantes(client):
 # ==========================================
 def test_conversa_urgencia_imediata_e_persistencia(client):
     reg = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Fernanda Costa",
         "email": "fernanda@teste.com",
         "senha": "senhaSegura123"
@@ -225,6 +244,8 @@ def test_conversa_urgencia_imediata_e_persistencia(client):
 # ==========================================
 def test_agenda_filtro_futuros_e_conclusao(client):
     reg = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Bianca Rangel",
         "email": "bianca@teste.com",
         "senha": "senhaSegura123"
@@ -270,9 +291,10 @@ def test_agenda_filtro_futuros_e_conclusao(client):
 # ==========================================
 # 6. TESTES DE VÍNCULO E PAINEL DO MÉDICO
 # ==========================================
-def test_vinculo_codigo_e_ordenacao_painel_urgencia(client):
+def test_vinculo_codigo_e_ordenacao_painel_urgencia(client, aprovar_profissional):
     # Cadastra profissional
     res_prof = client.post("/auth/profissional/cadastro", json={
+        "aceite_termos": True,
         "nome": "Dra. Helena",
         "email": "helena@med.com",
         "senha": "senhaMed123",
@@ -282,6 +304,11 @@ def test_vinculo_codigo_e_ordenacao_painel_urgencia(client):
     })
     token_prof = res_prof.json()["token"]
     headers_prof = {"Authorization": f"Bearer {token_prof}"}
+
+    # Profissional novo entra como pendente e não acessa pacientes
+    assert res_prof.json()["status_verificacao"] == "pendente"
+    assert client.post("/vinculo/convite/gerar", headers=headers_prof).status_code == 403
+    aprovar_profissional(res_prof.json()["id"])
 
     # 1. Profissional gera código de convite (NÃO cria vínculo ainda)
     res_cod = client.post("/vinculo/convite/gerar", headers=headers_prof)
@@ -295,6 +322,8 @@ def test_vinculo_codigo_e_ordenacao_painel_urgencia(client):
 
     # 2. Cadastra Gestante 1 e Gestante 2
     regG1 = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Zilda Alertas",
         "email": "zilda@teste.com",
         "senha": "senhaSegura123"
@@ -303,6 +332,8 @@ def test_vinculo_codigo_e_ordenacao_painel_urgencia(client):
     headersG1 = {"Authorization": f"Bearer {tokenG1}"}
 
     regG2 = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Alice SemCheckin",
         "email": "alice@teste.com",
         "senha": "senhaSegura123"
@@ -371,6 +402,8 @@ def test_emergencia_notificar_responde_com_samu(client):
 # ==========================================
 def test_conformidade_lgpd_exportacao_e_exclusao(client):
     reg = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Camila LGPD",
         "email": "camila@teste.com",
         "senha": "senhaSegura123"

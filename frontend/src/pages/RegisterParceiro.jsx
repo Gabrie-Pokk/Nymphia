@@ -3,6 +3,7 @@ import LotusLogo from '../components/LotusLogo';
 import { ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import BackButton from '../components/BackButton';
+import { apiFetch } from '../utils/api';
 import LegalModal from '../components/LegalModal';
 
 const NOME_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ\s'.-]{2,100}$/;
@@ -43,20 +44,18 @@ export default function RegisterParceiro({ onBackToLogin, onRegisterSuccess }) {
 
     setCarregando(true);
     try {
-      const res = await fetch('/auth/parceiro/cadastro', {
+      const data = await apiFetch('/auth/parceiro/cadastro', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        skipAuth: true,
+        timeout: 30000,
         body: JSON.stringify({
           nome: nomeTrim,
           email: email.trim().toLowerCase(),
           senha,
-          aceite_termos: true
+          aceite_termos: aceiteTermos
         })
       });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || 'Falha ao cadastrar parceiro.');
-      }
       login(data.token, data);
       if (onRegisterSuccess) onRegisterSuccess();
     } catch (err) {

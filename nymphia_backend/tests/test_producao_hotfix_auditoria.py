@@ -31,6 +31,8 @@ def test_emergencia_notificar_gestante_autenticada(client, db_session):
     Garante que gestante logada consegue acionar a rota normalmente.
     """
     res_cad = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Carla Oliveira",
         "email": "carla.emerg@teste.com",
         "senha": "SenhaForteSegura123!"
@@ -71,29 +73,35 @@ def test_global_exception_handler_sanitiza_em_producao_sem_vazar_sql(client, mon
     assert "syntax error" not in corpo["detalhe"]
     assert "instabilidade interna momentânea" in corpo["detalhe"]
 
-def test_recuperacao_senha_completa_gestante(client, db_session):
+def test_recuperacao_senha_completa_gestante(client, db_session, emails_enviados):
     """
-    Testa o ciclo completo de recuperação de senha:
-    1. Cadastro de usuário com senha A.
-    2. Solicitação de /auth/esqueci-senha -> gera token.
-    3. Envio de /auth/redefinir-senha com nova senha B.
-    4. Login com senha A falha (401).
-    5. Login com senha B tem sucesso (200).
+    Ciclo completo de recuperação de senha:
+    1. Cadastro com senha A.
+    2. /auth/esqueci-senha NÃO devolve o código na resposta; o link vai por e-mail.
+    3. /auth/redefinir-senha com o código do e-mail e a senha B.
+    4. Senha A deixa de funcionar; senha B funciona.
+    5. O mesmo link não funciona uma segunda vez.
     """
+    import re
     email = "recupera.gestante@teste.com"
     client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Bruna Teste",
         "email": email,
         "senha": "SenhaOriginal123!"
     })
 
-    # 1. Esqueci senha
+    # 1. Esqueci senha: resposta genérica, sem token
     res_esq = client.post("/auth/esqueci-senha", json={"email": email, "perfil": "gestante"})
     assert res_esq.status_code == 200
     dados_esq = res_esq.json()
     assert dados_esq["sucesso"] is True
-    token_reset = dados_esq["reset_token"]
-    assert token_reset is not None
+    assert "reset_token" not in dados_esq
+    assert len(emails_enviados) == 1
+    destinatario, _, corpo = emails_enviados[0]
+    assert destinatario == email
+    token_reset = re.search(r"\?redefinir=([A-Za-z0-9_\-]+)", corpo).group(1)
 
     # 2. Redefinir com senha curta deve ser rejeitado
     res_curta = client.post("/auth/redefinir-senha", json={
@@ -124,6 +132,13 @@ def test_recuperacao_senha_completa_gestante(client, db_session):
     })
     assert res_login_novo.status_code == 200
     assert "token" in res_login_novo.json()
+
+    # 6. O link vale uma única vez
+    res_reuso = client.post("/auth/redefinir-senha", json={
+        "token": token_reset,
+        "nova_senha": "OutraSenhaSegura789!"
+    })
+    assert res_reuso.status_code == 400
 
 def test_rotacao_automatica_invalida_senha_vazada(db_session):
     """

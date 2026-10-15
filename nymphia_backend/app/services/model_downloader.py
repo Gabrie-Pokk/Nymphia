@@ -27,11 +27,12 @@ DEFAULT_BERTIMBAU_FILES = {
 
 
 def _get_ssl_context():
-    """Gera contexto SSL tolerante a certificados intermediários."""
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-    return ctx
+    """
+    Contexto TLS com verificação de certificado LIGADA. Antes a verificação
+    estava desligada (CERT_NONE), o que deixava alguém no meio da conexão
+    trocar o arquivo do modelo por outro sem o servidor perceber.
+    """
+    return ssl.create_default_context()
 
 
 def baixar_arquivo_google_drive(file_id: str, destino: Path):

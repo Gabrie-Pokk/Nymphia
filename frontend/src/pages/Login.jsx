@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import LotusLogo, { NymphiaBrandName } from '../components/LotusLogo';
 import { Eye, EyeOff, Lock, Mail, ArrowRight, CheckCircle, AlertTriangle, ShieldCheck, X, KeyRound, Check } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -37,6 +37,23 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateRe
   const [carregandoRecuperacao, setCarregandoRecuperacao] = useState(false);
   const [erroRecuperacao, setErroRecuperacao] = useState('');
   const [sucessoRecuperacao, setSucessoRecuperacao] = useState('');
+  const [pedidoEnviado, setPedidoEnviado] = useState(false);
+
+  // Link do e-mail de redefinição: https://.../?redefinir=CODIGO
+  // O código é lido uma vez e apagado da barra de endereço na mesma hora,
+  // para não ficar no histórico do navegador nem vazar para outros sites.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const codigo = params.get('redefinir');
+    if (codigo) {
+      setTokenRecuperacao(codigo);
+      setEtapaEsqueci(2);
+      setModalEsqueciAberto(true);
+      params.delete('redefinir');
+      const resto = params.toString();
+      window.history.replaceState({}, '', window.location.pathname + (resto ? `?${resto}` : ''));
+    }
+  }, []);
 
   const verificarCrmAoDigitar = async (numDigitado, ufDigitada) => {
     const numCrm = (numDigitado !== undefined ? numDigitado : crm).trim().replace(/[^0-9]/g, '');
@@ -73,14 +90,12 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateRe
         body: JSON.stringify({ email: emailRecuperacao.trim(), perfil }),
         skipAuth: true
       });
-      if (res && res.reset_token) {
-        setTokenRecuperacao(res.reset_token);
-        setSucessoRecuperacao('Token de redefinição validado. Digite sua nova senha abaixo:');
-        setEtapaEsqueci(2);
-      } else {
-        setSucessoRecuperacao(res.mensagem || 'Orientações enviadas. Verifique o código recebido.');
-        setEtapaEsqueci(2);
-      }
+      // O código nunca vem na resposta: ele vai só para o e-mail da conta.
+      setSucessoRecuperacao(
+        (res && res.mensagem) ||
+        'Se o e-mail estiver cadastrado, enviamos um link para redefinir a senha. Ele vale por 30 minutos.'
+      );
+      setPedidoEnviado(true);
     } catch (err) {
       setErroRecuperacao(err.message || 'Falha ao solicitar recuperação de senha.');
     } finally {
@@ -93,7 +108,7 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateRe
     setErroRecuperacao('');
     setSucessoRecuperacao('');
     if (!tokenRecuperacao) {
-      setErroRecuperacao('Informe o token de redefinição.');
+      setErroRecuperacao('Abra o link enviado para o seu e-mail ou cole aqui o código que veio nele.');
       return;
     }
     if (novaSenha.length < 8) {
@@ -122,6 +137,7 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateRe
         setNovaSenha('');
         setConfirmarNovaSenha('');
         setTokenRecuperacao('');
+        setPedidoEnviado(false);
       }, 2000);
     } catch (err) {
       setErroRecuperacao(err.message || 'Falha ao salvar a nova senha.');
@@ -390,7 +406,11 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateRe
                   <>
                     <CheckCircle size={16} color="#2E7D32" style={{ flexShrink: 0, marginTop: '2px' }} />
                     <div>
-                      <strong>CRM {crmStatus.crm}/{crmStatus.uf} Válido & Ativo</strong>
+                      <strong>
+                        {crmStatus.situacao === 'ENCONTRADO_NO_CREMESP'
+                          ? `CRM ${crmStatus.crm}/${crmStatus.uf} encontrado no CREMESP`
+                          : `CRM ${crmStatus.crm}/${crmStatus.uf}: formato aceito`}
+                      </strong>
                       <div style={{ fontSize: '0.72rem' }}>{crmStatus.mensagem}</div>
                     </div>
                   </>
@@ -398,7 +418,7 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateRe
                   <>
                     <AlertTriangle size={16} color="#C62828" style={{ flexShrink: 0, marginTop: '2px' }} />
                     <div>
-                      <strong>CRM Não Homologado ou Inativo</strong>
+                      <strong>CRM não aceito</strong>
                       <div style={{ fontSize: '0.72rem' }}>{crmStatus.mensagem}</div>
                     </div>
                   </>
@@ -659,7 +679,7 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateRe
             {etapaEsqueci === 1 ? (
               <form onSubmit={handleSolicitarRecuperacao}>
                 <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.5, marginBottom: '16px' }}>
-                  Digite o e-mail associado à sua conta. Geraremos um token temporário seguro para você redefinir sua senha.
+                  Digite o e-mail da sua conta. Enviaremos um link para criar uma senha nova. O link vale por 30 minutos e funciona uma única vez.
                 </p>
 
                 <div className="form-group" style={{ marginBottom: '16px' }}>
@@ -688,10 +708,10 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateRe
                   <button
                     type="submit"
                     className="btn btn-primary"
-                    disabled={carregandoRecuperacao}
+                    disabled={carregandoRecuperacao || pedidoEnviado}
                     style={{ flex: 1.5, minHeight: '42px', fontSize: '0.85rem' }}
                   >
-                    {carregandoRecuperacao ? 'Processando...' : 'Avançar'}
+                    {carregandoRecuperacao ? 'Enviando...' : pedidoEnviado ? 'Link enviado' : 'Enviar link'}
                   </button>
                 </div>
               </form>
@@ -702,12 +722,13 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateRe
                 </p>
 
                 <div className="form-group" style={{ marginBottom: '12px' }}>
-                  <label htmlFor="recupera-token" style={{ fontSize: '0.82rem', fontWeight: 600 }}>Código / Token de Validação</label>
+                  <label htmlFor="recupera-token" style={{ fontSize: '0.82rem', fontWeight: 600 }}>Código do e-mail (o link já preenche sozinho)</label>
                   <input
                     id="recupera-token"
                     type="text"
                     className="form-control"
-                    placeholder="Cole ou confirme o token recebido"
+                    autoComplete="off"
+                    placeholder="Cole o código que veio no e-mail"
                     value={tokenRecuperacao}
                     onChange={(e) => setTokenRecuperacao(e.target.value)}
                     required

@@ -24,6 +24,12 @@ import {
   Sliders
 } from 'lucide-react';
 
+// Números em kg no formato brasileiro (4,2 em vez de 4.23)
+const formatarKg = (valor) =>
+  valor === null || valor === undefined || Number.isNaN(Number(valor))
+    ? '-'
+    : Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
 export default function Antropometria({ onBack }) {
   const { authHeaders, logout } = useAuth();
   const [painel, setPainel] = useState(null);
@@ -77,7 +83,7 @@ export default function Antropometria({ onBack }) {
       if (data.altura_cm) setFormAltura(data.altura_cm);
       if (data.peso_pre_gestacional) setFormPesoPre(data.peso_pre_gestacional);
 
-      // Pré-preenche exames interativos com valores detectados pelo OCR do backend se houver
+      // Pré-preenche exames interativos com valores registrados, se houver (não há leitura automática de laudo)
       const ident = data?.guia_educativo?.nutricao_personalizada_exames?.valores_identificados;
       if (ident) {
         setExamesInterativos((prev) => ({
@@ -161,7 +167,7 @@ export default function Antropometria({ onBack }) {
       setSucessoMsg('Nova pesagem registrada com sucesso!');
       setModalSucessoDados({
         title: 'Pesagem Registrada com Sucesso! ⚖️',
-        subtitle: 'Seu registro antropométrico foi plotado nas Curvas Nacionais UFRJ / Ministério da Saúde (2022) e analisado pelas diretrizes vigentes.',
+        subtitle: 'Sua pesagem foi comparada com a recomendação brasileira de ganho de peso (FEBRASGO 2023).',
         highlightText: `Semana ${novaSemana} • ${novoPeso} kg ${novaAU ? '• Altura Uterina: ' + novaAU + ' cm' : ''}`,
         confirmButtonText: 'Continuar no Painel'
       });
@@ -225,7 +231,7 @@ export default function Antropometria({ onBack }) {
         <div>
           <h2 style={{ margin: 0, fontSize: '1.4rem' }}>Antropometria Gestacional</h2>
           <p className="text-muted" style={{ fontSize: '0.82rem', margin: '4px 0 0 0' }}>
-            Curvas Nacionais UFRJ / Ministério da Saúde (2022) & Altura Uterina (P10-P90)
+            Ganho de peso pela referência brasileira & Altura Uterina (P10-P90)
           </p>
         </div>
         <span className="badge-gold">Padrão MS 2022</span>
@@ -365,7 +371,7 @@ export default function Antropometria({ onBack }) {
         ) : (
           <div style={{ padding: '12px', textAlign: 'center', backgroundColor: '#FFF5F7', borderRadius: 'var(--radius-md)' }}>
             <p style={{ margin: '0 0 8px 0', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-              Informe sua altura e peso de antes da gravidez para calcularmos sua Curva de Atalah personalizada.
+              Informe sua altura e peso de antes da gravidez para calcularmos sua faixa de ganho de peso.
             </p>
             <button
               onClick={() => setModalBaseAberto(true)}
@@ -432,7 +438,7 @@ export default function Antropometria({ onBack }) {
           </div>
         </div>
 
-        {/* Diagnóstico da Curva UFRJ / Ministério da Saúde (2022) */}
+        {/* Avaliação do ganho de peso pela referência brasileira (FEBRASGO 2023) */}
         {ganhoUFRJ && (
           <div
             style={{
@@ -446,7 +452,7 @@ export default function Antropometria({ onBack }) {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
               <span style={{ fontWeight: 700, fontSize: '0.92rem', color: ganhoUFRJ.cor }}>
-                Classificação UFRJ / MS (2022): {ganhoUFRJ.diagnostico}
+                Ganho de peso (referência brasileira): {ganhoUFRJ.diagnostico}
               </span>
               <span className="badge-gold" style={{ fontSize: '0.7rem' }}>Semana {ganhoUFRJ.semana}</span>
             </div>
@@ -456,7 +462,7 @@ export default function Antropometria({ onBack }) {
             </p>
 
             <div style={{ padding: '8px 10px', backgroundColor: '#F8F9FA', borderRadius: '6px', fontSize: '0.78rem', color: '#555', marginBottom: '8px' }}>
-              <div><strong>Faixa recomendada para esta semana:</strong> {ganhoUFRJ.ganho_esperado_min_kg ?? ganhoUFRJ.limite_baixo} a {ganhoUFRJ.ganho_esperado_max_kg ?? ganhoUFRJ.limite_adequado} kg</div>
+              <div><strong>Faixa recomendada para esta semana:</strong> {formatarKg(ganhoUFRJ.ganho_esperado_min_kg ?? ganhoUFRJ.limite_baixo)} a {formatarKg(ganhoUFRJ.ganho_esperado_max_kg ?? ganhoUFRJ.limite_adequado)} kg</div>
               {ganhoUFRJ.ganho_semanal_referencia && (
                 <div style={{ marginTop: '2px' }}><strong>Ritmo semanal de referência:</strong> {ganhoUFRJ.ganho_semanal_referencia}</div>
               )}
@@ -465,9 +471,9 @@ export default function Antropometria({ onBack }) {
             {/* Barra Visual de Ganho Ponderal */}
             <div style={{ marginTop: '8px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--color-text-muted)', marginBottom: '4px' }}>
-                <span>Abaixo (&lt;{ganhoUFRJ.ganho_esperado_min_kg ?? ganhoUFRJ.limite_baixo} kg)</span>
-                <span style={{ color: '#27AE60', fontWeight: 600 }}>Faixa Esperada ({ganhoUFRJ.ganho_esperado_min_kg ?? ganhoUFRJ.limite_baixo} a {ganhoUFRJ.ganho_esperado_max_kg ?? ganhoUFRJ.limite_adequado} kg)</span>
-                <span>Acima (&gt;{ganhoUFRJ.ganho_esperado_max_kg ?? ganhoUFRJ.limite_adequado} kg)</span>
+                <span>Abaixo (&lt;{formatarKg(ganhoUFRJ.ganho_esperado_min_kg ?? ganhoUFRJ.limite_baixo)} kg)</span>
+                <span style={{ color: '#27AE60', fontWeight: 600 }}>Faixa Esperada ({formatarKg(ganhoUFRJ.ganho_esperado_min_kg ?? ganhoUFRJ.limite_baixo)} a {formatarKg(ganhoUFRJ.ganho_esperado_max_kg ?? ganhoUFRJ.limite_adequado)} kg)</span>
+                <span>Acima (&gt;{formatarKg(ganhoUFRJ.ganho_esperado_max_kg ?? ganhoUFRJ.limite_adequado)} kg)</span>
               </div>
               <div style={{ height: '8px', borderRadius: '4px', backgroundColor: '#E0E0E0', display: 'flex', overflow: 'hidden' }}>
                 <div style={{ flex: 1.2, backgroundColor: '#E67E22' }} title="Abaixo da Faixa" />
@@ -506,7 +512,7 @@ export default function Antropometria({ onBack }) {
           style={{ flex: 1, fontSize: '0.82rem', padding: '8px 4px' }}
           onClick={() => setSecaoAberta('ufrj')}
         >
-          <Activity size={16} style={{ marginRight: '4px' }} /> Curva UFRJ / MS
+          <Activity size={16} style={{ marginRight: '4px' }} /> Curva de ganho
         </button>
         <button
           className={`btn ${secaoAberta === 'guia' ? 'btn-primary' : 'btn-secondary'}`}
@@ -529,52 +535,63 @@ export default function Antropometria({ onBack }) {
         <div className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
             <h3 style={{ fontSize: '1rem', color: 'var(--color-vinho)', margin: 0 }}>
-              Curvas de Ganho Ponderal (UFRJ / Ministério da Saúde 2022)
+              Curvas brasileiras de ganho de peso (Ministério da Saúde 2022 / FEBRASGO 2023)
             </h3>
             <span className="badge-gold" style={{ fontSize: '0.7rem' }}>Vigente no Brasil</span>
           </div>
           
           <p style={{ fontSize: '0.85rem', lineHeight: '1.45', color: 'var(--color-text)', marginBottom: '8px' }}>
-            Em agosto de 2022, o <strong>Ministério da Saúde do Brasil</strong> e a <strong>FEBRASGO</strong> substituíram a antiga curva de Atalah pelas curvas nacionais desenvolvidas pelo <strong>Observatório de Epidemiologia Nutricional da UFRJ</strong> e Consórcio Brasileiro de Nutrição Materno-Infantil.
+            Em 2022 o <strong>Ministério da Saúde</strong> passou a usar, na Caderneta da Gestante, as <strong>curvas brasileiras de ganho de peso</strong> criadas pelo Consórcio Brasileiro de Nutrição Materno-Infantil (coordenado na UFRJ) a partir de gestantes brasileiras. Em 2023 a <strong>FEBRASGO</strong> publicou as faixas recomendadas abaixo.
           </p>
           <p style={{ fontSize: '0.82rem', lineHeight: '1.45', color: '#666', marginBottom: '12px' }}>
-            A nova referência nacional baseia-se no IMC de antes da gestação e estabelece ganhos graduais no 1º trimestre (0,5 a 2,0 kg) e ritmos semanais a partir da 14ª semana, evitando classificar ganhos excessivos como 'adequados'.
+            Os valores são o ganho <strong>acumulado</strong> desde antes da gravidez. No 1º trimestre é normal ganhar pouco ou até perder um pouco de peso. Entre os marcos de 13, 27 e 40 semanas o app calcula a faixa em linha reta, que é uma aproximação das curvas oficiais.
           </p>
 
           <div style={{ padding: '12px', backgroundColor: '#FAF6F7', borderRadius: 'var(--radius-md)' }}>
             <h4 style={{ margin: '0 0 10px 0', fontSize: '0.88rem', color: 'var(--color-vinho)' }}>
-              Metas Oficiais de Ganho Ponderal (UFRJ / MS 2022):
+              Ganho de peso recomendado (FEBRASGO 2023):
             </h4>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px', fontSize: '0.8rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #EEE' }}>
-                <div>
-                  <strong>Baixo Peso Inicial</strong> (IMC &lt; 18,5)
-                  <span style={{ display: 'block', fontSize: '0.72rem', color: '#666' }}>Ganho semanal 2º/3º tri: 0,44 a 0,58 kg</span>
+              <div style={{ padding: '6px 0', borderBottom: '1px solid #EEE' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <strong>Baixo peso</strong>
+                  <span style={{ color: '#E67E22', fontWeight: 700, fontSize: '0.9rem' }}>9,7 a 12,2 kg até 40 sem.</span>
                 </div>
-                <span style={{ color: '#E67E22', fontWeight: 700, fontSize: '0.9rem' }}>12,5 a 18,0 kg</span>
+                <span style={{ display: 'block', fontSize: '0.72rem', color: '#666' }}>
+                  IMC antes da gestação menor que 18,5 • até 13 sem.: 0,2 a 1,2 kg • até 27 sem.: 5,6 a 7,2 kg
+                </span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #EEE' }}>
-                <div>
-                  <strong>Adequado Inicial</strong> (IMC 18,5 a 24,9)
-                  <span style={{ display: 'block', fontSize: '0.72rem', color: '#666' }}>Ganho semanal 2º/3º tri: 0,35 a 0,50 kg</span>
+              <div style={{ padding: '6px 0', borderBottom: '1px solid #EEE' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <strong>Adequado</strong>
+                  <span style={{ color: '#27AE60', fontWeight: 700, fontSize: '0.9rem' }}>8,0 a 12,0 kg até 40 sem.</span>
                 </div>
-                <span style={{ color: '#27AE60', fontWeight: 700, fontSize: '0.9rem' }}>11,5 a 16,0 kg</span>
+                <span style={{ display: 'block', fontSize: '0.72rem', color: '#666' }}>
+                  IMC de 18,5 a menos de 25 • até 13 sem.: -1,8 a 0,7 kg • até 27 sem.: 3,1 a 6,3 kg
+                </span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #EEE' }}>
-                <div>
-                  <strong>Sobrepeso Inicial</strong> (IMC 25,0 a 29,9)
-                  <span style={{ display: 'block', fontSize: '0.72rem', color: '#666' }}>Ganho semanal 2º/3º tri: 0,23 a 0,33 kg</span>
+              <div style={{ padding: '6px 0', borderBottom: '1px solid #EEE' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <strong>Sobrepeso</strong>
+                  <span style={{ color: '#F39C12', fontWeight: 700, fontSize: '0.9rem' }}>7,0 a 9,0 kg até 40 sem.</span>
                 </div>
-                <span style={{ color: '#F39C12', fontWeight: 700, fontSize: '0.9rem' }}>7,0 a 11,5 kg</span>
+                <span style={{ display: 'block', fontSize: '0.72rem', color: '#666' }}>
+                  IMC de 25 a menos de 30 • até 13 sem.: -1,6 a -0,05 kg • até 27 sem.: 2,3 a 3,7 kg
+                </span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}>
-                <div>
-                  <strong>Obesidade Inicial</strong> (IMC &ge; 30,0)
-                  <span style={{ display: 'block', fontSize: '0.72rem', color: '#666' }}>Ganho semanal 2º/3º tri: 0,17 a 0,27 kg</span>
+              <div style={{ padding: '6px 0',  }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <strong>Obesidade</strong>
+                  <span style={{ color: '#C0392B', fontWeight: 700, fontSize: '0.9rem' }}>5,0 a 7,2 kg até 40 sem.</span>
                 </div>
-                <span style={{ color: '#C0392B', fontWeight: 700, fontSize: '0.9rem' }}>5,0 a 9,0 kg</span>
+                <span style={{ display: 'block', fontSize: '0.72rem', color: '#666' }}>
+                  IMC de 30 ou mais • até 13 sem.: -1,6 a -0,05 kg • até 27 sem.: 1,1 a 2,7 kg
+                </span>
               </div>
             </div>
+            <p style={{ fontSize: '0.7rem', color: '#888', margin: '10px 0 0' }}>
+              Fonte: Surita FG et al., Rev Bras Ginecol Obstet 2023;45(2):104-108, com base em Kac G et al., Am J Clin Nutr 2021. Vale para gestante adulta com um bebê só.
+            </p>
           </div>
         </div>
       )}

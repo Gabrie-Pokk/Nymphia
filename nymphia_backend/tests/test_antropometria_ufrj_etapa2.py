@@ -11,46 +11,55 @@ from app.services.anthropometry_service import (
 from app.models.clinical import PerfilClinico, RegistroAntropometrico
 
 
-def test_tabela_ufrj_ms_pontos_de_corte():
-    """Valida as categorias oficiais da UFRJ / Ministério da Saúde (Agosto de 2022)."""
-    assert "baixo_peso" in TABELA_GANHO_UFRJ_MS_2022
-    assert "adequado" in TABELA_GANHO_UFRJ_MS_2022
-    assert "sobrepeso" in TABELA_GANHO_UFRJ_MS_2022
-    assert "obesidade" in TABELA_GANHO_UFRJ_MS_2022
-
-    # Metas de ganho total
-    assert TABELA_GANHO_UFRJ_MS_2022["baixo_peso"]["ganho_total_min"] == 12.5
-    assert TABELA_GANHO_UFRJ_MS_2022["baixo_peso"]["ganho_total_max"] == 18.0
-    assert TABELA_GANHO_UFRJ_MS_2022["adequado"]["ganho_total_min"] == 11.5
-    assert TABELA_GANHO_UFRJ_MS_2022["adequado"]["ganho_total_max"] == 16.0
-    assert TABELA_GANHO_UFRJ_MS_2022["sobrepeso"]["ganho_total_min"] == 7.0
-    assert TABELA_GANHO_UFRJ_MS_2022["sobrepeso"]["ganho_total_max"] == 11.5
-    assert TABELA_GANHO_UFRJ_MS_2022["obesidade"]["ganho_total_min"] == 5.0
-    assert TABELA_GANHO_UFRJ_MS_2022["obesidade"]["ganho_total_max"] == 9.0
-
-    # Taxas de ganho semanal
-    assert TABELA_GANHO_UFRJ_MS_2022["baixo_peso"]["ganho_semanal_min"] == 0.44
-    assert TABELA_GANHO_UFRJ_MS_2022["baixo_peso"]["ganho_semanal_max"] == 0.58
-    assert TABELA_GANHO_UFRJ_MS_2022["adequado"]["ganho_semanal_min"] == 0.35
-    assert TABELA_GANHO_UFRJ_MS_2022["adequado"]["ganho_semanal_max"] == 0.50
-    assert TABELA_GANHO_UFRJ_MS_2022["sobrepeso"]["ganho_semanal_min"] == 0.23
-    assert TABELA_GANHO_UFRJ_MS_2022["sobrepeso"]["ganho_semanal_max"] == 0.33
-    assert TABELA_GANHO_UFRJ_MS_2022["obesidade"]["ganho_semanal_min"] == 0.17
-    assert TABELA_GANHO_UFRJ_MS_2022["obesidade"]["ganho_semanal_max"] == 0.27
+def test_tabela_brasileira_febrasgo_2023():
+    """
+    Valores acumulados da FEBRASGO 2023 (Surita et al., RBGO 45(2):104-108, Quadro 1),
+    conferidos em 15/10/2026. Antes o código usava os valores do IOM 2009.
+    """
+    esperado = {
+        "baixo_peso": {13: (0.2, 1.2), 27: (5.6, 7.2), 40: (9.7, 12.2)},
+        "adequado": {13: (-1.8, 0.7), 27: (3.1, 6.3), 40: (8.0, 12.0)},
+        "sobrepeso": {13: (-1.6, -0.05), 27: (2.3, 3.7), 40: (7.0, 9.0)},
+        "obesidade": {13: (-1.6, -0.05), 27: (1.1, 2.7), 40: (5.0, 7.2)},
+    }
+    for categoria, marcos in esperado.items():
+        assert TABELA_GANHO_UFRJ_MS_2022[categoria]["marcos"] == marcos
+        assert TABELA_GANHO_UFRJ_MS_2022[categoria]["ganho_total_min"] == marcos[40][0]
+        assert TABELA_GANHO_UFRJ_MS_2022[categoria]["ganho_total_max"] == marcos[40][1]
+        # A faixa calculada bate exatamente com os marcos publicados
+        for semana, faixa in marcos.items():
+            assert calcular_faixa_ganho_esperado_ufrj(categoria, semana) == faixa
 
 
-def test_convergencia_curva_ufrj_semanas():
-    """Valida a progressão no 1º trimestre e convergência na 40ª semana."""
-    # Semana 13: Ganho total esperado de 0,5 a 2,0 kg
-    g_min_13, g_max_13 = calcular_faixa_ganho_esperado_ufrj("adequado", 13)
-    assert g_min_13 == 0.50
-    assert g_max_13 == 2.00
+def test_valores_do_iom_nao_estao_mais_na_tabela():
+    totais = {(d["ganho_total_min"], d["ganho_total_max"]) for d in TABELA_GANHO_UFRJ_MS_2022.values()}
+    for valor_iom in [(12.5, 18.0), (11.5, 16.0), (7.0, 11.5), (5.0, 9.0)]:
+        assert valor_iom not in totais
 
-    # Semana 40: Convergência exata para as faixas totais
-    for cat_chave, valores in TABELA_GANHO_UFRJ_MS_2022.items():
-        g_min_40, g_max_40 = calcular_faixa_ganho_esperado_ufrj(cat_chave, 40)
-        assert g_min_40 == valores["ganho_total_min"]
-        assert g_max_40 == valores["ganho_total_max"]
+
+def test_interpolacao_entre_marcos():
+    # Semana 0: nenhum ganho
+    assert calcular_faixa_ganho_esperado_ufrj("adequado", 0) == (0.0, 0.0)
+    # Semana 20 (meio do caminho entre 13 e 27): média dos marcos
+    assert calcular_faixa_ganho_esperado_ufrj("adequado", 20) == (0.65, 3.5)
+    # Depois de 40 semanas vale a faixa da 40ª
+    assert calcular_faixa_ganho_esperado_ufrj("adequado", 42) == (8.0, 12.0)
+
+
+def test_eutrofica_com_15_kg_na_40a_semana_esta_acima():
+    """Com o IOM este caso aparecia como adequado (11,5 a 16 kg)."""
+    res = classificar_ganho_ponderal_ufrj_ms(semana=40, peso_atual_kg=75.0, peso_pre_kg=60.0, altura_cm=165.0)
+    assert res["status"] == "ACIMA"
+    assert res["ganho_esperado_min_kg"] == 8.0
+    assert res["ganho_esperado_max_kg"] == 12.0
+
+
+def test_cortes_de_imc():
+    assert classificar_imc_pre_gestacional(18.49)["categoria"] == "Baixo Peso"
+    assert classificar_imc_pre_gestacional(18.5)["categoria"] == "Adequado (Eutrófica)"
+    assert classificar_imc_pre_gestacional(24.99)["categoria"] == "Adequado (Eutrófica)"
+    assert classificar_imc_pre_gestacional(25.0)["categoria"] == "Sobrepeso"
+    assert classificar_imc_pre_gestacional(30.0)["categoria"] == "Obesidade"
 
 
 def test_adolescente_fora_do_escopo_ufrj():
@@ -140,6 +149,20 @@ def test_endpoint_painel_antropometria_retorna_ufrj(client, db_session):
     gestante_token = cad_res.json()["token"]
     headers = {"Authorization": f"Bearer {gestante_token}"}
 
+    # Sem cadastro clínico, altura e peso não são aceitos (nada de DUM inventada)
+    sem_perfil = client.post("/antropometria/perfil-base", json={
+        "altura_cm": 165.0, "peso_pre_gestacional": 60.0
+    }, headers=headers)
+    assert sem_perfil.status_code == 409
+
+    # Cadastro clínico com DUM de 22 semanas atrás
+    dum = date.today() - timedelta(days=22 * 7)
+    perfil_res = client.post("/perfil-clinico", json={
+        "idade": 28, "gestacoes_anteriores": 0, "partos_normais": 0, "partos_cesareos": 0,
+        "perdas_gestacionais": 0, "dum": dum.isoformat(), "dpp": (dum + timedelta(days=280)).isoformat()
+    }, headers=headers)
+    assert perfil_res.status_code == 201, perfil_res.text
+
     # Atualiza perfil base (altura e peso pré-gestacional)
     base_res = client.post("/antropometria/perfil-base", json={
         "altura_cm": 165.0,
@@ -169,6 +192,10 @@ def test_endpoint_painel_antropometria_retorna_ufrj(client, db_session):
     assert "avaliacao_ganho_ufrj" in data
     ufrj = data["avaliacao_ganho_ufrj"]
     assert ufrj is not None
-    assert "UFRJ / Ministério da Saúde" in ufrj["referencia"]
-    assert ufrj["status"] == "ADEQUADO"
+    assert "FEBRASGO 2023" in ufrj["referencia"]
+    # Semana 22 (informada na pesagem), eutrófica: faixa de 1,35 a 4,3 kg; 5 kg fica acima
+    assert ufrj["semana"] == 22
+    assert ufrj["status"] == "ACIMA"
+    # A curva de Atalah não é mais usada
+    assert data["avaliacao_atalah"] is None
     assert ufrj["fora_do_escopo"] is False

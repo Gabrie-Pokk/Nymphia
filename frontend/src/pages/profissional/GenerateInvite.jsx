@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
+import { apiFetch } from '../../utils/api';
 import { QrCode, Copy, Share2, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export default function GenerateInvite({ onBack }) {
@@ -16,14 +17,7 @@ export default function GenerateInvite({ onBack }) {
     setErro('');
     setCopiado(false);
     try {
-      const res = await fetch('/vinculo/convite/gerar', {
-        method: 'POST',
-        headers: authHeaders()
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || 'Falha ao gerar código de convite.');
-      }
+      const data = await apiFetch('/vinculo/convite/gerar', { method: 'POST' });
       setCodigo(data.codigo);
       setExpiraEm(data.expira_em);
     } catch (err) {

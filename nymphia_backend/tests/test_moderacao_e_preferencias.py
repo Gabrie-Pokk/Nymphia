@@ -39,6 +39,8 @@ def test_chat_ia_alerta_emergencia():
 
 def test_preferencias_comunidade_api(client):
     reg = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Marina Silva",
         "email": "marina.comunidade@teste.com",
         "senha": "senhaSegura123"

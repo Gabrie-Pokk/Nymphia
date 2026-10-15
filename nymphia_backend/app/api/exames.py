@@ -13,17 +13,11 @@ from app.storage.object_storage import save_uploaded_file
 
 router = APIRouter(prefix="/exames", tags=["Exames e Laudos"])
 
-def simulate_ocr_extraction(tipo: str) -> dict:
-    tipo_lower = tipo.lower()
-    if "sangue" in tipo_lower or "hemograma" in tipo_lower:
-        return {"hemoglobina": 12.4, "hematocrito": 37.2, "leucocitos": 8400, "plaquetas": 225000, "status": "dentro_dos_limites"}
-    elif "glicemia" in tipo_lower or "glicose" in tipo_lower:
-        return {"glicemia_jejum_mg_dl": 84.0, "status": "normal_primeiro_tri"}
-    elif "urina" in tipo_lower or "eas" in tipo_lower:
-        return {"leucocitos": "raros", "hemacias": "raras", "nitrito": "negativo", "status": "sem_sinais_infeccao"}
-    elif "toxoplasmose" in tipo_lower:
-        return {"igg": "reagente", "igm": "nao_reagente", "status": "imunidade_previa_sem_infeccao_aguda"}
-    return {"status": "processado_automaticamente", "nota": "Valores estruturados disponíveis no laudo"}
+# Até 15/10/2026 havia aqui uma função "simulate_ocr_extraction" que devolvia
+# resultados INVENTADOS conforme o nome do exame (ex.: toda glicemia virava
+# 84 mg/dL "normal"). Esses números apareciam na tela como se tivessem sido
+# lidos do laudo e alimentavam o guia nutricional. Isso foi removido: até
+# existir leitura automática validada, nenhum valor é extraído do arquivo.
 
 @router.post("/upload", response_model=ExameOut, status_code=status.HTTP_201_CREATED)
 async def upload_exame(
@@ -35,11 +29,11 @@ async def upload_exame(
     db: Session = Depends(get_db)
 ):
     """
-    Upload de exame médico com gravação em armazenamento de objeto seguro (UUID)
-    e extração automática de dados por OCR. O arquivo NUNCA é salvo no banco de dados.
+    Upload de exame com gravação em armazenamento protegido (nome aleatório).
+    O arquivo NUNCA é salvo no banco. Não há leitura automática dos valores.
     """
     saved_url = await save_uploaded_file(arquivo, prefix=f"exame_{gestante.id[:8]}")
-    valores_extraidos = simulate_ocr_extraction(tipo)
+    valores_extraidos = None
 
     novo_exame = Exame(
         gestante_id=gestante.id,
@@ -79,6 +73,13 @@ def obter_exame_por_id(
         if exame.gestante_id != user_id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso negado a exame de outra gestante")
     elif perfil == "profissional":
+        prof = db.query(Profissional).filter(Profissional.id == user_id).first()
+        if not prof or prof.status_verificacao != "aprovado":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Seu registro profissional está em conferência pela equipe Nymphia. "
+                       "O acesso a pacientes é liberado depois da aprovação."
+            )
         vinculo = db.query(Vinculo).filter(
             Vinculo.profissional_id == user_id,
             Vinculo.gestante_id == exame.gestante_id,

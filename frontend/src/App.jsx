@@ -82,6 +82,14 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Link de redefinição de senha aberto com alguém já logado neste aparelho:
+  // sai da sessão atual para a tela de login abrir a troca de senha.
+  useEffect(() => {
+    if (isAuthenticated && new URLSearchParams(window.location.search).has('redefinir')) {
+      logout();
+    }
+  }, []);
+
   // Se o usuário estiver autenticado e em rota pública de login/cadastro, redireciona imediatamente para a tela inicial '/'
   useEffect(() => {
     if (isAuthenticated) {

@@ -3,10 +3,10 @@ import LotusLogo from '../components/LotusLogo';
 import { ArrowRight, UploadCloud, CheckCircle, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import BackButton from '../components/BackButton';
+import { apiFetch } from '../utils/api';
 import LegalModal from '../components/LegalModal';
 
 const NOME_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ\s'.-]{2,100}$/;
-const REGISTRO_REGEX = /^[0-9]{3,10}(-[A-Za-z0-9])?$/;
 const UFS_BRASIL = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
   'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
@@ -44,14 +44,14 @@ export default function RegisterProfissional({ onBackToLogin, onRegisterSuccess 
     }
     setVerificandoCrm(true);
     try {
-      const res = await fetch(`/auth/profissional/validar-crm?crm=${numLimpo}&uf=${ufLimpa}`);
-      const data = await res.json();
+      const data = await apiFetch(`/auth/profissional/validar-crm?crm=${numLimpo}&uf=${ufLimpa}`, { skipAuth: true });
       setCrmStatus(data);
       if (data.valido && data.nome_medico && !nome.trim()) {
         setNome(`Dr(a). ${data.nome_medico}`);
       }
     } catch (e) {
-      setCrmStatus({ valido: false, mensagem: 'Falha ao consultar CRM na internet.' });
+      // Falha na consulta não bloqueia o cadastro: a conferência é manual de qualquer jeito
+      setCrmStatus(null);
     } finally {
       setVerificandoCrm(false);
     }
@@ -68,9 +68,10 @@ export default function RegisterProfissional({ onBackToLogin, onRegisterSuccess 
       return;
     }
 
-    const regTrim = registroNumero.trim();
-    if (!REGISTRO_REGEX.test(regTrim)) {
-      setErro('Número de registro inválido. Digite entre 3 e 10 dígitos numéricos.');
+    // Aceita "123.456", "123456-SP" etc.: guarda só os dígitos
+    const regTrim = registroNumero.replace(/[^0-9]/g, '');
+    if (regTrim.length < 3 || regTrim.length > 10) {
+      setErro('Número de registro inválido. Ele deve ter entre 3 e 10 dígitos.');
       return;
     }
 
@@ -86,9 +87,11 @@ export default function RegisterProfissional({ onBackToLogin, onRegisterSuccess 
 
     setCarregando(true);
     try {
-      const res = await fetch('/auth/profissional/cadastro', {
+      const data = await apiFetch('/auth/profissional/cadastro', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        skipAuth: true,
+        timeout: 30000,
         body: JSON.stringify({
           nome: nomeTrim,
           email: email.trim().toLowerCase(),
@@ -100,10 +103,6 @@ export default function RegisterProfissional({ onBackToLogin, onRegisterSuccess 
           termos_versao: '1.0-2026'
         })
       });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || 'Falha ao cadastrar profissional.');
-      }
       setTokenCriado(data.token);
       setProfCriado(data);
       setEtapa(2);
@@ -127,17 +126,19 @@ export default function RegisterProfissional({ onBackToLogin, onRegisterSuccess 
       const formData = new FormData();
       formData.append('arquivo', arquivo);
 
-      await fetch('/auth/profissional/upload-documento', {
+      await apiFetch('/auth/profissional/upload-documento', {
         method: 'POST',
         headers: { Authorization: `Bearer ${tokenCriado}` },
+        skipAuth: true,
+        timeout: 60000,
         body: formData
       });
 
-      login(tokenCriado, { ...profCriado, status_verificacao: 'em_analise' });
-      if (onRegisterSuccess) onRegisterSuccess();
-    } catch (err) {
       login(tokenCriado, profCriado);
       if (onRegisterSuccess) onRegisterSuccess();
+    } catch (err) {
+      // Antes o erro era ignorado e a pessoa achava que o documento tinha ido
+      setErro(`O documento não foi enviado: ${err.message} Tente de novo ou continue sem enviar agora.`);
     } finally {
       setCarregando(false);
     }
@@ -277,13 +278,19 @@ export default function RegisterProfissional({ onBackToLogin, onRegisterSuccess 
                 <>
                   <CheckCircle size={16} color="#1E7E34" style={{ flexShrink: 0 }} />
                   <div>
-                    <strong>Registro Ativo no CRM:</strong> {crmStatus.nome_medico || ''} ({crmStatus.conselho || 'CREMESP'})
+                    <strong>
+                      {crmStatus.situacao === 'ENCONTRADO_NO_CREMESP' ? 'Encontrado no CREMESP:' : 'Formato aceito.'}
+                    </strong>{' '}
+                    {crmStatus.nome_medico || ''} {crmStatus.situacao === 'ENCONTRADO_NO_CREMESP' ? `(${crmStatus.conselho})` : ''}
+                    <div style={{ fontSize: '0.74rem', opacity: 0.9 }}>
+                      A equipe Nymphia confere todo registro manualmente antes de liberar o acesso a pacientes.
+                    </div>
                     {crmStatus.especialidade && <div><span style={{ fontSize: '0.74rem', opacity: 0.9 }}>{crmStatus.especialidade}</span></div>}
                   </div>
                 </>
               ) : (
                 <div>
-                  <strong>Não Válido:</strong> {crmStatus.mensagem}
+                  <strong>Registro não aceito:</strong> {crmStatus.mensagem}
                 </div>
               )}
             </div>

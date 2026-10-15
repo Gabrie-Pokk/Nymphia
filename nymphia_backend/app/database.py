@@ -50,89 +50,71 @@ from sqlalchemy import inspect, text
 
 logger = logging.getLogger("nymphia.database")
 
+# Colunas que podem faltar em bancos criados por versões antigas.
+# Cada entrada: (tabela, coluna, tipo SQL). "{DATA}" vira o tipo de data certo
+# para cada banco: TIMESTAMP no PostgreSQL, DATETIME no SQLite. (O PostgreSQL
+# não tem o tipo DATETIME; usar DATETIME nele fazia a migração falhar.)
+COLUNAS_ADICIONADAS_DEPOIS = [
+    ("perfis_clinicos", "altura_cm", "FLOAT"),
+    ("perfis_clinicos", "peso_pre_gestacional", "FLOAT"),
+    ("perfis_clinicos", "maternidade_latitude", "FLOAT"),
+    ("perfis_clinicos", "maternidade_longitude", "FLOAT"),
+    ("perfis_clinicos", "dpp_editada_manualmente", "BOOLEAN DEFAULT FALSE"),
+    ("gestantes", "termos_aceitos_em", "{DATA}"),
+    ("gestantes", "termos_versao", "VARCHAR(20) DEFAULT '1.0-2026'"),
+    ("gestantes", "consentimento_dados_saude", "BOOLEAN DEFAULT FALSE"),
+    ("gestantes", "consentimento_dados_saude_em", "{DATA}"),
+    ("gestantes", "sessoes_validas_desde", "{DATA}"),
+    ("profissionais", "termos_aceitos_em", "{DATA}"),
+    ("profissionais", "termos_versao", "VARCHAR(20) DEFAULT '1.0-2026'"),
+    ("profissionais", "sessoes_validas_desde", "{DATA}"),
+    ("parceiros", "termos_aceitos_em", "{DATA}"),
+    ("parceiros", "termos_versao", "VARCHAR(20) DEFAULT '1.0-2026'"),
+    ("parceiros", "sessoes_validas_desde", "{DATA}"),
+    ("posts_comunidade", "ocultado", "BOOLEAN DEFAULT FALSE"),
+    ("posts_comunidade", "motivo_ocultacao", "VARCHAR(255)"),
+    ("comentarios_comunidade", "ocultado", "BOOLEAN DEFAULT FALSE"),
+    ("checkin_registros", "sinais_atencao", "JSON"),
+]
+
+
+def _tipo_data() -> str:
+    return "DATETIME" if db_url.startswith("sqlite") else "TIMESTAMP"
+
+
 def executar_migracoes_automaticas():
     """
-    Executa migrações idempotentes de schema para garantir que novas colunas
-    existam no PostgreSQL ou SQLite sem requerer migração manual externa.
+    Migrações idempotentes de schema, rodadas a cada inicialização.
+
+    Cada coluna é tentada separadamente: se uma falhar, as outras continuam
+    (antes, um único erro interrompia todas as migrações seguintes).
     """
     try:
         inspector = inspect(engine)
-        tabelas = inspector.get_table_names()
+        tabelas = set(inspector.get_table_names())
+    except Exception as e:
+        logger.error(f"Migrações: não foi possível ler o schema do banco: {e}")
+        return
 
-        if "perfis_clinicos" in tabelas:
-            colunas = [c["name"] for c in inspector.get_columns("perfis_clinicos")]
+    colunas_por_tabela = {}
+    for tabela, coluna, tipo in COLUNAS_ADICIONADAS_DEPOIS:
+        if tabela not in tabelas:
+            continue
+        if tabela not in colunas_por_tabela:
+            colunas_por_tabela[tabela] = {c["name"] for c in inspector.get_columns(tabela)}
+        if coluna in colunas_por_tabela[tabela]:
+            continue
+        tipo_sql = tipo.replace("{DATA}", _tipo_data())
+        try:
             with engine.begin() as conn:
-                if "altura_cm" not in colunas:
-                    logger.info("Migração: Adicionando coluna altura_cm em perfis_clinicos...")
-                    conn.execute(text("ALTER TABLE perfis_clinicos ADD COLUMN altura_cm FLOAT;"))
-                if "peso_pre_gestacional" not in colunas:
-                    logger.info("Migração: Adicionando coluna peso_pre_gestacional em perfis_clinicos...")
-                    conn.execute(text("ALTER TABLE perfis_clinicos ADD COLUMN peso_pre_gestacional FLOAT;"))
-                if "maternidade_latitude" not in colunas:
-                    conn.execute(text("ALTER TABLE perfis_clinicos ADD COLUMN maternidade_latitude FLOAT;"))
-                if "maternidade_longitude" not in colunas:
-                    conn.execute(text("ALTER TABLE perfis_clinicos ADD COLUMN maternidade_longitude FLOAT;"))
-                if "dpp_editada_manualmente" not in colunas:
-                    conn.execute(text("ALTER TABLE perfis_clinicos ADD COLUMN dpp_editada_manualmente BOOLEAN DEFAULT FALSE;"))
+                conn.execute(text(f"ALTER TABLE {tabela} ADD COLUMN {coluna} {tipo_sql};"))
+            colunas_por_tabela[tabela].add(coluna)
+            logger.info(f"Migração: coluna {coluna} adicionada em {tabela}.")
+        except Exception as e:
+            logger.error(f"Migração: falha ao adicionar {coluna} em {tabela}: {e}")
 
-        # Migrações LGPD / CFM para Gestantes
-        if "gestantes" in tabelas:
-            colunas_gest = [c["name"] for c in inspector.get_columns("gestantes")]
-            with engine.begin() as conn:
-                if "termos_aceitos_em" not in colunas_gest:
-                    logger.info("Migração: Adicionando coluna termos_aceitos_em em gestantes...")
-                    conn.execute(text("ALTER TABLE gestantes ADD COLUMN termos_aceitos_em DATETIME;"))
-                if "termos_versao" not in colunas_gest:
-                    logger.info("Migração: Adicionando coluna termos_versao em gestantes...")
-                    conn.execute(text("ALTER TABLE gestantes ADD COLUMN termos_versao VARCHAR(20) DEFAULT '1.0-2026';"))
-                if "consentimento_dados_saude" not in colunas_gest:
-                    logger.info("Migração: Adicionando coluna consentimento_dados_saude em gestantes...")
-                    conn.execute(text("ALTER TABLE gestantes ADD COLUMN consentimento_dados_saude BOOLEAN DEFAULT FALSE;"))
-                if "consentimento_dados_saude_em" not in colunas_gest:
-                    logger.info("Migração: Adicionando coluna consentimento_dados_saude_em em gestantes...")
-                    conn.execute(text("ALTER TABLE gestantes ADD COLUMN consentimento_dados_saude_em DATETIME;"))
-
-        # Migrações Termos para Profissionais
-        if "profissionais" in tabelas:
-            colunas_prof = [c["name"] for c in inspector.get_columns("profissionais")]
-            with engine.begin() as conn:
-                if "termos_aceitos_em" not in colunas_prof:
-                    logger.info("Migração: Adicionando coluna termos_aceitos_em em profissionais...")
-                    conn.execute(text("ALTER TABLE profissionais ADD COLUMN termos_aceitos_em DATETIME;"))
-                if "termos_versao" not in colunas_prof:
-                    logger.info("Migração: Adicionando coluna termos_versao em profissionais...")
-                    conn.execute(text("ALTER TABLE profissionais ADD COLUMN termos_versao VARCHAR(20) DEFAULT '1.0-2026';"))
-
-        # Migrações Termos para Parceiros
-        if "parceiros" in tabelas:
-            colunas_parc = [c["name"] for c in inspector.get_columns("parceiros")]
-            with engine.begin() as conn:
-                if "termos_aceitos_em" not in colunas_parc:
-                    logger.info("Migração: Adicionando coluna termos_aceitos_em em parceiros...")
-                    conn.execute(text("ALTER TABLE parceiros ADD COLUMN termos_aceitos_em DATETIME;"))
-                if "termos_versao" not in colunas_parc:
-                    logger.info("Migração: Adicionando coluna termos_versao em parceiros...")
-                    conn.execute(text("ALTER TABLE parceiros ADD COLUMN termos_versao VARCHAR(20) DEFAULT '1.0-2026';"))
-
-        # Migrações Moderação Comunidade Segura (STF Tema 987)
-        if "posts_comunidade" in tabelas:
-            colunas_posts = [c["name"] for c in inspector.get_columns("posts_comunidade")]
-            with engine.begin() as conn:
-                if "ocultado" not in colunas_posts:
-                    logger.info("Migração: Adicionando coluna ocultado em posts_comunidade...")
-                    conn.execute(text("ALTER TABLE posts_comunidade ADD COLUMN ocultado BOOLEAN DEFAULT FALSE;"))
-                if "motivo_ocultacao" not in colunas_posts:
-                    logger.info("Migração: Adicionando coluna motivo_ocultacao em posts_comunidade...")
-                    conn.execute(text("ALTER TABLE posts_comunidade ADD COLUMN motivo_ocultacao VARCHAR(255);"))
-
-        if "comentarios_comunidade" in tabelas:
-            colunas_coments = [c["name"] for c in inspector.get_columns("comentarios_comunidade")]
-            with engine.begin() as conn:
-                if "ocultado" not in colunas_coments:
-                    logger.info("Migração: Adicionando coluna ocultado em comentarios_comunidade...")
-                    conn.execute(text("ALTER TABLE comentarios_comunidade ADD COLUMN ocultado BOOLEAN DEFAULT FALSE;"))
-
-        # Migração Crítica Emergência: Permitir chamadas anônimas sem violação de FK
+    # Emergência anônima: gestante_id precisa aceitar NULL
+    try:
         if "eventos_emergencia" in tabelas:
             col_emerg = {c["name"]: c for c in inspector.get_columns("eventos_emergencia")}
             if "gestante_id" in col_emerg and not col_emerg["gestante_id"]["nullable"]:
@@ -146,15 +128,59 @@ def executar_migracoes_automaticas():
                         conn.execute(text("INSERT INTO eventos_emergencia_migracao (id, gestante_id, data_hora, latitude, longitude, contexto, profissional_notificado) SELECT id, gestante_id, data_hora, latitude, longitude, contexto, profissional_notificado FROM eventos_emergencia;"))
                         conn.execute(text("DROP TABLE eventos_emergencia;"))
                         conn.execute(text("ALTER TABLE eventos_emergencia_migracao RENAME TO eventos_emergencia;"))
+    except Exception as e:
+        logger.error(f"Migração de eventos_emergencia falhou: {e}")
 
+    try:
         # Garante que novas tabelas declaradas sejam criadas
         Base.metadata.create_all(bind=engine)
-        logger.info("Migrações automáticas de schema concluídas com sucesso.")
-
-        # Rotaciona automaticamente credenciais que ainda utilizem a senha exposta
-        rotacionar_credenciais_vazadas_automaticamente()
+        logger.info("Migrações automáticas de schema concluídas.")
     except Exception as e:
-        logger.error(f"Erro ao executar migrações automáticas: {e}")
+        logger.error(f"Erro ao criar tabelas novas: {e}")
+
+    # Manutenções que precisam rodar uma única vez por banco
+    _executar_uma_vez("rotacao_senha_vazada_2026_10_08", rotacionar_credenciais_vazadas_automaticamente)
+    _executar_uma_vez("remover_ocr_simulado_2026_10_15", _remover_valores_de_ocr_simulado)
+
+
+def _remover_valores_de_ocr_simulado() -> None:
+    """
+    Todo valor em exames.valores_extraidos foi gerado pela simulação de OCR
+    (números inventados). Nenhum veio de leitura real do laudo. Apaga todos.
+    """
+    with engine.begin() as conn:
+        if "exames" in inspect(engine).get_table_names():
+            conn.execute(text("UPDATE exames SET valores_extraidos = NULL"))
+
+
+def _executar_uma_vez(nome: str, funcao) -> None:
+    """
+    Roda uma manutenção uma única vez por banco e anota na tabela
+    manutencoes_executadas. A rotação de senha vazada, por exemplo, testava o
+    bcrypt de TODAS as contas a cada inicialização, o que deixava o servidor
+    cada vez mais lento para ligar conforme a base crescia.
+    """
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(
+                "CREATE TABLE IF NOT EXISTS manutencoes_executadas ("
+                "nome VARCHAR(100) PRIMARY KEY, executada_em VARCHAR(40) NOT NULL)"
+            ))
+            ja_rodou = conn.execute(
+                text("SELECT 1 FROM manutencoes_executadas WHERE nome = :n"), {"n": nome}
+            ).first()
+        if ja_rodou:
+            return
+        funcao()
+        from datetime import datetime as _dt
+        with engine.begin() as conn:
+            conn.execute(
+                text("INSERT INTO manutencoes_executadas (nome, executada_em) VALUES (:n, :e)"),
+                {"n": nome, "e": _dt.utcnow().isoformat()}
+            )
+        logger.info(f"Manutenção única concluída: {nome}")
+    except Exception as e:
+        logger.error(f"Manutenção única {nome} falhou e será tentada de novo na próxima inicialização: {e}")
 
 
 def rotacionar_credenciais_vazadas_automaticamente(db_session=None):
@@ -190,6 +216,8 @@ def rotacionar_credenciais_vazadas_automaticamente(db_session=None):
     except Exception as e:
         logger.error(f"Erro ao rotacionar credenciais comprometidas: {e}")
         db.rollback()
+        # Propaga o erro para a manutenção não ser marcada como concluída
+        raise
     finally:
         if deve_fechar:
             db.close()

@@ -3,6 +3,7 @@ import LotusLogo from '../components/LotusLogo';
 import { Eye, EyeOff, ArrowRight, ShieldCheck, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import BackButton from '../components/BackButton';
+import { apiFetch } from '../utils/api';
 import LegalModal from '../components/LegalModal';
 
 const NOME_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ\s'.-]{2,100}$/;
@@ -49,9 +50,11 @@ export default function RegisterGestante({ onBackToLogin, onRegisterSuccess }) {
 
     setCarregando(true);
     try {
-      const res = await fetch('/auth/gestante/cadastro', {
+      const data = await apiFetch('/auth/gestante/cadastro', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        skipAuth: true,
+        timeout: 30000,
         body: JSON.stringify({
           nome: nomeTrim,
           email: email.trim().toLowerCase(),
@@ -62,10 +65,6 @@ export default function RegisterGestante({ onBackToLogin, onRegisterSuccess }) {
           termos_versao: '1.0-2026'
         })
       });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || 'Falha ao cadastrar gestante.');
-      }
       login(data.token, data);
       if (onRegisterSuccess) onRegisterSuccess();
     } catch (err) {

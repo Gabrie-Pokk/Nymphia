@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.governance import CalibracaoClinica, IntegracaoLaboratorial
 from app.models.auth import Profissional, Gestante
-from app.security.jwt_auth import get_current_profissional, get_current_gestante
+from app.security.jwt_auth import get_current_profissional, get_current_profissional_aprovado, get_current_gestante
 
 router = APIRouter(prefix="/governance", tags=["Governança Clínica, FHIR e Calibração (Roadmap 2027)"])
 
@@ -56,7 +56,7 @@ def atualizar_calibracao(
     limiar_valor: float,
     unidade: str,
     justificativa: str,
-    prof: Profissional = Depends(get_current_profissional),
+    prof: Profissional = Depends(get_current_profissional_aprovado),
     db: Session = Depends(get_db)
 ):
     """

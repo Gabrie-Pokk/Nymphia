@@ -9,7 +9,7 @@ import uuid
 import pytest
 from datetime import datetime, timedelta
 
-def test_3_4_e2e_checkin_alerta_eleva_contagem_e_prioridade_no_painel_do_medico(client):
+def test_3_4_e2e_checkin_alerta_eleva_contagem_e_prioridade_no_painel_do_medico(client, aprovar_profissional):
     """
     Fluxo completo de triagem obstétrica:
     1. Médico obstetra se cadastra e gera código de convite para duas gestantes (A e B).
@@ -24,6 +24,7 @@ def test_3_4_e2e_checkin_alerta_eleva_contagem_e_prioridade_no_painel_do_medico(
     # 1. Cadastro e login do profissional médico
     crm_num = "45678"
     prof_reg = client.post("/auth/profissional/cadastro", json={
+        "aceite_termos": True,
         "nome": "Dr. Fernando Obstetra",
         "email": f"dr.fernando_{uuid.uuid4().hex[:6]}@clinica.com",
         "senha": "senhaSegura123",
@@ -32,6 +33,7 @@ def test_3_4_e2e_checkin_alerta_eleva_contagem_e_prioridade_no_painel_do_medico(
         "registro_uf": "SP"
     })
     assert prof_reg.status_code == 201, prof_reg.text
+    aprovar_profissional(prof_reg.json()["id"])
     token_prof = prof_reg.json()["token"]
     headers_prof = {"Authorization": f"Bearer {token_prof}"}
 
@@ -41,6 +43,8 @@ def test_3_4_e2e_checkin_alerta_eleva_contagem_e_prioridade_no_painel_do_medico(
 
     # 3. Gestante A: Cadastro, Vínculo e Check-in Normal
     reg_a = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Ana Paciente Normal",
         "email": f"ana_{uuid.uuid4().hex[:6]}@exemplo.com",
         "senha": "senhaSegura123"
@@ -64,6 +68,8 @@ def test_3_4_e2e_checkin_alerta_eleva_contagem_e_prioridade_no_painel_do_medico(
 
     # 4. Gestante B: Cadastro e Vínculo (sem check-in inicialmente)
     reg_b = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Beatriz Paciente Urgencia",
         "email": f"beatriz_{uuid.uuid4().hex[:6]}@exemplo.com",
         "senha": "senhaSegura123"

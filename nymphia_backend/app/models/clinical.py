@@ -56,6 +56,8 @@ class CheckinRegistro(Base):
     categorias_bertimbau = Column(JSON, nullable=True)
     categorias_regras = Column(JSON, default=list, nullable=False)
     alerta_sintoma_fisico = Column(JSON, default=list, nullable=False)
+    # Sinais de atenção (falar com o pré-natal hoje); os urgentes ficam em alerta_sintoma_fisico
+    sinais_atencao = Column(JSON, nullable=True)
     score_anomalia = Column(Float, nullable=True)
 
     gestante = relationship("Gestante", back_populates="checkins")

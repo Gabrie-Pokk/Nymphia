@@ -12,6 +12,15 @@ import {
   isNymphiaSpeaking
 } from '../../utils/voiceService';
 
+// Quando o servidor não responde, a gestante não pode ficar sem orientação.
+// Um relato de sangramento escrito com o servidor fora do ar precisa receber
+// a orientação de procurar atendimento mesmo assim.
+const ORIENTACAO_SEM_SERVIDOR =
+  'Não consegui falar com o servidor agora. Se você está com sangramento, perda de líquido, ' +
+  'dor forte na barriga, febre, dor de cabeça forte, visão embaçada, o bebê mexendo menos ' +
+  'ou qualquer sinal que preocupe, não espere: vá à maternidade ou ligue 192 (SAMU). ' +
+  'Se não for nada disso, tente enviar a mensagem de novo em alguns segundos.';
+
 export default function AiChat({ onBack }) {
   const { authHeaders } = useAuth();
   const [mensagens, setMensagens] = useState([]);
@@ -70,7 +79,12 @@ export default function AiChat({ onBack }) {
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ texto })
       });
-      const data = await res.json();
+      let data = null;
+      try {
+        data = await res.json();
+      } catch {
+        data = null; // servidor fora do ar costuma responder HTML, não JSON
+      }
       if (res.ok && data?.resposta) {
         const iaMsgId = Date.now() + 1;
         setMensagens((prev) => [
@@ -95,7 +109,9 @@ export default function AiChat({ onBack }) {
           });
         }
       } else {
-        const erroMsg = data?.detail || "Tive uma breve oscilação na conexão com os servidores clínicos. Pode repetir sua mensagem com carinho?";
+        const erroMsg = res.status >= 500 || !data
+          ? ORIENTACAO_SEM_SERVIDOR
+          : (typeof data?.detail === 'string' ? data.detail : ORIENTACAO_SEM_SERVIDOR);
         setMensagens((prev) => [
           ...prev,
           {
@@ -114,7 +130,7 @@ export default function AiChat({ onBack }) {
         {
           id: Date.now() + 1,
           papel: 'ia',
-          conteudo: "Houve uma oscilação na comunicação com os servidores. Estou aqui com você — por favor, tente enviar novamente!",
+          conteudo: ORIENTACAO_SEM_SERVIDOR,
           data_hora: new Date().toISOString(),
           alerta_emergencia: false,
           autorizado_compartilhar: false

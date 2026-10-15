@@ -8,12 +8,12 @@ from fastapi.responses import JSONResponse, FileResponse
 
 from app.config import settings
 from app.database import Base, engine
-from app.storage.object_storage import STORAGE_DIR
 from app.api import (
     health, auth, perfil, checkin, conversa,
     agenda, vinculo, exames, risco, emergencia,
     parceiro, comunidade, dispositivos,
-    governance, lgpd, legacy, assinaturas, antropometria
+    governance, lgpd, legacy, assinaturas, antropometria,
+    arquivos, admin
 )
 from app.services.ai_risk_service import carregar_modelos_ml
 from app.services.ai_text_service import carregar_bertimbau
@@ -33,6 +33,19 @@ def is_dev_env() -> bool:
     return env in ["development", "dev", "local"]
 
 is_prod = not is_dev_env()
+
+# Em produção o servidor se recusa a ligar com segredo fraco ou público.
+# Assim um deploy mal configurado falha na hora, em vez de rodar inseguro.
+if is_prod:
+    from app.config import problemas_de_configuracao_em_producao
+    _problemas_config = problemas_de_configuracao_em_producao(settings)
+    if _problemas_config:
+        for _problema in _problemas_config:
+            logger.critical(f"[CONFIGURAÇÃO INSEGURA] {_problema}")
+        raise RuntimeError(
+            "Configuração insegura para produção: " + " ".join(_problemas_config)
+            + " Gere um segredo com: python -c \"import secrets; print(secrets.token_urlsafe(64))\""
+        )
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -80,6 +93,27 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+def ip_do_cliente(request: Request) -> str:
+    """
+    IP de quem fez o pedido, para o limite de tentativas de login.
+
+    Atrás de proxy (Render, ou o Traefik do Coolify na Hostinger) o IP real é o
+    que o PROXY acrescenta no FIM do cabeçalho X-Forwarded-For. O começo da
+    lista é escrito pelo próprio cliente e pode ser inventado; antes, o código
+    usava o primeiro item, e bastava trocar o cabeçalho a cada tentativa para
+    escapar do limite. NYMPHIA_PROXIES_CONFIAVEIS diz quantos proxies há na
+    frente do servidor (padrão 1; use 2 se houver Cloudflare na frente do Coolify).
+    """
+    try:
+        saltos = max(0, int(os.getenv("NYMPHIA_PROXIES_CONFIAVEIS", "1")))
+    except ValueError:
+        saltos = 1
+    lista = [p.strip() for p in request.headers.get("x-forwarded-for", "").split(",") if p.strip()]
+    if saltos and lista:
+        return lista[-saltos] if len(lista) >= saltos else lista[0]
+    return request.client.host if request.client else "desconhecido"
+
+
 AUTH_RATE_LIMITED_PREFIXES = (
     "/auth/gestante/login",
     "/auth/gestante/cadastro",
@@ -103,7 +137,7 @@ async def seguranca_governanca_middleware(request: Request, call_next):
 
     # 2. Rate limiting nos endpoints de autenticação (Aceite 1.5)
     if any(path == p or path.startswith(p + "/") for p in AUTH_RATE_LIMITED_PREFIXES):
-        client_ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (request.client.host if request.client else "127.0.0.1")
+        client_ip = ip_do_cliente(request)
         if not auth_rate_limiter.is_allowed(client_ip):
             return JSONResponse(
                 status_code=429,
@@ -117,7 +151,9 @@ async def seguranca_governanca_middleware(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Permissions-Policy"] = "geolocation=(self), camera=(), microphone=()"
+    # A câmera é liberada só para o próprio site (antropometria e visão corporal).
+    # Microfone continua bloqueado.
+    response.headers["Permissions-Policy"] = "geolocation=(self), camera=(self), microphone=()"
 
     # 4. Content-Security-Policy em modo Report-Only
     response.headers["Content-Security-Policy-Report-Only"] = (
@@ -152,8 +188,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Armazenamento estático seguro de laudos e fotos de exames
-app.mount("/storage", StaticFiles(directory=str(STORAGE_DIR)), name="storage")
+# Laudos, fotos de exame e documentos profissionais NÃO são mais servidos
+# como pasta pública. A rota GET /storage/{nome} (app/api/arquivos.py) exige
+# login e confere quem tem direito a cada arquivo.
 
 # Registro dos Roteadores Clínicos e de Governança
 app.include_router(health.router)
@@ -174,6 +211,8 @@ app.include_router(governance.router)
 app.include_router(lgpd.router)
 app.include_router(legacy.router)
 app.include_router(antropometria.router)
+app.include_router(arquivos.router)
+app.include_router(admin.router)
 
 # Tratamento Global de Exceções (Degradação Graciosa e Sanitização de Erros em Produção)
 @app.exception_handler(Exception)
@@ -210,10 +249,12 @@ if _FRONTEND_DIST.exists():
         if not is_dev_env() and normalized in ["openapi.json", "docs", "redoc", "openapi.yaml"]:
             from fastapi import HTTPException
             raise HTTPException(status_code=404, detail="Not Found")
-        file_path = _FRONTEND_DIST / full_path
-        if file_path.is_file():
+        # Impede sair da pasta do frontend com "../" (path traversal)
+        raiz = _FRONTEND_DIST.resolve()
+        file_path = (raiz / full_path).resolve()
+        if file_path.is_file() and (file_path == raiz or raiz in file_path.parents):
             return FileResponse(file_path)
-        return FileResponse(_FRONTEND_DIST / "index.html")
+        return FileResponse(raiz / "index.html")
 else:
     @app.get("/")
     def raiz():
