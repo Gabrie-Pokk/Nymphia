@@ -70,6 +70,8 @@ export async function apiFetch(endpoint, options = {}) {
 
   try {
     const response = await fetch(endpoint, {
+      // Dados de saúde: nunca reaproveitar resposta guardada pelo navegador
+      cache: 'no-store',
       ...restOptions,
       headers: finalHeaders,
       signal: controller.signal
@@ -77,8 +79,10 @@ export async function apiFetch(endpoint, options = {}) {
 
     clearTimeout(timeoutId);
 
-    // Tratamento para Sessão Expirada ou Token Inválido (401)
-    if (response.status === 401) {
+    // Tratamento para Sessão Expirada ou Token Inválido (401).
+    // Só vale para pedidos feitos COM a sessão: um 401 de senha errada no
+    // login (skipAuth) mostrava "sua sessão expirou", o que confundia.
+    if (response.status === 401 && !skipAuth) {
       // Dispara evento global para que AuthContext possa deslogar de forma graciosa
       window.dispatchEvent(
         new CustomEvent('nymphia:auth-expired', {

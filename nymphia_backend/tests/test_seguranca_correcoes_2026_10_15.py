@@ -243,3 +243,63 @@ def test_upload_de_exame_nao_inventa_resultado(client):
     assert res.status_code == 201
     # Antes vinha {"glicemia_jejum_mg_dl": 84.0, "status": "normal_primeiro_tri"} para qualquer laudo
     assert res.json()["valores_extraidos"] is None
+
+
+# --- 8. Aprovações automáticas antigas voltam para conferência ---
+
+def test_aprovados_automaticamente_voltam_para_pendente(db_session):
+    from app.database import profissionais_para_conferencia_manual
+    from app.models.auth import Profissional
+    from app.security.jwt_auth import hash_password
+
+    antigo = Profissional(
+        nome="Dra. Antiga", email="antiga@clinica.com", senha_hash=hash_password("senhaSegura123"),
+        registro_tipo="CRM", registro_numero="123.456", registro_uf="SP", status_verificacao="aprovado",
+    )
+    rejeitado = Profissional(
+        nome="Dr. Rejeitado", email="rejeitado@clinica.com", senha_hash=hash_password("senhaSegura123"),
+        registro_tipo="CRM", registro_numero="777777", registro_uf="RJ", status_verificacao="rejeitado",
+    )
+    db_session.add_all([antigo, rejeitado])
+    db_session.commit()
+
+    movidos = profissionais_para_conferencia_manual(db_session=db_session)
+
+    assert movidos == 1
+    db_session.refresh(antigo)
+    db_session.refresh(rejeitado)
+    assert antigo.status_verificacao == "pendente"
+    assert antigo.registro_numero == "123456"
+    assert rejeitado.status_verificacao == "rejeitado"
+
+
+def test_area_da_equipe_tem_limite_de_pedidos(client, admin_headers):
+    from app.security.rate_limiter import admin_rate_limiter
+    admin_rate_limiter.reset()
+    errados = {"X-Admin-Token": "chute-errado"}
+    codigos = [client.get("/admin/profissionais", headers=errados).status_code for _ in range(61)]
+    assert codigos[:60] == [401] * 60
+    assert codigos[60] == 429
+    admin_rate_limiter.reset()
+
+
+def test_respostas_da_api_nao_ficam_no_cache_do_navegador(client):
+    conta = _gestante(client, email="cache@teste.com")
+    res = client.get("/meus-dados/minhas-revisoes", headers={"Authorization": f"Bearer {conta['token']}"})
+    assert res.headers.get("Cache-Control") == "no-store"
+
+
+def test_service_worker_nao_guarda_respostas_da_api():
+    """
+    A v1 do service worker guardava no aparelho toda resposta GET fora de /api
+    (e a API da Nymphia não usa /api): histórico de check-in, perfil clínico,
+    lista de pacientes. Confirmado no navegador em 15/10/2026.
+    """
+    from pathlib import Path
+    sw = Path(__file__).resolve().parents[2] / "frontend" / "public" / "sw.js"
+    if not sw.exists():
+        pytest.skip("frontend não está neste checkout")
+    fonte = sw.read_text(encoding="utf-8")
+    assert 'const CACHE_NAME = "nymphia-pwa-v1"' not in fonte
+    assert "function ehArquivoEstatico" in fonte
+    assert 'request.mode !== "navigate" && !ehArquivoEstatico(url)' in fonte

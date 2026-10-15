@@ -8,6 +8,7 @@ import { apiFetch } from './utils/api';
 // Páginas Públicas
 import WelcomeIntro from './pages/WelcomeIntro';
 import Login from './pages/Login';
+import EquipeAdmin from './pages/EquipeAdmin';
 import RegisterGestante from './pages/RegisterGestante';
 import RegisterProfissional from './pages/RegisterProfissional';
 import RegisterParceiro from './pages/RegisterParceiro';
@@ -135,6 +136,15 @@ export default function App() {
       <div className="app-container">
         <PWAInstallPrompt />
         <EmergencyScreen onExit={() => navigate('/')} />
+      </div>
+    );
+  }
+
+  // Área da equipe (aprovação de profissionais). O acesso é pelo token da equipe, não pelo login.
+  if (currentPath === '/equipe') {
+    return (
+      <div className="app-container">
+        <EquipeAdmin onExit={() => navigate('/')} />
       </div>
     );
   }

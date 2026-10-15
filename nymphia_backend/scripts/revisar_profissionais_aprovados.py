@@ -14,8 +14,12 @@ Uso (rodar no servidor, com a mesma DATABASE_URL da aplicação):
   python scripts/revisar_profissionais_aprovados.py            só mostra (padrão)
   python scripts/revisar_profissionais_aprovados.py --executar grava no banco
 
-Nada é apagado. Quem já foi conferido pela equipe é aprovado de novo em
-POST /admin/profissionais/{id}/aprovar (ou com scripts/admin_profissionais.py).
+Nada é apagado. Quem já foi conferido pela equipe é aprovado de novo na
+página /equipe do site (ou com scripts/admin_profissionais.py).
+
+Observação: a versão de 15/10/2026 faz os passos 1 e 3 sozinha, uma única vez,
+quando o servidor liga (app/database.py, profissionais_para_conferencia_manual).
+Este script continua útil para ver a lista antes, num banco de cópia.
 """
 import argparse
 import sys

@@ -141,6 +141,42 @@ def executar_migracoes_automaticas():
     # Manutenções que precisam rodar uma única vez por banco
     _executar_uma_vez("rotacao_senha_vazada_2026_10_08", rotacionar_credenciais_vazadas_automaticamente)
     _executar_uma_vez("remover_ocr_simulado_2026_10_15", _remover_valores_de_ocr_simulado)
+    _executar_uma_vez("profissionais_para_conferencia_manual_2026_10_15", profissionais_para_conferencia_manual)
+
+
+def profissionais_para_conferencia_manual(db_session=None) -> int:
+    """
+    Até 15/10/2026 o cadastro aprovava sozinho qualquer CRM com formato
+    válido, sem consultar o Conselho. Roda uma vez por banco:
+      1. guarda o número do registro só com dígitos ("123.456" vira "123456"),
+         para o login por CRM funcionar;
+      2. devolve para "pendente" todo profissional que estava "aprovado".
+    A equipe confere cada registro no portal do CFM e aprova de novo na
+    página /equipe do site. Devolve quantos profissionais voltaram a pendente.
+    """
+    from app.models.auth import Profissional
+    from app.services.crm_service import normalizar_registro
+
+    db = db_session or SessionLocal()
+    try:
+        movidos = 0
+        for prof in db.query(Profissional).all():
+            limpo = normalizar_registro(prof.registro_numero)
+            if limpo and limpo != prof.registro_numero:
+                prof.registro_numero = limpo
+            if prof.status_verificacao == "aprovado":
+                prof.status_verificacao = "pendente"
+                movidos += 1
+        db.commit()
+        if movidos:
+            logger.warning(f"[SEGURANÇA] {movidos} profissional(is) aprovado(s) automaticamente voltaram para conferência manual.")
+        return movidos
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        if db_session is None:
+            db.close()
 
 
 def _remover_valores_de_ocr_simulado() -> None:

@@ -1,4 +1,7 @@
-const CACHE_NAME = "nymphia-pwa-v1";
+// v2 (15/10/2026): a v1 guardava respostas da API (dados de saúde) no cache do
+// aparelho e mostrava dados velhos. Trocar o nome faz o "activate" abaixo apagar
+// o cache antigo em todos os aparelhos assim que esta versão for instalada.
+const CACHE_NAME = "nymphia-pwa-v2";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
@@ -33,15 +36,28 @@ self.addEventListener("activate", (event) => {
 });
 
 // Interceptação de requisições:
-// 1. Requisições de navegação (HTML): Network-first com fallback para Cache (garante /emergencia offline)
-// 2. Requisições estáticas (JS/CSS/Imagens): Cache-first com revalidação
-// 3. Chamadas de API (/auth, /checkin, etc): Sempre rede com tratamento gracioso de offline
+// 1. Navegação (HTML): rede primeiro, com a casca do app em cache para funcionar offline (garante /emergencia)
+// 2. Arquivos estáticos (JS, CSS, imagens, ícones): cache com revalidação
+// 3. TODO o resto passa direto pela rede, sem cache. A API da Nymphia não usa o
+//    prefixo /api (são rotas como /checkin, /vinculo, /auth), então antes ela
+//    caía na regra de estáticos: o app mostrava a resposta ANTERIOR guardada no
+//    aparelho (ex.: painel do médico sem o alerta mais novo) e, num aparelho
+//    compartilhado, a pessoa seguinte podia ver os dados da anterior.
+const EXTENSOES_ESTATICAS = /\.(?:js|css|png|svg|jpg|jpeg|webp|gif|ico|woff2?|ttf|webmanifest)$/i;
+
+function ehArquivoEstatico(url) {
+  return url.origin === self.location.origin &&
+    (url.pathname.startsWith("/assets/") || EXTENSOES_ESTATICAS.test(url.pathname));
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Não intercepta chamadas de API ou requisições não-GET
-  if (request.method !== "GET" || url.pathname.startsWith("/api") || url.pathname.startsWith("/storage")) {
+  if (request.method !== "GET") {
+    return;
+  }
+  if (request.mode !== "navigate" && !ehArquivoEstatico(url)) {
     return;
   }
 

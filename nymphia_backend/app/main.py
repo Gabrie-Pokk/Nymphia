@@ -81,7 +81,7 @@ async def lifespan(app: FastAPI):
     yield
     logger.info("Encerrando Nymphia Backend.")
 
-from app.security.rate_limiter import auth_rate_limiter
+from app.security.rate_limiter import auth_rate_limiter, admin_rate_limiter
 
 app = FastAPI(
     title="Nymphia — Inteligência Artificial Obstétrica",
@@ -144,6 +144,13 @@ async def seguranca_governanca_middleware(request: Request, call_next):
                 content={"detail": "Muitas tentativas de autenticação na mesma origem. Tente novamente mais tarde."}
             )
 
+    if path == "/admin" or path.startswith("/admin/"):
+        if not admin_rate_limiter.is_allowed(ip_do_cliente(request)):
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "Muitos pedidos na área da equipe. Espere um minuto e tente de novo."}
+            )
+
     response = await call_next(request)
 
     # 3. Cabeçalhos de Segurança Obrigatórios (Aceite 1.2)
@@ -154,6 +161,12 @@ async def seguranca_governanca_middleware(request: Request, call_next):
     # A câmera é liberada só para o próprio site (antropometria e visão corporal).
     # Microfone continua bloqueado.
     response.headers["Permissions-Policy"] = "geolocation=(self), camera=(self), microphone=()"
+
+    # Respostas da API trazem dados pessoais e de saúde: o navegador não deve
+    # guardar cópia. Sem isso, a lista da área da equipe vinha do cache e não
+    # mostrava a aprovação que tinha acabado de ser feita.
+    if "cache-control" not in response.headers and response.headers.get("content-type", "").startswith("application/json"):
+        response.headers["Cache-Control"] = "no-store"
 
     # 4. Content-Security-Policy em modo Report-Only
     response.headers["Content-Security-Policy-Report-Only"] = (
