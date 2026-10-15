@@ -44,6 +44,8 @@ def test_obstetric_cross_validation_rejects_impossible_history():
     # 1. Registrar gestante válida
     email = f"gestante_obstetrica_{uuid.uuid4().hex[:6]}@exemplo.com"
     reg_resp = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "email": email,
         "nome": "Carla Obstetrica",
         "senha": "SenhaSegura123!"
@@ -148,6 +150,8 @@ def test_fluxo_checkout_e_webhook_mercado_pago():
     # 1. Cria usuário
     email = f"assinante_mp_{uuid.uuid4().hex[:6]}@exemplo.com"
     reg_resp = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "email": email,
         "nome": "Juliana Assinante",
         "senha": "SenhaForte123!"
@@ -212,6 +216,8 @@ def test_emergencia_nunca_bloqueada_mesmo_inadimplente():
     # 1. Cria usuário
     email = f"inadimplente_segura_{uuid.uuid4().hex[:6]}@exemplo.com"
     reg_resp = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "email": email,
         "nome": "Patricia Protegida",
         "senha": "SenhaForte123!"

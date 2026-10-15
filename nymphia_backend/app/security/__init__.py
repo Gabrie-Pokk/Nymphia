@@ -5,6 +5,7 @@ from app.security.jwt_auth import (
     decode_access_token,
     get_current_gestante,
     get_current_profissional,
+    get_current_profissional_aprovado,
     get_current_parceiro,
     get_current_any_user,
 )
@@ -16,6 +17,7 @@ __all__ = [
     "decode_access_token",
     "get_current_gestante",
     "get_current_profissional",
+    "get_current_profissional_aprovado",
     "get_current_parceiro",
     "get_current_any_user",
 ]

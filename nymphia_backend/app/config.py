@@ -30,3 +30,22 @@ class Settings(BaseSettings):
     )
 
 settings = Settings()
+
+
+# Valor que está no código público do repositório. Com ele, qualquer pessoa
+# consegue fabricar um token de login de qualquer conta.
+SEGREDO_PUBLICO_DO_REPOSITORIO = "nymphia_super_secret_production_ready_key_change_me_in_prod_12345"
+TAMANHO_MINIMO_SEGREDO = 32
+
+
+def problemas_de_configuracao_em_producao(config: "Settings") -> list:
+    """Lista o que impede o servidor de rodar com segurança em produção."""
+    problemas = []
+    chave = config.NYMPHIA_SECRET_KEY or ""
+    if chave == SEGREDO_PUBLICO_DO_REPOSITORIO:
+        problemas.append("NYMPHIA_SECRET_KEY está com o valor público que aparece no repositório.")
+    elif len(chave) < TAMANHO_MINIMO_SEGREDO:
+        problemas.append(f"NYMPHIA_SECRET_KEY tem menos de {TAMANHO_MINIMO_SEGREDO} caracteres.")
+    if config.ALGORITHM != "HS256":
+        problemas.append("ALGORITHM precisa ser HS256.")
+    return problemas

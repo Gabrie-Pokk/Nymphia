@@ -5,6 +5,7 @@ def test_fluxo_completo_vinculo_parceiro_sem_hardcode(client):
     # 1. Cadastra gestante real
     email_gest = f"gestante_{uuid.uuid4().hex[:6]}@teste.com"
     res_g = client.post("/auth/gestante/cadastro", json={
+        "consentimento_dados_saude": True,
         "nome": "Juliana Alencar",
         "email": email_gest,
         "senha": "senhaSegura123",

@@ -36,3 +36,10 @@ auth_rate_limiter = InMemoryRateLimiter(
     max_requests=int(os.getenv("AUTH_RATE_LIMIT", "10")),
     window_seconds=int(os.getenv("AUTH_RATE_WINDOW_SECONDS", "60"))
 )
+
+# Área da equipe (/admin): limite maior que o do login, para aprovar vários
+# profissionais seguidos, mas ainda barrando tentativa de adivinhar o token.
+admin_rate_limiter = InMemoryRateLimiter(
+    max_requests=int(os.getenv("ADMIN_RATE_LIMIT", "60")),
+    window_seconds=60
+)

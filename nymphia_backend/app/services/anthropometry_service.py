@@ -1,7 +1,8 @@
 """
-Serviço Clínico de Antropometria Materna e Ganho Ponderal Gestacional
-Baseado nas diretrizes do Ministério da Saúde, FEBRASGO e Institute of Medicine (IOM / OMS).
-Curvas de Atalah e Altura Uterina (P10-P90).
+Serviço Clínico de Antropometria Materna e Ganho Ponderal Gestacional.
+Ganho de peso: recomendação brasileira (FEBRASGO 2023, curvas de Kac et al. 2021,
+Ministério da Saúde 2022). Altura uterina: percentis 10 e 90 do Ministério da Saúde.
+A curva de Atalah ficou só por compatibilidade e não é mais usada pela API.
 """
 
 from typing import Dict, Any, List, Optional, Tuple
@@ -87,51 +88,105 @@ CURVA_ALTURA_UTERINA = {
     40: (33.0, 38.5)
 }
 
-# Tabela Oficial de Ganho de Peso Gestacional - UFRJ / Ministério da Saúde (Agosto de 2022)
-# Consórcio Brasileiro de Nutrição Materno-Infantil & Observatório de Epidemiologia Nutricional da UFRJ
-# Aplicável a gestantes adultas (idade >= 18 anos), gestação única e risco habitual.
-TABELA_GANHO_UFRJ_MS_2022 = {
+# ---------------------------------------------------------------------------
+# Ganho de peso gestacional: recomendações brasileiras
+# ---------------------------------------------------------------------------
+# Fonte primária: Surita FG et al. "Guidelines on how to monitor gestational
+# weight gain during antenatal care". FEBRASGO Position Statement nº 2,
+# fevereiro de 2023. Rev Bras Ginecol Obstet 2023;45(2):104-108 (Quadro 1).
+# Base: curvas brasileiras de Kac G et al., Am J Clin Nutr 2021;113:1351-1360
+# (Consórcio Brasileiro de Nutrição Materno-Infantil, UFRJ), adotadas pelo
+# Ministério da Saúde na Caderneta da Gestante de 2022; faixas escolhidas por
+# Carrilho TRB et al., Am J Clin Nutr 2023, pelos desfechos PIG, GIG,
+# prematuridade e retenção de peso no pós-parto.
+#
+# Valores ACUMULADOS em kg (peso na consulta menos peso pré-gestacional),
+# conferidos em 15/10/2026 no texto da FEBRASGO:
+#   IMC pré-gestacional      até 13 sem      até 27 sem    até 40 sem
+#   < 18,5 (baixo peso)      0,2 a 1,2       5,6 a 7,2     9,7 a 12,2
+#   18,5 a < 25 (eutrofia)   -1,8 a 0,7      3,1 a 6,3     8,0 a 12,0
+#   25 a < 30 (sobrepeso)    -1,6 a -0,05    2,3 a 3,7     7,0 a 9,0
+#   >= 30 (obesidade)        -1,6 a -0,05    1,1 a 2,7     5,0 a 7,2
+#
+# ATENÇÃO: até 15/10/2026 este arquivo usava, com o rótulo "UFRJ/MS 2022", os
+# valores norte-americanos do IOM 2009 (12,5-18; 11,5-16; 7-11,5; 5-9 kg).
+# Com aqueles valores, uma gestante eutrófica com 15 kg na 40ª semana aparecia
+# como "adequada"; pela recomendação brasileira ela está acima da faixa.
+#
+# Entre os marcos (0, 13, 27 e 40 semanas) a faixa é interpolada em linha
+# reta. As curvas oficiais não são retas; a interpolação é uma aproximação e
+# o app diz isso na tela. Depois de 40 semanas vale a faixa da 40ª.
+GANHO_RECOMENDADO_BRASIL = {
     "baixo_peso": {
         "categoria": "Baixo Peso",
         "imc_min": 0.0,
-        "imc_max": 18.49,
-        "ganho_total_min": 12.5,
-        "ganho_total_max": 18.0,
-        "ganho_semanal_min": 0.44,
-        "ganho_semanal_max": 0.58,
-        "descricao": "Ganho total recomendado: 12,5 a 18,0 kg (0,44 a 0,58 kg/semana a partir da 14ª semana)"
+        "imc_max": 18.5,
+        "marcos": {13: (0.2, 1.2), 27: (5.6, 7.2), 40: (9.7, 12.2)},
     },
     "adequado": {
         "categoria": "Adequado (Eutrófica)",
         "imc_min": 18.5,
-        "imc_max": 24.99,
-        "ganho_total_min": 11.5,
-        "ganho_total_max": 16.0,
-        "ganho_semanal_min": 0.35,
-        "ganho_semanal_max": 0.50,
-        "descricao": "Ganho total recomendado: 11,5 a 16,0 kg (0,35 a 0,50 kg/semana a partir da 14ª semana)"
+        "imc_max": 25.0,
+        "marcos": {13: (-1.8, 0.7), 27: (3.1, 6.3), 40: (8.0, 12.0)},
     },
     "sobrepeso": {
         "categoria": "Sobrepeso",
         "imc_min": 25.0,
-        "imc_max": 29.99,
-        "ganho_total_min": 7.0,
-        "ganho_total_max": 11.5,
-        "ganho_semanal_min": 0.23,
-        "ganho_semanal_max": 0.33,
-        "descricao": "Ganho total recomendado: 7,0 a 11,5 kg (0,23 a 0,33 kg/semana a partir da 14ª semana)"
+        "imc_max": 30.0,
+        "marcos": {13: (-1.6, -0.05), 27: (2.3, 3.7), 40: (7.0, 9.0)},
     },
     "obesidade": {
         "categoria": "Obesidade",
         "imc_min": 30.0,
         "imc_max": 100.0,
-        "ganho_total_min": 5.0,
-        "ganho_total_max": 9.0,
-        "ganho_semanal_min": 0.17,
-        "ganho_semanal_max": 0.27,
-        "descricao": "Ganho total recomendado: 5,0 a 9,0 kg (0,17 a 0,27 kg/semana a partir da 14ª semana)"
-    }
+        "marcos": {13: (-1.6, -0.05), 27: (1.1, 2.7), 40: (5.0, 7.2)},
+    },
 }
+
+REFERENCIA_GANHO_PESO = (
+    "Recomendação brasileira de ganho de peso (FEBRASGO 2023; curvas de Kac et al. 2021, UFRJ; "
+    "Ministério da Saúde, Caderneta da Gestante 2022)"
+)
+
+
+def _formatar_kg(valor: float) -> str:
+    return f"{valor:.2f}".rstrip("0").rstrip(".").replace(".", ",") if valor != int(valor) else f"{int(valor)},0"
+
+
+def _completar_tabela() -> None:
+    """Acrescenta os campos usados pelas telas (total, ritmo médio e textos)."""
+    for dados in GANHO_RECOMENDADO_BRASIL.values():
+        m13, m40 = dados["marcos"][13], dados["marcos"][40]
+        dados["ganho_total_min"], dados["ganho_total_max"] = m40
+        # Ritmo médio da 13ª à 40ª semana, calculado a partir da tabela
+        # (aproximação nossa; a FEBRASGO publica os marcos, não o ritmo semanal)
+        dados["ganho_semanal_min"] = round((m40[0] - m13[0]) / 27.0, 2)
+        dados["ganho_semanal_max"] = round((m40[1] - m13[1]) / 27.0, 2)
+        m27 = dados["marcos"][27]
+        dados["descricao"] = (
+            f"Ganho acumulado recomendado: até 13 semanas {_formatar_kg(m13[0])} a {_formatar_kg(m13[1])} kg; "
+            f"até 27 semanas {_formatar_kg(m27[0])} a {_formatar_kg(m27[1])} kg; "
+            f"até 40 semanas {_formatar_kg(m40[0])} a {_formatar_kg(m40[1])} kg."
+        )
+
+
+_completar_tabela()
+
+# Nome antigo mantido para compatibilidade com quem importa a tabela
+TABELA_GANHO_UFRJ_MS_2022 = GANHO_RECOMENDADO_BRASIL
+
+
+def categoria_por_imc(imc: Optional[float]) -> str:
+    if imc is None:
+        return "adequado"
+    if imc < 18.5:
+        return "baixo_peso"
+    if imc < 25.0:
+        return "adequado"
+    if imc < 30.0:
+        return "sobrepeso"
+    return "obesidade"
+
 
 def calcular_imc(peso_kg: float, altura_cm: float) -> Optional[float]:
     """Calcula o Índice de Massa Corporal (IMC = kg / m²)."""
@@ -140,91 +195,48 @@ def calcular_imc(peso_kg: float, altura_cm: float) -> Optional[float]:
     altura_m = altura_cm / 100.0
     return round(peso_kg / (altura_m * altura_m), 2)
 
-def classificar_imc_pre_gestacional(imc: float) -> Dict[str, Any]:
-    """
-    Classifica o estado nutricional pré-gestacional segundo as diretrizes
-    do Ministério da Saúde / UFRJ (2022) e IOM, retornando as faixas oficiais
-    de ganho semanal e ganho total para toda a gestação.
-    """
-    if imc < 18.5:
-        categoria = "Baixo Peso"
-        ganho_total_min = 12.5
-        ganho_total_max = 18.0
-        ganho_semanal_min = 0.44
-        ganho_semanal_max = 0.58
-        riscos = "Risco elevado de prematuridade, recém-nascido pequeno para idade gestacional (PIG) e baixo peso ao nascer."
-        meta_descricao = "Ganho total recomendado entre 12,5 kg e 18,0 kg (0,44 a 0,58 kg/semana a partir da 14ª semana)."
-    elif 18.5 <= imc <= 24.9:
-        categoria = "Adequado (Eutrófica)"
-        ganho_total_min = 11.5
-        ganho_total_max = 16.0
-        ganho_semanal_min = 0.35
-        ganho_semanal_max = 0.50
-        riscos = "Menor índice de complicações obstétricas maternas e neonatais."
-        meta_descricao = "Ganho total recomendado entre 11,5 kg e 16,0 kg (0,35 a 0,50 kg/semana a partir da 14ª semana)."
-    elif 25.0 <= imc <= 29.9:
-        categoria = "Sobrepeso"
-        ganho_total_min = 7.0
-        ganho_total_max = 11.5
-        ganho_semanal_min = 0.23
-        ganho_semanal_max = 0.33
-        riscos = "Aumento do risco de diabetes gestacional, hipertensão gestacional e macrossomia fetal."
-        meta_descricao = "Ganho total recomendado entre 7,0 kg e 11,5 kg (0,23 a 0,33 kg/semana a partir da 14ª semana)."
-    else:
-        categoria = "Obesidade"
-        ganho_total_min = 5.0
-        ganho_total_max = 9.0
-        ganho_semanal_min = 0.17
-        ganho_semanal_max = 0.27
-        riscos = "Risco aumentado de pré-eclâmpsia, diabetes gestacional, parto cesáreo e distócia de ombro."
-        meta_descricao = "Ganho total recomendado entre 5,0 kg e 9,0 kg (0,17 a 0,27 kg/semana a partir da 14ª semana)."
 
+_RISCOS = {
+    "baixo_peso": "Risco maior de prematuridade, recém-nascido pequeno para a idade gestacional (PIG) e baixo peso ao nascer.",
+    "adequado": "Menor frequência de complicações maternas e neonatais.",
+    "sobrepeso": "Risco maior de diabetes gestacional, hipertensão na gestação e bebê grande para a idade gestacional.",
+    "obesidade": "Risco maior de pré-eclâmpsia, diabetes gestacional, cesárea e bebê grande para a idade gestacional.",
+}
+
+
+def classificar_imc_pre_gestacional(imc: float) -> Dict[str, Any]:
+    """Classifica o IMC pré-gestacional (cortes da OMS) e devolve as metas brasileiras."""
+    chave = categoria_por_imc(imc)
+    dados = GANHO_RECOMENDADO_BRASIL[chave]
     return {
         "imc": imc,
-        "categoria": categoria,
-        "ganho_total_min": ganho_total_min,
-        "ganho_total_max": ganho_total_max,
-        "ganho_semanal_min": ganho_semanal_min,
-        "ganho_semanal_max": ganho_semanal_max,
-        "ganho_semanal_2_3_tri": round((ganho_semanal_min + ganho_semanal_max) / 2.0, 2),
-        "meta_descricao": meta_descricao,
-        "riscos_associados": riscos,
-        "padrao_oficial": "UFRJ / Ministério da Saúde (2022)"
+        "categoria": dados["categoria"],
+        "ganho_total_min": dados["ganho_total_min"],
+        "ganho_total_max": dados["ganho_total_max"],
+        "ganho_semanal_min": dados["ganho_semanal_min"],
+        "ganho_semanal_max": dados["ganho_semanal_max"],
+        "ganho_semanal_2_3_tri": round((dados["ganho_semanal_min"] + dados["ganho_semanal_max"]) / 2.0, 2),
+        "marcos_kg": {str(k): v for k, v in dados["marcos"].items()},
+        "meta_descricao": dados["descricao"],
+        "riscos_associados": _RISCOS[chave],
+        "padrao_oficial": REFERENCIA_GANHO_PESO,
     }
+
 
 def calcular_faixa_ganho_esperado_ufrj(categoria_chave: str, semana: int) -> Tuple[float, float]:
     """
-    Calcula a faixa recomendada de ganho de peso acumulado (min_kg, max_kg)
-    para uma dada semana gestacional segundo a Curva UFRJ / Ministério da Saúde (2022).
-    
-    Regras clínicas:
-    - 1º Trimestre (semanas 1 a 13): ganho total esperado de 0,5 a 2,0 kg,
-      independente do IMC pré-gestacional.
-    - A partir da 14ª semana: soma-se a taxa de ganho semanal específica por categoria.
-    - Na semana 40, atinge com precisão os limites totais recomendados.
+    Faixa de ganho ACUMULADO recomendada (mín, máx) em kg para a semana.
+    Interpolação em linha reta entre os marcos 0, 13, 27 e 40 semanas.
     """
-    semana_clamp = max(1, min(42, semana))
-    dados_cat = TABELA_GANHO_UFRJ_MS_2022.get(
-        categoria_chave,
-        TABELA_GANHO_UFRJ_MS_2022["adequado"]
-    )
-    total_min = dados_cat["ganho_total_min"]
-    total_max = dados_cat["ganho_total_max"]
+    dados = GANHO_RECOMENDADO_BRASIL.get(categoria_chave, GANHO_RECOMENDADO_BRASIL["adequado"])
+    pontos = [(0, 0.0, 0.0)] + [(sem, lo, hi) for sem, (lo, hi) in sorted(dados["marcos"].items())]
+    sem = max(0, min(40, int(semana)))
+    for (s0, lo0, hi0), (s1, lo1, hi1) in zip(pontos, pontos[1:]):
+        if s0 <= sem <= s1:
+            fracao = (sem - s0) / (s1 - s0)
+            return round(lo0 + fracao * (lo1 - lo0), 2), round(hi0 + fracao * (hi1 - hi0), 2)
+    return dados["marcos"][40]
 
-    if semana_clamp <= 13:
-        # Crescimento gradual no 1º trimestre até atingir [0.5, 2.0] kg na semana 13
-        min_kg = round(0.5 * (semana_clamp / 13.0), 2)
-        max_kg = round(2.0 * (semana_clamp / 13.0), 2)
-        return min_kg, max_kg
-
-    # Semanas 14 a 42 (2º e 3º trimestres)
-    semanas_pos_13 = semana_clamp - 13
-    taxa_calibrada_min = (total_min - 0.5) / 27.0
-    taxa_calibrada_max = (total_max - 2.0) / 27.0
-
-    min_kg = round(0.5 + (semanas_pos_13 * taxa_calibrada_min), 2)
-    max_kg = round(2.0 + (semanas_pos_13 * taxa_calibrada_max), 2)
-    return min_kg, max_kg
 
 def classificar_ganho_ponderal_ufrj_ms(
     semana: int,
@@ -235,94 +247,72 @@ def classificar_ganho_ponderal_ufrj_ms(
     gestacao_multipla: bool = False
 ) -> Dict[str, Any]:
     """
-    Avalia a evolução ponderal da gestante segundo as curvas nacionais da UFRJ / Ministério da Saúde (2022),
-    que substituíram a Curva chilena de Atalah no Brasil.
-    
-    Diretrizes clínicas essenciais:
-    1. Escopo de Aplicação: Desenvolvida para gestantes adultas (idade >= 18 anos), feto único e risco habitual.
-       Se a paciente for adolescente (< 18 anos) ou gemelar, emite declaração explícita de limitação (fora de escopo).
-    2. Dependência do IMC Pré-gestacional: Pontos de corte de ganho semanal e total são individualizados pela categoria inicial.
-    3. Regra de Comunicação Anti-julgamento: Quando o ganho está fora da faixa esperada, o texto JAMAIS avalia a
-       pessoa com expressões pejorativas ('engordou demais', 'ganhou pouco'), apontando o dado clínico de forma empática
-       e orientando acompanhamento com a equipe pré-natal.
+    Avalia o ganho de peso acumulado pela recomendação brasileira (ver tabela acima).
+
+    1. Escopo: gestante adulta, um bebê só. Adolescente (< 18 anos) ou gestação
+       múltipla recebem aviso de que a referência não se aplica.
+    2. A faixa depende do IMC pré-gestacional.
+    3. Comunicação sem julgamento: o texto nunca usa expressões como
+       "engordou demais" ou "ganhou pouco"; aponta o dado e orienta conversar
+       com a equipe do pré-natal.
     """
     semana_clamp = max(1, min(42, semana))
 
-    # 1. Verificação de Escopo Clínico (Adolescente e Gestação Múltipla)
     fora_do_escopo = False
     motivo_fora_do_escopo = None
     aviso_escopo = None
-
     if idade_gestante is not None and idade_gestante < 18:
         fora_do_escopo = True
         motivo_fora_do_escopo = "adolescente"
         aviso_escopo = (
-            "Aviso Clínico: As curvas nacionais de ganho de peso vigentes (UFRJ / Ministério da Saúde 2022) "
-            "foram padronizadas para gestantes adultas. Como você tem menos de 18 anos, seu desenvolvimento biológico "
-            "possui particularidades e a avaliação ponderal deve ser individualizada com seu obstetra ou nutricionista."
+            "Aviso Clínico: As curvas nacionais de ganho de peso foram padronizadas para gestantes adultas. "
+            "Como você tem menos de 18 anos, seu desenvolvimento biológico possui particularidades e a "
+            "avaliação ponderal deve ser individualizada com seu obstetra ou nutricionista."
         )
     elif gestacao_multipla:
         fora_do_escopo = True
         motivo_fora_do_escopo = "gestacao_multipla"
         aviso_escopo = (
-            "Aviso Clínico: Para gestações múltiplas (gemelares), aplicam-se metas específicas de ganho ponderal "
-            "(diretrizes IOM gemelares). Consulte sua equipe obstétrica para acompanhamento dedicado."
+            "Aviso Clínico: Para gestações múltiplas (gemelares), as metas de ganho de peso são diferentes "
+            "e as curvas brasileiras não se aplicam. Consulte sua equipe obstétrica para acompanhamento dedicado."
         )
 
-    # 2. Determinação do IMC Pré-gestacional e Categoria
     imc_pre = calcular_imc(peso_pre_kg, altura_cm) if (peso_pre_kg and altura_cm) else None
-    
-    if imc_pre is None:
-        cat_chave = "adequado"
-        categoria_nome = "Adequado (Eutrófica - Estimado)"
-    elif imc_pre < 18.5:
-        cat_chave = "baixo_peso"
-        categoria_nome = "Baixo Peso"
-    elif 18.5 <= imc_pre <= 24.99:
-        cat_chave = "adequado"
-        categoria_nome = "Adequado (Eutrófica)"
-    elif 25.0 <= imc_pre <= 29.99:
-        cat_chave = "sobrepeso"
-        categoria_nome = "Sobrepeso"
-    else:
-        cat_chave = "obesidade"
-        categoria_nome = "Obesidade"
-
-    dados_cat = TABELA_GANHO_UFRJ_MS_2022[cat_chave]
+    cat_chave = categoria_por_imc(imc_pre)
+    dados_cat = GANHO_RECOMENDADO_BRASIL[cat_chave]
+    categoria_nome = dados_cat["categoria"] if imc_pre is not None else "Adequado (Eutrófica - Estimado)"
     ganho_esperado_min, ganho_esperado_max = calcular_faixa_ganho_esperado_ufrj(cat_chave, semana_clamp)
 
-    # 3. Cálculo do Ganho Acumulado Real
     ganho_acumulado = None
     if peso_pre_kg and peso_atual_kg:
         ganho_acumulado = round(peso_atual_kg - peso_pre_kg, 2)
 
-    # 4. Avaliação e Orientação Não-Julgadora (Anti-Estigma)
+    faixa_txt = f"{ganho_esperado_min:.1f} a {ganho_esperado_max:.1f} kg"
     if ganho_acumulado is not None:
         if ganho_acumulado < ganho_esperado_min:
             status = "ABAIXO"
             diagnostico = "Abaixo da faixa estimada"
-            cor = "#E67E22"  # Laranja / Âmbar
+            cor = "#E67E22"
             orientacao = (
                 f"O ganho de peso acumulado ({ganho_acumulado:+.1f} kg) está abaixo da faixa estimada "
-                f"pelas diretrizes da UFRJ/Ministério da Saúde para esta semana ({ganho_esperado_min:.1f} a {ganho_esperado_max:.1f} kg). "
+                f"pela recomendação brasileira para esta semana ({faixa_txt}). "
                 "Vale compartilhar essa evolução com seu obstetra ou nutricionista na próxima consulta para avaliação conjunta."
             )
-        elif ganho_esperado_min <= ganho_acumulado <= ganho_esperado_max:
+        elif ganho_acumulado <= ganho_esperado_max:
             status = "ADEQUADO"
             diagnostico = "Dentro da faixa recomendada"
-            cor = "#27AE60"  # Verde
+            cor = "#27AE60"
             orientacao = (
                 f"O ganho de peso acumulado ({ganho_acumulado:+.1f} kg) está dentro da faixa estimada "
-                f"pelas diretrizes da UFRJ/Ministério da Saúde para a {semana_clamp}ª semana ({ganho_esperado_min:.1f} a {ganho_esperado_max:.1f} kg), "
-                "acompanhando o crescimento fetal saudável."
+                f"pela recomendação brasileira para a {semana_clamp}ª semana ({faixa_txt})."
             )
         else:
             status = "ACIMA"
             diagnostico = "Acima da faixa estimada"
-            cor = "#C0392B"  # Vermelho suave
+            cor = "#C0392B"
             orientacao = (
                 f"O ganho de peso acumulado ({ganho_acumulado:+.1f} kg) está acima da faixa estimada "
-                f"pelas diretrizes da UFRJ/Ministério da Saúde para esta semana ({ganho_esperado_min:.1f} a {ganho_esperado_max:.1f} kg). "
+                f"pela recomendação brasileira para esta semana ({faixa_txt}). "
                 "Vale comentar com seu obstetra na próxima consulta para avaliar retenção de líquidos e receber orientações nutricionais personalizadas."
             )
     else:
@@ -330,12 +320,16 @@ def classificar_ganho_ponderal_ufrj_ms(
         diagnostico = "Pendente de peso pré-gestacional"
         cor = "#7F8C8D"
         orientacao = (
-            "Para calcularmos a faixa exata de ganho de peso recomendada pela UFRJ/Ministério da Saúde, "
+            "Para calcularmos a faixa de ganho de peso recomendada para você, "
             "informe seu peso e altura antes da gestação no botão acima."
         )
 
     return {
-        "referencia": "UFRJ / Ministério da Saúde (Agosto de 2022)",
+        "referencia": REFERENCIA_GANHO_PESO,
+        "nota_metodo": (
+            "Faixa da semana calculada em linha reta entre os marcos oficiais de 13, 27 e 40 semanas; "
+            "as curvas oficiais não são retas, então entre os marcos o valor é aproximado."
+        ),
         "semana": semana_clamp,
         "categoria_pre_gestacional": categoria_nome,
         "imc_pre_gestacional": imc_pre,
@@ -344,8 +338,12 @@ def classificar_ganho_ponderal_ufrj_ms(
         "ganho_acumulado_kg": ganho_acumulado,
         "ganho_esperado_min_kg": ganho_esperado_min,
         "ganho_esperado_max_kg": ganho_esperado_max,
-        "ganho_semanal_referencia": f"{dados_cat['ganho_semanal_min']} a {dados_cat['ganho_semanal_max']} kg/semana",
-        "ganho_total_referencia": f"{dados_cat['ganho_total_min']} a {dados_cat['ganho_total_max']} kg",
+        "ganho_semanal_referencia": (
+            f"cerca de {dados_cat['ganho_semanal_min']:.2f} a {dados_cat['ganho_semanal_max']:.2f} kg/semana "
+            "em média entre a 13ª e a 40ª semana"
+        ).replace(".", ","),
+        "ganho_total_referencia": f"{_formatar_kg(dados_cat['ganho_total_min'])} a {_formatar_kg(dados_cat['ganho_total_max'])} kg",
+        "marcos_referencia": dados_cat["descricao"],
         "status": status,
         "diagnostico": diagnostico,
         "cor": cor,
@@ -353,10 +351,10 @@ def classificar_ganho_ponderal_ufrj_ms(
         "fora_do_escopo": fora_do_escopo,
         "motivo_fora_do_escopo": motivo_fora_do_escopo,
         "aviso_escopo": aviso_escopo,
-        # Chaves de compatibilidade com interfaces anteriores:
+        # Chaves de compatibilidade com telas antigas:
         "limite_baixo": ganho_esperado_min,
         "limite_adequado": ganho_esperado_max,
-        "limite_sobrepeso": round(ganho_esperado_max * 1.25, 2)
+        "limite_sobrepeso": round(ganho_esperado_max * 1.25, 2),
     }
 
 def classificar_curva_atalah(
@@ -368,9 +366,8 @@ def classificar_curva_atalah(
     idade_gestante: Optional[int] = 28
 ) -> Dict[str, Any]:
     """
-    Retorna avaliação clínica compatível com a transição Atalah -> UFRJ/MS (2022).
-    A Curva chilena de Atalah foi oficialmente substituída no Brasil em agosto de 2022
-    pelas diretrizes nacionais da UFRJ / Ministério da Saúde.
+    OBSOLETA desde 15/10/2026: a API não usa mais a curva de Atalah (substituída
+    no Brasil em 2022). Mantida só para compatibilidade de importação.
     """
     if peso_atual_kg is not None and peso_pre_kg is not None:
         return classificar_ganho_ponderal_ufrj_ms(
@@ -472,7 +469,7 @@ def obter_guia_educativo_antropometria(exames: Optional[List[Any]] = None) -> Di
             },
             {
                 "mito": "Não se pode engordar nada se já estiver com sobrepeso.",
-                "fato": "Mito! Mesmo mulheres com obesidade ou sobrepeso precisam ganhar entre 5 kg e 11,5 kg para permitir a formação adequada da placenta, líquido amniótico e crescimento do feto. Dietas de fome ou restrição severa de carboidratos são contraindicadas na gravidez."
+                "fato": "Mito! Pela recomendação brasileira, mulheres com sobrepeso ganham de 7 a 9 kg e com obesidade de 5 a 7,2 kg até a 40ª semana, para permitir a formação adequada da placenta, líquido amniótico e crescimento do feto. Dietas de fome ou restrição severa de carboidratos são contraindicadas na gravidez."
             },
             {
                 "mito": "Inchaço repentino no rosto e mãos é apenas 'retenção normal'.",
@@ -514,19 +511,19 @@ def obter_guia_educativo_antropometria(exames: Optional[List[Any]] = None) -> Di
             {
                 "trimestre": "1º Trimestre (1ª a 13ª semana)",
                 "foco": "Organogênese e alívio de náuseas",
-                "ganho_esperado": "0,5 kg a 2,0 kg no total do trimestre",
-                "dicas": "Se sofrer com enjoos, faça refeições fracionadas e frias. Não se preocupe se o ganho de peso for pequeno no início — o bebê está medindo poucos centímetros."
+                "ganho_esperado": "Pequeno ou nenhum: de -1,8 a 0,7 kg para quem começou com IMC adequado (FEBRASGO 2023)",
+                "dicas": "Se sofrer com enjoos, faça refeições fracionadas e frias. Não se preocupe se o ganho de peso for pequeno no início, ou se o peso cair um pouco: o bebê ainda mede poucos centímetros."
             },
             {
                 "trimestre": "2º Trimestre (14ª a 27ª semana)",
                 "foco": "Crescimento esquelético fetal e expansão volêmica materna",
-                "ganho_esperado": "~0,3 a 0,5 kg por semana",
+                "ganho_esperado": "Até 27 semanas, acumulado de 3,1 a 6,3 kg para quem começou com IMC adequado",
                 "dicas": "Fase em que a disposição física melhora e o apetite costuma voltar. Mantenha caminhadas e boa hidratação (2,5 a 3 litros de água por dia)."
             },
             {
                 "trimestre": "3º Trimestre (28ª a 40ª semana)",
                 "foco": "Ganho de peso rápido do bebê e amadurecimento pulmonar",
-                "ganho_esperado": "~0,3 a 0,5 kg por semana",
+                "ganho_esperado": "Até 40 semanas, acumulado de 8 a 12 kg para quem começou com IMC adequado",
                 "dicas": "O útero comprime o estômago; coma porções menores mais vezes ao dia. Fique atenta a inchaços súbitos e meça a pressão periodicamente."
             }
         ],

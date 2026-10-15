@@ -15,18 +15,33 @@ const HUMORES = [
   { nivel: 5, emoji: '🥰', label: 'Excelente' }
 ];
 
-const SINTOMAS_DISPONIVEIS = [
+// Os rótulos abaixo precisam bater com SINTOMAS_ESTRUTURADOS em
+// nymphia_backend/app/services/rules_engine.py (há um teste que confere isso).
+// Cada opção marcada vira um sinal direto, sem interpretação de texto.
+const SINAIS_DE_ALERTA = [
+  'Sangramento vaginal',
+  'Perda de líquido',
+  'Bebê mexendo menos',
+  'Contrações ritmadas ou dolorosas',
+  'Febre (37,8 °C ou mais)',
+  'Dor de cabeça forte',
+  'Visão embaçada',
+  'Pressão 14 por 9 ou mais',
+  'Falta de ar forte'
+];
+
+const OUTROS_SINTOMAS = [
+  'Inchaço no rosto ou nas mãos',
+  'Dor de cabeça',
+  'Dor no estômago',
+  'Ardência ao urinar',
+  'Coceira forte nas mãos ou pés',
+  'Dor nas costas',
   'Náusea / Enjoo',
   'Azia / Queimação',
-  'Dor de cabeça',
   'Inchaço nas pernas',
-  'Visão embaçada',
-  'Dor nas costas',
-  'Dor no estômago',
   'Cólicas leves',
-  'Cansaço excessivo',
-  'Sangramento vaginal',
-  'Perda de líquido'
+  'Cansaço excessivo'
 ];
 
 export default function DailyCheckin({ onBack }) {
@@ -75,6 +90,12 @@ export default function DailyCheckin({ onBack }) {
       .catch(() => {});
   }, []);
 
+  const nivelResultado = !resultado
+    ? 'nenhum'
+    : (resultado.alerta_sintoma_fisico && resultado.alerta_sintoma_fisico.length > 0)
+      ? 'urgente'
+      : (resultado.sinais_atencao && resultado.sinais_atencao.length > 0) ? 'atencao' : 'nenhum';
+
   const toggleSintoma = (s) => {
     if (sintomas.includes(s)) {
       setSintomas(sintomas.filter((item) => item !== s));
@@ -105,13 +126,18 @@ export default function DailyCheckin({ onBack }) {
 
       setResultado(data);
       const temAlertaObstetrico = Boolean(data?.alerta_sintoma_fisico && data.alerta_sintoma_fisico.length > 0);
+      const temAtencao = !temAlertaObstetrico && Boolean(data?.sinais_atencao && data.sinais_atencao.length > 0);
 
       // Prepara o modal de tela inteira
       setModalSucessoDados({
-        title: temAlertaObstetrico ? 'Check-in com Orientação Obstétrica' : 'Check-in Salvo com Sucesso! 🎉',
+        title: temAlertaObstetrico
+          ? 'Procure atendimento agora'
+          : temAtencao ? 'Check-in salvo: fale com seu pré-natal hoje' : 'Check-in Salvo com Sucesso! 🎉',
         subtitle: temAlertaObstetrico
-          ? 'Registramos seus sintomas e identificamos pontos que requerem atenção médica.'
-          : 'Seu momento de escuta foi salvo e analisado em tempo real.',
+          ? 'O que você registrou precisa de avaliação na maternidade ou pelo SAMU (192).'
+          : temAtencao
+            ? 'Registramos sinais que merecem uma conversa com a equipe do seu pré-natal ainda hoje.'
+            : 'Seu momento de escuta foi salvo e analisado em tempo real.',
         highlightText: `Humor ${humor}/5 • ${sintomas.length > 0 ? sintomas.length + ' sintoma(s) registrado(s)' : 'Sem sintomas físicos incômodos'}`,
         orientacao: data?.recomendacao,
         alertaUrgente: temAlertaObstetrico ? data.alerta_sintoma_fisico.join(', ') : null,
@@ -127,7 +153,14 @@ export default function DailyCheckin({ onBack }) {
         setTokenExpirado(true);
         setErro('Sua sessão expirou por segurança. Faça login novamente para salvar seu check-in com tranquilidade.');
       } else {
-        setErro(err.message || 'Falha ao registrar check-in.');
+        // Sem servidor não há análise: a orientação de segurança aparece mesmo assim
+        const marcouSinalDeAlerta = sintomas.some((s) => SINAIS_DE_ALERTA.includes(s));
+        setErro(
+          `${err.message || 'Falha ao registrar check-in.'} ` +
+          (marcouSinalDeAlerta
+            ? 'Você marcou um sinal de alerta: vá à maternidade ou ligue 192 (SAMU) agora, sem esperar o app.'
+            : 'Se estiver com sangramento, perda de líquido, dor forte, febre, visão embaçada ou o bebê mexendo menos, vá à maternidade ou ligue 192.')
+        );
       }
     } finally {
       setCarregando(false);
@@ -218,24 +251,24 @@ export default function DailyCheckin({ onBack }) {
             padding: '16px',
             borderRadius: 'var(--radius-lg)',
             marginBottom: '24px',
-            backgroundColor: (resultado.alerta_sintoma_fisico && resultado.alerta_sintoma_fisico.length > 0) ? '#FDEDEC' : '#EAF7EF',
-            border: (resultado.alerta_sintoma_fisico && resultado.alerta_sintoma_fisico.length > 0) ? '2px solid var(--color-vermelho)' : '1px solid #27AE60'
+            backgroundColor: nivelResultado === 'urgente' ? '#FDEDEC' : nivelResultado === 'atencao' ? '#FEF5E7' : '#EAF7EF',
+            border: nivelResultado === 'urgente' ? '2px solid var(--color-vermelho)' : nivelResultado === 'atencao' ? '2px solid #E67E22' : '1px solid #27AE60'
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-            {(resultado.alerta_sintoma_fisico && resultado.alerta_sintoma_fisico.length > 0) ? (
-              <AlertTriangle size={24} color="var(--color-vermelho)" />
-            ) : (
+            {nivelResultado === 'nenhum' ? (
               <CheckCircle size={24} color="#27AE60" />
+            ) : (
+              <AlertTriangle size={24} color={nivelResultado === 'urgente' ? 'var(--color-vermelho)' : '#E67E22'} />
             )}
             <h3
               style={{
                 fontSize: '1.05rem',
                 margin: 0,
-                color: (resultado.alerta_sintoma_fisico && resultado.alerta_sintoma_fisico.length > 0) ? 'var(--color-vermelho)' : '#1E7E34'
+                color: nivelResultado === 'urgente' ? 'var(--color-vermelho)' : nivelResultado === 'atencao' ? '#A04000' : '#1E7E34'
               }}
             >
-              {(resultado.alerta_sintoma_fisico && resultado.alerta_sintoma_fisico.length > 0) ? "Orientação Médica de Cuidado" : "Check-in Registrado com Sucesso"}
+              {nivelResultado === 'urgente' ? 'Procure atendimento agora' : nivelResultado === 'atencao' ? 'Fale com seu pré-natal hoje' : 'Check-in Registrado com Sucesso'}
             </h3>
           </div>
           <p style={{ fontSize: '0.92rem', color: '#2C181E', lineHeight: 1.4, margin: '0 0 10px 0' }}>
@@ -333,8 +366,40 @@ export default function DailyCheckin({ onBack }) {
           <label style={{ display: 'block', fontWeight: 600, color: 'var(--color-vinho)', marginBottom: '8px' }}>
             Algum sintoma físico hoje? (Selecione todos os que sentir)
           </label>
+          <p style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-vermelho)', margin: '0 0 6px' }}>
+            Sinais de alerta: se sentir algum, procure a maternidade ou ligue 192
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
+            {SINAIS_DE_ALERTA.map((s) => {
+              const selecionado = sintomas.includes(s);
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => toggleSintoma(s)}
+                  aria-pressed={selecionado}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: 'var(--radius-full)',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    backgroundColor: selecionado ? 'var(--color-vermelho)' : '#FFFFFF',
+                    color: selecionado ? '#FFFFFF' : 'var(--color-vermelho)',
+                    border: '1px solid var(--color-vermelho)',
+                    cursor: 'pointer',
+                    minHeight: '38px'
+                  }}
+                >
+                  {s}
+                </button>
+              );
+            })}
+          </div>
+          <p style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text-muted)', margin: '0 0 6px' }}>
+            Outros sintomas
+          </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {SINTOMAS_DISPONIVEIS.map((s) => {
+            {OUTROS_SINTOMAS.map((s) => {
               const selecionado = sintomas.includes(s);
               return (
                 <button

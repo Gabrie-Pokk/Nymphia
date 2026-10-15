@@ -1,5 +1,5 @@
 from typing import List, Optional
-from datetime import datetime, date, timedelta
+from datetime import datetime, date
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -19,7 +19,6 @@ from app.services.anthropometry_service import (
     calcular_imc,
     classificar_imc_pre_gestacional,
     classificar_ganho_ponderal_ufrj_ms,
-    classificar_curva_atalah,
     avaliar_altura_uterina,
     obter_guia_educativo_antropometria
 )
@@ -43,8 +42,8 @@ def obter_painel_antropometria(
     Retorna o painel clínico antropométrico completo da gestante:
     - Altura e peso pré-gestacional com IMC e categoria
     - Última pesagem e ganho ponderal total acumulado
-    - Avaliação das Curvas Nacionais UFRJ / Ministério da Saúde (2022)
-    - Avaliação da Curva de Atalah (retrocompatibilidade clínica)
+    - Avaliação do ganho de peso pela recomendação brasileira (FEBRASGO 2023 / MS 2022)
+    - avaliacao_atalah fica sempre vazia: a curva de Atalah não é mais usada
     - Avaliação da Altura Uterina (P10-P90)
     - Alerta de ganho rápido súbito (possível edema/pré-eclâmpsia)
     - Guia educativo rico sobre nutrição, mitos e distribuição de peso
@@ -57,7 +56,13 @@ def obter_painel_antropometria(
         .all()
     )
 
-    semana_atual = _calcular_semana_atual(perfil.dum if perfil else None)
+    if perfil and perfil.dum:
+        semana_atual = _calcular_semana_atual(perfil.dum)
+    elif registros and registros[0].semana_gestacional:
+        # Sem DUM, usa a semana que a própria gestante informou na última pesagem
+        semana_atual = max(1, min(42, int(registros[0].semana_gestacional)))
+    else:
+        semana_atual = _calcular_semana_atual(None)
     altura_cm = perfil.altura_cm if perfil else None
     peso_pre = perfil.peso_pre_gestacional if perfil else None
     idade_gestante = perfil.idade if (perfil and perfil.idade) else 28
@@ -89,16 +94,9 @@ def obter_painel_antropometria(
             idade_gestante=idade_gestante
         )
 
+    # A curva de Atalah foi substituída no Brasil em 2022; o campo segue no
+    # contrato da API, sempre vazio, para não quebrar telas antigas.
     avaliacao_atalah = None
-    if imc_atual or peso_atual:
-        avaliacao_atalah = classificar_curva_atalah(
-            semana=semana_atual,
-            imc_atual=imc_atual or (imc_pre or 22.0),
-            peso_atual_kg=peso_atual,
-            peso_pre_kg=peso_pre,
-            altura_cm=altura_cm,
-            idade_gestante=idade_gestante
-        )
 
     avaliacao_au = None
     if au_atual:
@@ -151,20 +149,14 @@ def atualizar_dados_base(
     """
     perfil = db.query(PerfilClinico).filter(PerfilClinico.gestante_id == gestante.id).first()
     if not perfil:
-        dum_padrao = (datetime.utcnow() - timedelta(days=24 * 7)).date()
-        dpp_padrao = (datetime.utcnow() + timedelta(days=16 * 7)).date()
-        perfil = PerfilClinico(
-            gestante_id=gestante.id,
-            idade=28,
-            dum=dum_padrao,
-            dpp=dpp_padrao,
-            altura_cm=payload.altura_cm,
-            peso_pre_gestacional=payload.peso_pre_gestacional
+        # Antes, sem cadastro clínico, o sistema INVENTAVA idade 28 e uma DUM de
+        # 24 semanas atrás. Agora pede o cadastro clínico primeiro.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Complete primeiro o cadastro clínico (data da última menstruação e idade) para registrar altura e peso."
         )
-        db.add(perfil)
-    else:
-        perfil.altura_cm = payload.altura_cm
-        perfil.peso_pre_gestacional = payload.peso_pre_gestacional
+    perfil.altura_cm = payload.altura_cm
+    perfil.peso_pre_gestacional = payload.peso_pre_gestacional
     db.commit()
     db.refresh(perfil)
 

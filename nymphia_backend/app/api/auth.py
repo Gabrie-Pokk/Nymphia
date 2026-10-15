@@ -1,10 +1,14 @@
-import re
-from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query
+import os
+import hashlib
+import secrets
+from datetime import datetime, timedelta
+from typing import Optional
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, UploadFile, File, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.auth import Gestante, Profissional, Parceiro
+from app.models.auth import Gestante, Profissional, Parceiro, TokenRedefinicaoSenha
+from app.services.email_service import enviar_email
 from app.schemas.all_schemas import (
     GestanteRegister, GestanteLogin,
     ProfissionalRegister, ProfissionalLogin, LoginUnificadoPayload, CrmValidacaoResponse,
@@ -13,11 +17,25 @@ from app.schemas.all_schemas import (
     EsqueciSenhaPayload, EsqueciSenhaResponse, RedefinirSenhaPayload
 )
 from app.security.jwt_auth import (
-    hash_password, verify_password, create_access_token, decode_access_token,
+    hash_password, verify_password, create_access_token,
     get_current_profissional
 )
 from app.storage.object_storage import save_uploaded_file
-from app.services.crm_service import consultar_situacao_crm, validar_formato_crm
+from app.services.crm_service import consultar_situacao_crm, normalizar_registro
+
+VALIDADE_TOKEN_REDEFINICAO = timedelta(minutes=30)
+MENSAGEM_ESQUECI_SENHA = (
+    "Se o e-mail estiver cadastrado, enviamos um link para redefinir a senha. "
+    "Se ele não chegar em alguns minutos, fale com o suporte da Nymphia."
+)
+
+
+def _hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _url_publica() -> str:
+    return os.getenv("NYMPHIA_URL_PUBLICA", "https://nymphia-global.onrender.com").rstrip("/")
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
@@ -29,8 +47,8 @@ def validar_crm_online(
     db: Session = Depends(get_db)
 ):
     """
-    Verifica se o CRM é válido, ativo e regular junto ao Conselho Federal de Medicina (CFM)
-    e aos Conselhos Regionais (ex: CREMESP). Retorna situação e dados do médico.
+    Confere o formato do CRM e, para SP, consulta o CREMESP. Não aprova ninguém:
+    a aprovação do profissional é sempre manual. Ver app/services/crm_service.py.
     """
     resultado = consultar_situacao_crm(crm=crm, uf=uf, db=db)
     return CrmValidacaoResponse(**resultado)
@@ -97,15 +115,16 @@ def login_unificado(payload: LoginUnificadoPayload, db: Session = Depends(get_db
                 detail="Por favor, informe o número e UF do seu CRM para acessar o painel médico."
             )
 
-        crm_limpo = re.sub(r'[^0-9]', '', payload.crm.strip())
+        crm_limpo = normalizar_registro(payload.crm)
         uf_limpa = (payload.crm_uf or "SP").strip().upper()
 
-        # Valida situação cadastral do CRM
+        # Só bloqueia o que dá para afirmar: formato impossível ou registro
+        # inativo segundo o próprio CREMESP. Nunca aprova ninguém.
         checagem_crm = consultar_situacao_crm(crm_limpo, uf_limpa, db=db)
         if not checagem_crm["valido"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"CRM {crm_limpo}/{uf_limpa} inválido ou inativo: {checagem_crm['mensagem']}"
+                detail=f"CRM {crm_limpo}/{uf_limpa}: {checagem_crm['mensagem']}"
             )
 
         # Localiza o profissional por CRM/UF ou por E-mail
@@ -113,7 +132,7 @@ def login_unificado(payload: LoginUnificadoPayload, db: Session = Depends(get_db
         if email_clean:
             prof = db.query(Profissional).filter(Profissional.email == email_clean).first()
             if prof:
-                if prof.registro_numero != crm_limpo or prof.registro_uf != uf_limpa:
+                if normalizar_registro(prof.registro_numero) != crm_limpo or prof.registro_uf != uf_limpa:
                     raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
                         detail=f"O CRM {crm_limpo}/{uf_limpa} informado não confere com o cadastro deste e-mail."
@@ -197,23 +216,38 @@ def cadastrar_profissional(payload: ProfissionalRegister, db: Session = Depends(
     if existente:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="E-mail já cadastrado no sistema")
 
-    # Validação do CRM junto ao CFM
-    if payload.registro_tipo.upper() == "CRM":
-        checagem = consultar_situacao_crm(payload.registro_numero, payload.registro_uf, db=db)
-        if not checagem["valido"]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Não foi possível validar o CRM: {checagem['mensagem']}"
-            )
+    tipo = payload.registro_tipo.upper()
+    numero = normalizar_registro(payload.registro_numero)
+    uf = payload.registro_uf.strip().upper()
+
+    # Um registro só pode ter uma conta
+    duplicado = db.query(Profissional).filter(
+        Profissional.registro_tipo == tipo,
+        Profissional.registro_numero == numero,
+        Profissional.registro_uf == uf
+    ).first()
+    if duplicado:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Este registro profissional já tem conta na Nymphia. Se for o seu, entre com ele ou fale com o suporte."
+        )
+
+    checagem = consultar_situacao_crm(numero, uf, db=db, registro_tipo=tipo)
+    if not checagem["valido"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Não foi possível aceitar o registro: {checagem['mensagem']}"
+        )
 
     prof = Profissional(
         nome=payload.nome.strip(),
         email=payload.email.lower(),
         senha_hash=hash_password(payload.senha),
-        registro_tipo=payload.registro_tipo.upper(),
-        registro_numero=payload.registro_numero.strip(),
-        registro_uf=payload.registro_uf.upper(),
-        status_verificacao="aprovado" if payload.registro_tipo.upper() == "CRM" else "pendente",
+        registro_tipo=tipo,
+        registro_numero=numero,
+        registro_uf=uf,
+        # Toda aprovação é manual, feita pela equipe depois de conferir o documento
+        status_verificacao="pendente",
         termos_aceitos_em=datetime.utcnow(),
         termos_versao=payload.termos_versao or "1.0-2026"
     )
@@ -234,22 +268,22 @@ def cadastrar_profissional(payload: ProfissionalRegister, db: Session = Depends(
 @router.post("/profissional/login", response_model=AuthResponse)
 def login_profissional(payload: ProfissionalLogin, db: Session = Depends(get_db)):
     email_clean = payload.email.strip().lower() if payload.email else ""
-    crm_limpo = re.sub(r'[^0-9]', '', payload.crm.strip()) if payload.crm else None
+    crm_limpo = normalizar_registro(payload.crm) if payload.crm else None
     uf_limpa = (payload.crm_uf or "SP").strip().upper() if payload.crm_uf else "SP"
 
-    # Se CRM foi informado, checa validade no CFM
+    # Só bloqueia formato impossível ou registro inativo segundo o CREMESP
     if crm_limpo:
         checagem = consultar_situacao_crm(crm_limpo, uf_limpa, db=db)
         if not checagem["valido"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"CRM {crm_limpo}/{uf_limpa} inválido ou inativo: {checagem['mensagem']}"
+                detail=f"CRM {crm_limpo}/{uf_limpa}: {checagem['mensagem']}"
             )
 
     prof = None
     if email_clean:
         prof = db.query(Profissional).filter(Profissional.email == email_clean).first()
-        if prof and crm_limpo and (prof.registro_numero != crm_limpo or prof.registro_uf != uf_limpa):
+        if prof and crm_limpo and (normalizar_registro(prof.registro_numero) != crm_limpo or prof.registro_uf != uf_limpa):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="O CRM informado não coincide com os dados cadastrais deste e-mail."
@@ -332,92 +366,105 @@ def login_parceiro(payload: ParceiroLogin, db: Session = Depends(get_db)):
 
 
 # --- RECUPERAÇÃO E REDEFINIÇÃO DE SENHA ---
-@router.post("/esqueci-senha", response_model=EsqueciSenhaResponse)
-def esqueci_senha(payload: EsqueciSenhaPayload, db: Session = Depends(get_db)):
-    """
-    Inicia o fluxo seguro de recuperação de conta.
-    Gera token assinado JWT com tempo de expiração de 30 minutos.
-    Retorna mensagem segura para mitigar enumeração de contas.
-    """
-    email_clean = payload.email.strip().lower()
-    usuario = None
-    perfil_encontrado = None
+#
+# Como funciona agora:
+# 1. /auth/esqueci-senha gera um código aleatório de 256 bits, guarda no banco
+#    só o hash SHA-256 dele, e manda o link por e-mail. A resposta da API é
+#    sempre a mesma mensagem, exista a conta ou não, e NUNCA contém o código.
+# 2. /auth/redefinir-senha recebe o código, confere o hash, a validade (30 min)
+#    e se ainda não foi usado. Cada código vale uma única vez.
+# O código não é um JWT, então não serve como sessão em nenhuma rota.
 
-    if payload.perfil == "gestante" or not payload.perfil:
-        usuario = db.query(Gestante).filter(Gestante.email == email_clean).first()
-        if usuario:
-            perfil_encontrado = "gestante"
+_MODELOS_POR_PERFIL = {"gestante": Gestante, "profissional": Profissional, "parceiro": Parceiro}
+MENSAGEM_LINK_INVALIDO = "Link de redefinição inválido, expirado ou já usado. Peça um novo link."
 
-    if not usuario and (payload.perfil == "profissional" or not payload.perfil):
-        usuario = db.query(Profissional).filter(Profissional.email == email_clean).first()
-        if usuario:
-            perfil_encontrado = "profissional"
 
-    if not usuario and (payload.perfil == "parceiro" or not payload.perfil):
-        usuario = db.query(Parceiro).filter(Parceiro.email == email_clean).first()
-        if usuario:
-            perfil_encontrado = "parceiro"
+def _localizar_conta(db: Session, email: str, perfil: Optional[str]):
+    ordem = [perfil] if perfil else ["gestante", "profissional", "parceiro"]
+    for nome_perfil in ordem:
+        modelo = _MODELOS_POR_PERFIL[nome_perfil]
+        conta = db.query(modelo).filter(modelo.email == email).first()
+        if conta:
+            return conta, nome_perfil
+    return None, None
 
-    reset_token = None
-    if usuario:
-        from datetime import timedelta
-        reset_token = create_access_token(
-            data={
-                "sub": usuario.id,
-                "email": usuario.email,
-                "perfil": perfil_encontrado,
-                "tipo_acao": "redefinicao_senha"
-            },
-            expires_delta=timedelta(minutes=30)
-        )
 
-    return EsqueciSenhaResponse(
-        sucesso=True,
-        mensagem="Se o e-mail informado estiver cadastrado na Nymphia, o procedimento de redefinição foi iniciado com sucesso.",
-        reset_token=reset_token
+def _invalidar_tokens_abertos(db: Session, usuario_id: str, perfil: str, agora: datetime) -> None:
+    db.query(TokenRedefinicaoSenha).filter(
+        TokenRedefinicaoSenha.usuario_id == usuario_id,
+        TokenRedefinicaoSenha.perfil == perfil,
+        TokenRedefinicaoSenha.usado_em.is_(None)
+    ).update({TokenRedefinicaoSenha.usado_em: agora}, synchronize_session=False)
+
+
+def _enviar_link_redefinicao(destinatario: str, nome: str, token: str) -> None:
+    link = f"{_url_publica()}/?redefinir={token}"
+    corpo = (
+        f"Olá, {nome}.\n\n"
+        "Recebemos um pedido para redefinir a senha da sua conta na Nymphia.\n"
+        f"Para criar uma senha nova, abra este link em até 30 minutos:\n\n{link}\n\n"
+        "O link funciona uma única vez. Se você não fez esse pedido, ignore este e-mail: "
+        "sua senha atual continua valendo.\n\n"
+        "Equipe Nymphia"
     )
+    enviar_email(destinatario, "Nymphia: redefinição de senha", corpo)
+
+
+@router.post("/esqueci-senha", response_model=EsqueciSenhaResponse)
+def esqueci_senha(
+    payload: EsqueciSenhaPayload,
+    tarefas: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    email_clean = payload.email.strip().lower()
+    conta, perfil = _localizar_conta(db, email_clean, payload.perfil or None)
+
+    if conta:
+        agora = datetime.utcnow()
+        _invalidar_tokens_abertos(db, conta.id, perfil, agora)
+        token = secrets.token_urlsafe(32)
+        db.add(TokenRedefinicaoSenha(
+            usuario_id=conta.id,
+            perfil=perfil,
+            token_hash=_hash_token(token),
+            criado_em=agora,
+            expira_em=agora + VALIDADE_TOKEN_REDEFINICAO
+        ))
+        db.commit()
+        # O envio roda depois da resposta, para o tempo de resposta não
+        # denunciar se o e-mail existe ou não.
+        tarefas.add_task(_enviar_link_redefinicao, conta.email, conta.nome, token)
+
+    return EsqueciSenhaResponse(sucesso=True, mensagem=MENSAGEM_ESQUECI_SENHA)
+
 
 @router.post("/redefinir-senha")
 def redefinir_senha(payload: RedefinirSenhaPayload, db: Session = Depends(get_db)):
-    """
-    Valida o token temporário assinado e atualiza a senha da conta com hash seguro bcrypt.
-    """
-    try:
-        dados = decode_access_token(payload.token)
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Token de redefinição inválido ou expirado. Por favor, solicite uma nova redefinição."
-        )
+    agora = datetime.utcnow()
+    registro = db.query(TokenRedefinicaoSenha).filter(
+        TokenRedefinicaoSenha.token_hash == _hash_token(payload.token.strip())
+    ).first()
 
-    if dados.get("tipo_acao") != "redefinicao_senha":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="O token fornecido não possui permissão para redefinição de senha."
-        )
+    if not registro or registro.usado_em is not None or registro.expira_em <= agora:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=MENSAGEM_LINK_INVALIDO)
 
-    user_id = dados.get("sub")
-    perfil = dados.get("perfil")
+    modelo = _MODELOS_POR_PERFIL.get(registro.perfil)
+    conta = db.query(modelo).filter(modelo.id == registro.usuario_id).first() if modelo else None
+    if not conta:
+        registro.usado_em = agora
+        db.commit()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=MENSAGEM_LINK_INVALIDO)
 
-    usuario = None
-    if perfil == "gestante":
-        usuario = db.query(Gestante).filter(Gestante.id == user_id).first()
-    elif perfil == "profissional":
-        usuario = db.query(Profissional).filter(Profissional.id == user_id).first()
-    elif perfil == "parceiro":
-        usuario = db.query(Parceiro).filter(Parceiro.id == user_id).first()
-
-    if not usuario:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="A conta associada a este pedido de redefinição não foi localizada."
-        )
-
-    usuario.senha_hash = hash_password(payload.nova_senha)
+    conta.senha_hash = hash_password(payload.nova_senha)
+    # Derruba todas as sessões abertas antes da troca (inclusive a de quem
+    # eventualmente tenha roubado um token)
+    conta.sessoes_validas_desde = agora
+    registro.usado_em = agora
+    _invalidar_tokens_abertos(db, conta.id, registro.perfil, agora)
     db.commit()
 
     return {
         "sucesso": True,
-        "mensagem": "Senha redefinida com sucesso! Você já pode realizar login com sua nova credencial."
+        "mensagem": "Senha redefinida. Você já pode entrar com a senha nova."
     }
 

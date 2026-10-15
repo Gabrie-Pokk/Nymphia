@@ -31,7 +31,8 @@ def test_1_2_cabecalhos_seguranca_especificados(client):
     - Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
     - X-Content-Type-Options: nosniff
     - Referrer-Policy: strict-origin-when-cross-origin
-    - Permissions-Policy: geolocation=(self), camera=(), microphone=()
+    - Permissions-Policy: geolocation=(self), camera=(self), microphone=()
+      (câmera liberada só para o próprio site, usada na antropometria)
     - Content-Security-Policy-Report-Only com diretrizes solicitadas
     - Ausência de x-render-origin-server
     """
@@ -41,7 +42,7 @@ def test_1_2_cabecalhos_seguranca_especificados(client):
     assert res.headers.get("Strict-Transport-Security") == "max-age=63072000; includeSubDomains; preload"
     assert res.headers.get("X-Content-Type-Options") == "nosniff"
     assert res.headers.get("Referrer-Policy") == "strict-origin-when-cross-origin"
-    assert res.headers.get("Permissions-Policy") == "geolocation=(self), camera=(), microphone=()"
+    assert res.headers.get("Permissions-Policy") == "geolocation=(self), camera=(self), microphone=()"
 
     csp_ro = res.headers.get("Content-Security-Policy-Report-Only", "")
     assert "default-src 'self'" in csp_ro
@@ -63,6 +64,8 @@ def test_1_3_simular_webhook_retorna_404_em_producao(monkeypatch, client):
 
     # Autentica gestante para ter credencial válida
     reg = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Gestante Producao Simular",
         "email": "gestante.prod.simular@teste.com",
         "senha": "senhaValida123"
@@ -89,6 +92,8 @@ def test_1_4_webhook_mercado_pago_valida_assinatura_e_idempotencia(client, monke
 
     # Cadastra gestante e inicia checkout para haver assinatura correspondente
     reg = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Gestante Webhook Pagamento",
         "email": "gestante.webhook.pag@teste.com",
         "senha": "senhaValida123"

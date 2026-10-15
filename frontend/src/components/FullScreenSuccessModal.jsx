@@ -195,7 +195,7 @@ export default function FullScreenSuccessModal({
                 <CheckCircle2 size={18} color="#27AE60" />
               )}
               <strong style={{ fontSize: '0.9rem', color: temAlerta ? 'var(--color-vermelho)' : '#1E7E34' }}>
-                {temAlerta ? 'Sinal de Atenção Obstétrica:' : 'Orientação Personalizada:'}
+                {temAlerta ? 'Sinal de alerta:' : 'Orientação:'}
               </strong>
             </div>
             <p style={{ fontSize: '0.85rem', color: '#2C181E', lineHeight: 1.4, margin: 0 }}>

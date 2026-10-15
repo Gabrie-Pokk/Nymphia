@@ -26,7 +26,7 @@ def test_security_headers_presentes_em_todas_as_rotas(client):
     # 5. Permissions-Policy
     perm_policy = res.headers.get("Permissions-Policy", "")
     assert "geolocation=(self)" in perm_policy
-    assert "camera=()" in perm_policy
+    assert "camera=(self)" in perm_policy
     assert "microphone=()" in perm_policy
 
     # 6. Content-Security-Policy em modo Report-Only
@@ -47,6 +47,8 @@ def test_upload_exame_rejeita_arquivo_com_magic_bytes_invalidos(client):
     """
     # 1. Cria gestante e obtém token
     reg = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Carla Upload Teste",
         "email": "carla.upload@teste.com",
         "senha": "senhaSegura123"
@@ -79,6 +81,8 @@ def test_upload_exame_aceita_arquivo_com_magic_bytes_validos(client):
     seja aceito com HTTP 201.
     """
     reg = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Marina Exame Valido",
         "email": "marina.exame@teste.com",
         "senha": "senhaSegura123"
@@ -112,6 +116,8 @@ def test_simulador_webhook_bloqueado_em_producao(client, monkeypatch):
     esteja com a flag de produção ativa, impedindo fraudes financeiras.
     """
     reg = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Luciana Teste Prod",
         "email": "luciana.prod@teste.com",
         "senha": "senhaSegura123"

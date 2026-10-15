@@ -1,6 +1,8 @@
 import os
+import re
 import uuid
 from pathlib import Path
+from typing import Optional
 from fastapi import UploadFile, HTTPException, status
 
 STORAGE_DIR = Path(__file__).resolve().parent.parent.parent / "storage_uploads"
@@ -56,5 +58,24 @@ async def save_uploaded_file(file: UploadFile, prefix: str = "doc") -> str:
     with open(dest_path, "wb") as f:
         f.write(content)
 
-    # Return virtual storage URL
+    # Endereço lógico do arquivo. Ele só é entregue pela rota protegida
+    # GET /storage/{nome} (app/api/arquivos.py), nunca como pasta pública.
     return f"/storage/{secure_filename}"
+
+
+_NOME_ARQUIVO_VALIDO = re.compile(r"^[A-Za-z0-9_\-]{1,200}\.(pdf|png|jpg|jpeg)$")
+
+
+def resolver_arquivo_armazenado(url_ou_nome: str) -> Optional[Path]:
+    """
+    Converte "/storage/nome.pdf" (ou só "nome.pdf") no caminho real do arquivo.
+    Devolve None para nome fora do padrão, tentativa de sair da pasta
+    (../) ou arquivo inexistente.
+    """
+    nome = str(url_ou_nome or "").rsplit("/", 1)[-1]
+    if not _NOME_ARQUIVO_VALIDO.match(nome):
+        return None
+    caminho = (STORAGE_DIR / nome).resolve()
+    if caminho.parent != STORAGE_DIR.resolve() or not caminho.is_file():
+        return None
+    return caminho

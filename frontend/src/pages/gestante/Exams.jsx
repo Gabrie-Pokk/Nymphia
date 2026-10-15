@@ -55,12 +55,12 @@ export default function Exams({ onBack }) {
         method: 'POST',
         body: formData
       });
-      setSucesso('Exame enviado e valores extraídos com sucesso pelo OCR!');
+      setSucesso('Exame guardado com sucesso. O arquivo fica disponível para você e para a equipe do seu pré-natal.');
       setModalSucessoDados({
         title: 'Laudo Enviado com Sucesso! 📄',
         subtitle: 'Seu documento médico foi recebido com sucesso e integrado ao seu prontuário digital.',
         highlightText: `${tipo} • Realizado em ${dataRealizacao}`,
-        orientacao: 'Os parâmetros detectados foram estruturados pelo OCR e estão disponíveis para apoiar suas orientações nutricionais e pré-natais.',
+        orientacao: 'O app ainda não lê os valores do laudo automaticamente. Leve o resultado para a sua consulta: quem interpreta o exame é a equipe do pré-natal.',
         confirmButtonText: 'Ver Laudos Cadastrados'
       });
       setModalSucessoAberto(true);
@@ -160,7 +160,7 @@ export default function Exams({ onBack }) {
           style={{ width: '100%', minHeight: '48px', marginTop: '10px' }}
           disabled={carregando}
         >
-          {carregando ? 'Processando OCR...' : 'Enviar Laudo para Análise'}
+          {carregando ? 'Enviando...' : 'Guardar laudo'}
           <UploadCloud size={18} />
         </button>
       </form>
@@ -182,12 +182,12 @@ export default function Exams({ onBack }) {
                     Realizado em: {new Date(ex.data_realizacao + 'T12:00:00').toLocaleDateString('pt-BR')}
                   </span>
                 </div>
-                <span className="badge-rosa" style={{ fontSize: '0.72rem' }}>OCR Processado</span>
+                <span className="badge-rosa" style={{ fontSize: '0.72rem' }}>Arquivo guardado</span>
               </div>
 
               {ex.valores_extraidos && (
                 <div style={{ backgroundColor: '#FFFFFF', padding: '8px 12px', borderRadius: 'var(--radius-sm)', marginTop: '8px', border: '1px solid var(--color-border)', fontSize: '0.82rem' }}>
-                  <strong style={{ color: 'var(--color-vinho)', display: 'block', marginBottom: '4px' }}>Valores Estruturados Identificados:</strong>
+                  <strong style={{ color: 'var(--color-vinho)', display: 'block', marginBottom: '4px' }}>Valores registrados:</strong>
                   <ul style={{ margin: 0, paddingLeft: '16px', color: 'var(--color-text-main)' }}>
                     {Object.entries(ex.valores_extraidos).map(([chave, valor]) => (
                       <li key={chave}>

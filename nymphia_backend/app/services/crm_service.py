@@ -1,265 +1,153 @@
+"""
+Nymphia -- Conferência de registro profissional (CRM e COREN).
+
+Regra deste módulo: nenhuma resposta afirma que um registro foi conferido no
+Conselho quando não foi. A aprovação de todo profissional é MANUAL, feita pela
+equipe Nymphia depois de olhar o documento enviado e o portal do CFM. Quando
+a empresa tiver CNPJ, a consulta automática deve passar a usar o webservice
+oficial do CFM (Resolução CFM 2.309/2022).
+
+A consulta ao CREMESP (só para SP) é uma ajuda: preenche o nome e bloqueia
+registros que o próprio CREMESP mostra como inativos. Ela nunca aprova ninguém.
+Falha de rede, erro 5xx ou resposta inesperada viram "verificação manual
+pendente", e nada disso é guardado em cache.
+
+Situações possíveis da resposta:
+  FORMATO_INVALIDO              número ou UF impossíveis
+  ENCONTRADO_NO_CREMESP         SP, ativo no CREMESP; aprovação continua manual
+  INATIVO_NO_CREMESP            SP, o CREMESP mostra o registro como inativo
+  VERIFICACAO_MANUAL_PENDENTE   todos os outros casos
+"""
 import re
-import urllib.request
-import ssl
 import json
+import ssl
 import logging
+import urllib.request
+import urllib.error
 from typing import Dict, Any, Optional
-from sqlalchemy.orm import Session
-from app.models.auth import Profissional
 
 logger = logging.getLogger("nymphia.crm")
 
-# Siglas válidas de todas as 27 Unidades da Federação do Brasil
 UFS_BRASIL = {
     'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
     'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
     'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
 }
 
-# Cache em memória para consultas online de CRM (evita requisições repetidas ao portal público)
-_CRM_CACHE: Dict[str, Dict[str, Any]] = {}
+SEQUENCIAS_FICTICIAS = {"0000", "00000", "000000", "0000000", "111111", "1234567890"}
 
-# Base de médicos obstetras/médicos parceiros homologados ou de contingência
-MEDICOS_HOMOLOGADOS_CFM = {
-    ("123456", "SP"): {
-        "nome": "Dr. Carlos Silva",
-        "especialidade": "Ginecologia e Obstetrícia",
-        "situacao": "ATIVO",
-        "conselho": "CREMESP / CRM-SP (São Paulo)",
-        "mensagem": "Registro médico ativo e em situação plenamente regular junto ao CFM/CREMESP."
-    },
-    ("145892", "SP"): {
-        "nome": "Dra. Daniele R. Estedan",
-        "especialidade": "Ginecologia e Obstetrícia",
-        "situacao": "ATIVO",
-        "conselho": "CREMESP / CRM-SP (São Paulo)",
-        "mensagem": "Registro médico ativo e consultora clínica oficial Nymphia."
-    },
-    ("18450", "SP"): {
-        "nome": "Dr. João Radvany",
-        "especialidade": "Neurologia Clínica",
-        "situacao": "ATIVO",
-        "conselho": "CREMESP / CRM-SP (São Paulo)",
-        "mensagem": "Registro médico ativo junto ao CREMESP."
-    },
-    ("999999", "SP"): {
-        "nome": "Registro Suspenso Teste",
-        "especialidade": "Clínica Geral",
-        "situacao": "SUSPENSO",
-        "conselho": "CREMESP / CRM-SP (São Paulo)",
-        "mensagem": "Inscrição com suspensão cautelar ativa no CRM-SP. Exercício da medicina suspenso."
-    }
-}
+# Cache só de respostas conclusivas do CREMESP (ativo ou inativo).
+_CACHE_CREMESP: Dict[str, Dict[str, Any]] = {}
+
+MSG_MANUAL = (
+    "Formato do registro conferido. A confirmação no Conselho é feita manualmente "
+    "pela equipe Nymphia, a partir do documento enviado. Até lá, o acesso a pacientes fica bloqueado."
+)
+
+
+def normalizar_registro(numero: str) -> str:
+    """Guarda só os dígitos do registro (ex.: '123.456-A' vira '123456')."""
+    return re.sub(r"[^0-9]", "", str(numero or "").strip())
 
 
 def validar_formato_crm(crm: str, uf: str) -> tuple[bool, str]:
-    """
-    Verifica a sintaxe formal de um número de CRM e UF no Brasil.
-    Retorna (valido: bool, motivo: str).
-    """
-    if not crm:
-        return False, "Número de CRM não informado."
-    
-    crm_limpo = re.sub(r'[^0-9]', '', str(crm).strip())
-    uf_limpa = str(uf).strip().upper() if uf else ""
+    crm_limpo = normalizar_registro(crm)
+    uf_limpa = str(uf or "").strip().upper()
 
+    if not crm_limpo:
+        return False, "Número de registro não informado."
     if uf_limpa not in UFS_BRASIL:
-        return False, f"UF '{uf_limpa}' inválida. Informe um estado brasileiro válido (ex: SP, RJ, MG)."
-
+        return False, f"UF '{uf_limpa}' inválida. Informe um estado brasileiro válido (ex.: SP, RJ, MG)."
     if len(crm_limpo) < 3 or len(crm_limpo) > 10:
-        return False, "O número do CRM deve conter entre 3 e 10 dígitos numéricos."
-
-    # Rejeição de sequências óbvias fictícias
-    if crm_limpo in {"0000", "00000", "000000", "0000000", "111111", "1234567890"}:
-        return False, "Número de CRM com sequência inválida ou fictícia."
-
+        return False, "O número do registro deve ter entre 3 e 10 dígitos."
+    if crm_limpo in SEQUENCIAS_FICTICIAS:
+        return False, "Número de registro com sequência inválida."
     return True, "Formato aceito."
 
 
-def _consultar_crm_internet_cremesp(crm_limpo: str) -> Optional[Dict[str, Any]]:
+def _consultar_cremesp(crm_limpo: str) -> Optional[Dict[str, Any]]:
     """
-    Realiza a consulta REAL na internet via API pública do CREMESP (Conselho Regional de Medicina de SP).
-    Retorna os dados cadastrais oficiais e situação do registro, ou None se indisponível.
+    Consulta o guia médico do CREMESP. Devolve um resultado só quando a resposta
+    é conclusiva (200 com situação). Qualquer outra coisa devolve None.
+    A verificação de certificado TLS fica LIGADA.
     """
-    cache_key = f"{crm_limpo}:SP"
-    if cache_key in _CRM_CACHE:
-        return _CRM_CACHE[cache_key]
+    if crm_limpo in _CACHE_CREMESP:
+        return _CACHE_CREMESP[crm_limpo]
 
     url = f"https://api.cremesp.org.br/guia-medico/medico-info/{crm_limpo}"
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-
-    req = urllib.request.Request(
+    requisicao = urllib.request.Request(
         url,
-        headers={
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) NymphiaSaude/2.0",
-            "Accept": "application/json"
-        }
+        headers={"User-Agent": "NymphiaSaude/2.0", "Accept": "application/json"},
     )
-
     try:
-        with urllib.request.urlopen(req, context=ctx, timeout=3.5) as response:
-            if response.status == 200:
-                raw = response.read().decode("utf-8", errors="replace")
-                data = json.loads(raw)
-                
-                nome = (data.get("nome") or "").strip()
-                situacao_cod = (data.get("situacao") or "").upper()
-                especialidades = [
-                    e.get("descricao") for e in (data.get("especialidades") or []) if e and e.get("descricao")
-                ]
-                espec_str = ", ".join(especialidades) if especialidades else "Medicina Geral"
+        contexto = ssl.create_default_context()
+        with urllib.request.urlopen(requisicao, context=contexto, timeout=3.5) as resposta:
+            if resposta.status != 200:
+                return None
+            dados = json.loads(resposta.read().decode("utf-8", errors="replace"))
+    except Exception as erro:
+        logger.info("CREMESP sem resposta conclusiva para %s: %s", crm_limpo, erro)
+        return None
 
-                if situacao_cod == "A":
-                    resultado = {
-                        "valido": True,
-                        "crm": crm_limpo,
-                        "uf": "SP",
-                        "situacao": "ATIVO",
-                        "nome_medico": nome,
-                        "conselho": "CREMESP / CRM-SP",
-                        "especialidade": espec_str,
-                        "mensagem": f"CRM {crm_limpo}/SP ativo e regular no Conselho Regional de Medicina. Dr(a). {nome}."
-                    }
-                elif situacao_cod == "I":
-                    resultado = {
-                        "valido": False,
-                        "crm": crm_limpo,
-                        "uf": "SP",
-                        "situacao": "INATIVO",
-                        "nome_medico": nome,
-                        "conselho": "CREMESP / CRM-SP",
-                        "especialidade": espec_str,
-                        "mensagem": f"O registro CRM {crm_limpo}/SP ({nome}) consta como INATIVO ou cancelado junto ao Conselho Regional de Medicina."
-                    }
-                else:
-                    resultado = {
-                        "valido": False,
-                        "crm": crm_limpo,
-                        "uf": "SP",
-                        "situacao": "SUSPENSO",
-                        "nome_medico": nome,
-                        "conselho": "CREMESP / CRM-SP",
-                        "especialidade": espec_str,
-                        "mensagem": f"O registro CRM {crm_limpo}/SP ({nome}) encontra-se suspenso ou com restrição no CREMESP/CFM."
-                    }
+    nome = (dados.get("nome") or "").strip() or None
+    codigo = (dados.get("situacao") or "").strip().upper()
+    especialidades = [e.get("descricao") for e in (dados.get("especialidades") or []) if e and e.get("descricao")]
+    especialidade = ", ".join(especialidades) if especialidades else None
 
-                _CRM_CACHE[cache_key] = resultado
-                return resultado
+    if codigo == "A":
+        resultado = {
+            "valido": True,
+            "situacao": "ENCONTRADO_NO_CREMESP",
+            "nome_medico": nome,
+            "especialidade": especialidade,
+            "mensagem": (
+                f"Registro encontrado como ativo no CREMESP{': ' + nome if nome else ''}. "
+                "A aprovação na Nymphia continua manual, a partir do documento enviado."
+            ),
+        }
+    elif codigo:
+        resultado = {
+            "valido": False,
+            "situacao": "INATIVO_NO_CREMESP",
+            "nome_medico": nome,
+            "especialidade": especialidade,
+            "mensagem": (
+                "O CREMESP mostra este registro como inativo ou com restrição. "
+                "Se isso estiver errado, fale com o suporte da Nymphia."
+            ),
+        }
+    else:
+        return None
 
-    except urllib.error.HTTPError as he:
-        # Se 404 ou 500, o CRM não existe na base oficial
-        if he.code in (404, 500):
-            resultado = {
-                "valido": False,
-                "crm": crm_limpo,
-                "uf": "SP",
-                "situacao": "NAO_ENCONTRADO",
-                "nome_medico": None,
-                "conselho": "CREMESP / CRM-SP",
-                "mensagem": f"CRM {crm_limpo}/SP não foi localizado no cadastro oficial do CREMESP/CFM. Verifique os dígitos informados."
-            }
-            _CRM_CACHE[cache_key] = resultado
-            return resultado
-        logger.warning(f"Erro HTTP na consulta de CRM {crm_limpo}/SP: {he}")
-    except Exception as ex:
-        logger.warning(f"Falha de conexão com portal CREMESP ({crm_limpo}/SP): {ex}")
-
-    return None
+    _CACHE_CREMESP[crm_limpo] = resultado
+    return resultado
 
 
-def consultar_situacao_crm(crm: str, uf: str, db: Optional[Session] = None) -> Dict[str, Any]:
+def consultar_situacao_crm(crm: str, uf: str, db=None, registro_tipo: str = "CRM") -> Dict[str, Any]:
     """
-    Consulta se o CRM existe e se está ativo/válido junto ao cadastro profissional e regras do CFM.
-    Executa verificação REAL online via internet nos registros públicos do CRM.
-    Retorna dicionário estruturado com status, situação cadastral e mensagem.
+    Responde só o que dá para afirmar. O parâmetro db é mantido por
+    compatibilidade e não é usado: existir no banco da Nymphia não é prova de
+    registro no Conselho.
     """
-    crm_limpo = re.sub(r'[^0-9]', '', str(crm).strip())
-    uf_limpa = str(uf).strip().upper() if uf else "SP"
+    crm_limpo = normalizar_registro(crm)
+    uf_limpa = str(uf or "").strip().upper()
+    tipo = (registro_tipo or "CRM").strip().upper()
+
+    base = {
+        "crm": crm_limpo,
+        "uf": uf_limpa,
+        "nome_medico": None,
+        "conselho": f"{tipo}-{uf_limpa}" if uf_limpa else tipo,
+        "especialidade": None,
+    }
 
     valido_formato, motivo = validar_formato_crm(crm_limpo, uf_limpa)
     if not valido_formato:
-        return {
-            "valido": False,
-            "crm": crm_limpo,
-            "uf": uf_limpa,
-            "situacao": "FORMATO_INVALIDO",
-            "mensagem": motivo,
-            "nome_medico": None
-        }
+        return {**base, "valido": False, "situacao": "FORMATO_INVALIDO", "mensagem": motivo}
 
-    # 1. Checa se o profissional já existe no banco de dados da Nymphia
-    if db is not None:
-        prof_db = db.query(Profissional).filter(
-            Profissional.registro_numero == crm_limpo,
-            Profissional.registro_uf == uf_limpa
-        ).first()
+    if tipo == "CRM" and uf_limpa == "SP":
+        resultado = _consultar_cremesp(crm_limpo)
+        if resultado is not None:
+            return {**base, **resultado}
 
-        if prof_db:
-            if prof_db.status_verificacao == "rejeitado":
-                return {
-                    "valido": False,
-                    "crm": crm_limpo,
-                    "uf": uf_limpa,
-                    "situacao": "SUSPENSO",
-                    "mensagem": f"O registro CRM {crm_limpo}/{uf_limpa} ({prof_db.nome}) encontra-se SUSPENSO ou bloqueado pela auditoria ética.",
-                    "nome_medico": prof_db.nome,
-                    "conselho": f"CRM-{uf_limpa}"
-                }
-            
-            return {
-                "valido": True,
-                "crm": crm_limpo,
-                "uf": uf_limpa,
-                "situacao": "ATIVO",
-                "mensagem": f"CRM {crm_limpo}/{uf_limpa} ativo e regular ({prof_db.nome}) junto ao CRM-{uf_limpa}.",
-                "nome_medico": prof_db.nome,
-                "conselho": f"CRM-{uf_limpa}",
-                "status_interno": prof_db.status_verificacao
-            }
-
-    # 2. Consulta REAL online na internet
-    if uf_limpa == "SP":
-        resultado_online = _consultar_crm_internet_cremesp(crm_limpo)
-        if resultado_online is not None:
-            return resultado_online
-
-    # 3. Checa no catálogo de médicos homologados / homologações de contingência
-    chave = (crm_limpo, uf_limpa)
-    if chave in MEDICOS_HOMOLOGADOS_CFM:
-        info = MEDICOS_HOMOLOGADOS_CFM[chave]
-        is_valido = info["situacao"] == "ATIVO"
-        return {
-            "valido": is_valido,
-            "crm": crm_limpo,
-            "uf": uf_limpa,
-            "situacao": info["situacao"],
-            "mensagem": info["mensagem"],
-            "nome_medico": info["nome"],
-            "conselho": info["conselho"],
-            "especialidade": info.get("especialidade")
-        }
-
-    # 4. Para outros estados (RJ, MG, RS, etc.) ou se a internet estiver indisponível no momento
-    # Valida integridade cadastral federativa conforme resolução CFM 2.129/15
-    if 3 <= len(crm_limpo) <= 10:
-        return {
-            "valido": True,
-            "crm": crm_limpo,
-            "uf": uf_limpa,
-            "situacao": "ATIVO",
-            "mensagem": f"CRM {crm_limpo}/{uf_limpa} com formato e integridade conferidos junto ao Conselho Regional de Medicina (CRM-{uf_limpa}).",
-            "nome_medico": None,
-            "conselho": f"Conselho Regional de Medicina do Estado de {uf_limpa} (CRM-{uf_limpa})"
-        }
-
-    return {
-        "valido": False,
-        "crm": crm_limpo,
-        "uf": uf_limpa,
-        "situacao": "NAO_ENCONTRADO",
-        "mensagem": f"CRM {crm_limpo}/{uf_limpa} não localizado no cadastro oficial do CFM.",
-        "nome_medico": None
-    }
-
+    return {**base, "valido": True, "situacao": "VERIFICACAO_MANUAL_PENDENTE", "mensagem": MSG_MANUAL}

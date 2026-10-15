@@ -73,6 +73,8 @@ def test_cadastro_gestante_registra_termos_e_consentimento_auditaveis(client):
 
 def test_solicitar_revisao_humana_decisao_ia(client):
     reg = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Beatriz Revisao",
         "email": f"beatriz_{uuid.uuid4().hex[:6]}@teste.com",
         "senha": "senhaSegura123"
@@ -97,9 +99,10 @@ def test_solicitar_revisao_humana_decisao_ia(client):
     assert res_list.json()[0]["id"] == rev_data["id"]
 
 
-def test_exclusao_preserva_custodia_medica_prontuario(client, db_session):
+def test_exclusao_preserva_custodia_medica_prontuario(client, db_session, aprovar_profissional):
     # 1. Cadastra médico
     res_prof = client.post("/auth/profissional/cadastro", json={
+        "aceite_termos": True,
         "nome": "Dr. Custodio",
         "email": f"custodio_{uuid.uuid4().hex[:6]}@med.com",
         "senha": "senhaSegura123",
@@ -110,6 +113,7 @@ def test_exclusao_preserva_custodia_medica_prontuario(client, db_session):
 
     token_prof = res_prof.json()["token"]
     prof_id = res_prof.json()["id"]
+    aprovar_profissional(prof_id)
     headers_prof = {"Authorization": f"Bearer {token_prof}"}
 
     # Gera convite
@@ -117,6 +121,8 @@ def test_exclusao_preserva_custodia_medica_prontuario(client, db_session):
 
     # 2. Cadastra gestante e ativa vínculo
     reg_gest = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Valeria Paciente",
         "email": f"valeria_{uuid.uuid4().hex[:6]}@teste.com",
         "senha": "senhaSegura123"

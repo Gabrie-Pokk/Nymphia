@@ -16,6 +16,8 @@ class Gestante(Base):
     termos_versao = Column(String(20), default="1.0-2026", nullable=True)
     consentimento_dados_saude = Column(Boolean, default=False, nullable=True)
     consentimento_dados_saude_em = Column(DateTime, nullable=True)
+    # Tokens de sessão emitidos antes deste instante deixam de valer (ex.: depois de redefinir a senha)
+    sessoes_validas_desde = Column(DateTime, nullable=True)
     criado_em = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     perfil_clinico = relationship("PerfilClinico", back_populates="gestante", uselist=False, cascade="all, delete-orphan")
@@ -49,6 +51,7 @@ class Profissional(Base):
     status_verificacao = Column(String(20), default="pendente", nullable=False)  # pendente | aprovado | rejeitado
     termos_aceitos_em = Column(DateTime, nullable=True)
     termos_versao = Column(String(20), default="1.0-2026", nullable=True)
+    sessoes_validas_desde = Column(DateTime, nullable=True)
     criado_em = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     vinculos = relationship("Vinculo", back_populates="profissional", cascade="all, delete-orphan")
@@ -65,6 +68,41 @@ class Parceiro(Base):
     senha_hash = Column(String(255), nullable=False)
     termos_aceitos_em = Column(DateTime, nullable=True)
     termos_versao = Column(String(20), default="1.0-2026", nullable=True)
+    sessoes_validas_desde = Column(DateTime, nullable=True)
     criado_em = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     vinculos = relationship("VinculoParceiro", back_populates="parceiro", cascade="all, delete-orphan")
+
+
+class TokenRedefinicaoSenha(Base):
+    """
+    Pedido de redefinição de senha.
+
+    O token em si nunca é guardado: só o hash SHA-256 dele. O token vai para a
+    pessoa exclusivamente por e-mail, vale 30 minutos e funciona uma única vez.
+    Nunca pode ser usado como sessão de login.
+    """
+    __tablename__ = "tokens_redefinicao_senha"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    usuario_id = Column(String(36), nullable=False, index=True)
+    perfil = Column(String(20), nullable=False)  # gestante | profissional | parceiro
+    token_hash = Column(String(64), unique=True, index=True, nullable=False)
+    criado_em = Column(DateTime, default=datetime.utcnow, nullable=False)
+    expira_em = Column(DateTime, nullable=False)
+    usado_em = Column(DateTime, nullable=True)
+
+
+class AuditoriaAdmin(Base):
+    """
+    Trilha de auditoria das decisões da equipe (aprovar ou rejeitar profissional,
+    abrir documento enviado). Nada aqui é apagado pela aplicação.
+    """
+    __tablename__ = "auditoria_admin"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    acao = Column(String(40), nullable=False)          # aprovar_profissional | rejeitar_profissional | abrir_documento
+    alvo_id = Column(String(36), nullable=False, index=True)
+    feito_por = Column(String(80), nullable=False)
+    detalhe = Column(Text, nullable=True)
+    criado_em = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)

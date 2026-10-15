@@ -22,10 +22,12 @@ def setup_test_db():
 
 @pytest.fixture(autouse=True)
 def reset_rate_limiter():
-    from app.security.rate_limiter import auth_rate_limiter
+    from app.security.rate_limiter import auth_rate_limiter, admin_rate_limiter
     auth_rate_limiter.reset()
+    admin_rate_limiter.reset()
     yield
     auth_rate_limiter.reset()
+    admin_rate_limiter.reset()
 
 @pytest.fixture
 def db_session():
@@ -51,3 +53,54 @@ def client(db_session):
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+
+
+# --- Fixtures adicionadas em 15/10/2026 ---
+
+TOKEN_ADMIN_TESTE = "token-admin-de-teste-com-mais-de-32-caracteres"
+
+
+@pytest.fixture(autouse=True)
+def cremesp_sem_rede(monkeypatch):
+    """
+    Nenhum teste fala com o CREMESP de verdade. Por padrão a consulta "não
+    responde" (o caso mais comum na vida real). Um teste que precise simular
+    registro ativo ou inativo troca a função de novo com monkeypatch.
+    """
+    from app.services import crm_service
+    crm_service._CACHE_CREMESP.clear()
+    monkeypatch.setattr(crm_service, "_consultar_cremesp", lambda crm_limpo: None)
+    yield
+    crm_service._CACHE_CREMESP.clear()
+
+
+@pytest.fixture
+def emails_enviados(monkeypatch):
+    """Captura os e-mails em vez de enviar. Cada item: (destinatario, assunto, corpo)."""
+    caixa = []
+
+    def _falso_envio(destinatario, assunto, corpo_texto):
+        caixa.append((destinatario, assunto, corpo_texto))
+        return True
+
+    import app.api.auth as rotas_auth
+    import app.api.admin as rotas_admin
+    monkeypatch.setattr(rotas_auth, "enviar_email", _falso_envio)
+    monkeypatch.setattr(rotas_admin, "enviar_email", _falso_envio)
+    return caixa
+
+
+@pytest.fixture
+def admin_headers(monkeypatch):
+    monkeypatch.setenv("NYMPHIA_ADMIN_TOKEN", TOKEN_ADMIN_TESTE)
+    return {"X-Admin-Token": TOKEN_ADMIN_TESTE, "X-Admin-Nome": "Equipe de teste"}
+
+
+@pytest.fixture
+def aprovar_profissional(client, admin_headers):
+    """Aprova um profissional pelo caminho real: a rota da equipe."""
+    def _aprovar(profissional_id):
+        res = client.post(f"/admin/profissionais/{profissional_id}/aprovar", headers=admin_headers)
+        assert res.status_code == 200, res.text
+        return res.json()
+    return _aprovar

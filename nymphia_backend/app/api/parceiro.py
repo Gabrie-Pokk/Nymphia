@@ -17,7 +17,7 @@ from app.schemas.all_schemas import (
     CheckinCreate, CheckinOut
 )
 from app.security.jwt_auth import get_current_gestante, get_current_parceiro
-from app.services.rules_engine import analyze_urgency
+from app.services.rules_engine import avaliar
 from app.services.ai_text_service import classify_text_emotions
 
 logger = logging.getLogger("nymphia.parceiro")
@@ -399,14 +399,16 @@ def registrar_checkin_pelo_parceiro(
     descricao_formatada = f"{tag_parceiro}: {descricao_original}" if descricao_original else tag_parceiro
 
     # 1. Análise determinística de urgência (regras FEBRASGO)
-    combined_text = f"{descricao_formatada} {' '.join(payload.sintomas)}"
-    is_urgent, alertas_regras, orientacao_regras = analyze_urgency(combined_text)
+    avaliacao = avaliar(descricao_original, payload.sintomas)
+    is_urgent = avaliacao.urgente
+    alertas_regras = avaliacao.urgentes
+    orientacao_regras = avaliacao.orientacao
 
     # 2. Análise emocional (BERTimbau / heurística)
     scores_bertimbau, categorias_emocionais = classify_text_emotions(descricao_formatada)
 
     # 3. Formatação da orientação ao parceiro
-    if is_urgent:
+    if is_urgent or avaliacao.nivel == "atencao":
         recomendacao = orientacao_regras
     elif "sintoma_fisico" in categorias_emocionais or len(payload.sintomas) > 0:
         sintomas_txt = ", ".join(payload.sintomas) if payload.sintomas else "desconforto relatado"
@@ -434,6 +436,7 @@ def registrar_checkin_pelo_parceiro(
         categorias_bertimbau=scores_bertimbau,
         categorias_regras=categorias_emocionais,
         alerta_sintoma_fisico=alertas_regras,
+        sinais_atencao=avaliacao.atencoes,
         score_anomalia=0.65 if is_urgent else 0.05
     )
     db.add(novo_checkin)
@@ -460,6 +463,7 @@ def registrar_checkin_pelo_parceiro(
         categorias_bertimbau=novo_checkin.categorias_bertimbau,
         categorias_regras=novo_checkin.categorias_regras,
         alerta_sintoma_fisico=novo_checkin.alerta_sintoma_fisico,
+        sinais_atencao=novo_checkin.sinais_atencao or [],
         score_anomalia=novo_checkin.score_anomalia,
         bertimbau_disponivel=True,
         recomendacao=recomendacao

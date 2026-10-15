@@ -1,4 +1,4 @@
-from app.models.auth import Gestante, Profissional, Parceiro
+from app.models.auth import Gestante, Profissional, Parceiro, TokenRedefinicaoSenha, AuditoriaAdmin
 from app.models.clinical import PerfilClinico, HistoricoFamiliar, CheckinRegistro, Exame
 from app.models.interaction import Mensagem, EventoAgenda, EventoEmergencia
 from app.models.relations import Vinculo, CodigoConvite, VinculoParceiro, LogAcesso
@@ -10,6 +10,8 @@ __all__ = [
     "Gestante",
     "Profissional",
     "Parceiro",
+    "TokenRedefinicaoSenha",
+    "AuditoriaAdmin",
     "PerfilClinico",
     "HistoricoFamiliar",
     "CheckinRegistro",
@@ -24,7 +26,7 @@ __all__ = [
     "PostComunidade",
     "ComentarioComunidade",
     "MedicaoDispositivo",
-        "ObservacaoProfissional",
+    "ObservacaoProfissional",
     "CalibracaoClinica",
     "IntegracaoLaboratorial"
 ]

@@ -5,6 +5,42 @@
 
 const DEFAULT_TIMEOUT_MS = 15000;
 
+const NOMES_DE_CAMPOS = {
+  nome: 'Nome',
+  email: 'E-mail',
+  senha: 'Senha',
+  nova_senha: 'Nova senha',
+  registro_numero: 'Número do registro',
+  registro_uf: 'UF do registro',
+  registro_tipo: 'Tipo de registro',
+  crm: 'CRM',
+  crm_uf: 'UF do CRM',
+  aceite_termos: 'Termos de uso',
+  consentimento_dados_saude: 'Consentimento de dados de saúde',
+  token: 'Código do e-mail'
+};
+
+/**
+ * O FastAPI devolve erros de validação (422) como uma LISTA de objetos.
+ * Antes, essa lista virava "[object Object]" na tela. Aqui ela vira texto.
+ */
+export function formatarDetalheErro(detail) {
+  if (!detail) return '';
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) {
+    const partes = detail.map((item) => {
+      if (!item || typeof item !== 'object') return String(item);
+      const msg = String(item.msg || '').replace(/^Value error,\s*/i, '');
+      const loc = Array.isArray(item.loc) ? item.loc.filter((x) => x !== 'body') : [];
+      const campo = loc.length ? (NOMES_DE_CAMPOS[loc[loc.length - 1]] || loc[loc.length - 1]) : '';
+      return campo && !msg.toLowerCase().includes(String(campo).toLowerCase()) ? `${campo}: ${msg}` : msg;
+    });
+    return [...new Set(partes.filter(Boolean))].join(' ');
+  }
+  if (typeof detail === 'object') return detail.msg || detail.mensagem || JSON.stringify(detail);
+  return String(detail);
+}
+
 export async function apiFetch(endpoint, options = {}) {
   const {
     timeout = DEFAULT_TIMEOUT_MS,
@@ -34,6 +70,8 @@ export async function apiFetch(endpoint, options = {}) {
 
   try {
     const response = await fetch(endpoint, {
+      // Dados de saúde: nunca reaproveitar resposta guardada pelo navegador
+      cache: 'no-store',
       ...restOptions,
       headers: finalHeaders,
       signal: controller.signal
@@ -41,8 +79,10 @@ export async function apiFetch(endpoint, options = {}) {
 
     clearTimeout(timeoutId);
 
-    // Tratamento para Sessão Expirada ou Token Inválido (401)
-    if (response.status === 401) {
+    // Tratamento para Sessão Expirada ou Token Inválido (401).
+    // Só vale para pedidos feitos COM a sessão: um 401 de senha errada no
+    // login (skipAuth) mostrava "sua sessão expirou", o que confundia.
+    if (response.status === 401 && !skipAuth) {
       // Dispara evento global para que AuthContext possa deslogar de forma graciosa
       window.dispatchEvent(
         new CustomEvent('nymphia:auth-expired', {
@@ -72,8 +112,10 @@ export async function apiFetch(endpoint, options = {}) {
     if (!response.ok) {
       let errorMessage = 'Ocorreu um erro no processamento da solicitação.';
 
-      if (data && typeof data === 'object') {
-        errorMessage = data.detail || data.erro || data.message || errorMessage;
+      if (data && typeof data === 'object' && (data.detail || data.erro || data.message)) {
+        errorMessage = formatarDetalheErro(data.detail) || data.erro || data.message || errorMessage;
+      } else if (response.status === 503) {
+        errorMessage = 'O servidor da Nymphia está ligando ou em manutenção. Tente de novo em alguns segundos.';
       } else if (response.status === 401) {
         errorMessage = 'Sua sessão expirou ou suas credenciais são inválidas.';
       } else if (response.status === 403) {

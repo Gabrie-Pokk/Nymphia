@@ -164,7 +164,7 @@ export default function PrenatalCard({ onBack }) {
                 </div>
                 {ex.valores_extraidos && (
                   <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', margin: 0 }}>
-                    Extração OCR: {JSON.stringify(ex.valores_extraidos).slice(0, 100)}...
+                    Valores registrados: {JSON.stringify(ex.valores_extraidos).slice(0, 100)}...
                   </p>
                 )}
               </div>

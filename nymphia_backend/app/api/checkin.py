@@ -11,7 +11,7 @@ from app.schemas.all_schemas import (
     CheckinAnalisarRequest, CheckinCreate, CheckinOut
 )
 from app.security.jwt_auth import get_current_user_payload
-from app.services.rules_engine import analyze_urgency
+from app.services.rules_engine import avaliar
 from app.services.ai_text_service import classify_text_emotions
 
 router = APIRouter(prefix="/checkin", tags=["Check-in Diário"])
@@ -48,12 +48,15 @@ def analisar_checkin_preview(payload: CheckinAnalisarRequest):
     """
     Analisa texto sem persistir (para pré-visualização em tempo real na interface).
     """
-    is_urgent, alertas_urgencia, orientacao_urgencia = analyze_urgency(payload.texto)
+    avaliacao = avaliar(payload.texto)
     scores, categorias_emocionais = classify_text_emotions(payload.texto)
     return {
-        "is_urgente": is_urgent,
-        "alertas_urgencia": alertas_urgencia,
-        "orientacao_urgencia": orientacao_urgencia,
+        "is_urgente": avaliacao.urgente,
+        "alertas_urgencia": avaliacao.urgentes,
+        "orientacao_urgencia": avaliacao.orientacao if avaliacao.urgente else "",
+        "nivel": avaliacao.nivel,
+        "sinais_atencao": avaliacao.atencoes,
+        "orientacao": avaliacao.orientacao,
         "categorias_emocionais": categorias_emocionais,
         "scores_bertimbau": scores
     }
@@ -78,15 +81,18 @@ def registrar_checkin(
         if tag_parceiro not in descricao_texto:
             descricao_texto = f"{tag_parceiro}: {descricao_texto}" if descricao_texto else tag_parceiro
 
-    # 1. Análise determinística de urgência (regras FEBRASGO)
-    combined_text = f"{descricao_texto} {' '.join(payload.sintomas)}"
-    is_urgent, alertas_regras, orientacao_regras = analyze_urgency(combined_text)
+    # 1. Sinais de alerta: opções marcadas são lidas sem interpretação de texto,
+    #    o texto livre passa pelo motor de regras (app/services/rules_engine.py)
+    avaliacao = avaliar(descricao_texto, payload.sintomas)
+    is_urgent = avaliacao.urgente
+    alertas_regras = avaliacao.urgentes
+    orientacao_regras = avaliacao.orientacao
 
     # 2. Análise emocional (BERTimbau / heurística)
     scores_bertimbau, categorias_emocionais = classify_text_emotions(descricao_texto)
 
     # 3. Formatar recomendação
-    if is_urgent:
+    if is_urgent or avaliacao.nivel == "atencao":
         recomendacao = orientacao_regras
     elif "sintoma_fisico" in categorias_emocionais or len(payload.sintomas) > 0:
         sintomas_txt = ", ".join(payload.sintomas) if payload.sintomas else "desconforto relatado"
@@ -115,6 +121,7 @@ def registrar_checkin(
         categorias_bertimbau=scores_bertimbau,
         categorias_regras=categorias_emocionais,
         alerta_sintoma_fisico=alertas_regras,
+        sinais_atencao=avaliacao.atencoes,
         score_anomalia=0.65 if is_urgent else 0.05
     )
     db.add(novo_checkin)
@@ -142,6 +149,7 @@ def registrar_checkin(
         categorias_bertimbau=novo_checkin.categorias_bertimbau,
         categorias_regras=novo_checkin.categorias_regras,
         alerta_sintoma_fisico=novo_checkin.alerta_sintoma_fisico,
+        sinais_atencao=novo_checkin.sinais_atencao or [],
         score_anomalia=novo_checkin.score_anomalia,
         bertimbau_disponivel=True,
         recomendacao=recomendacao
@@ -179,6 +187,7 @@ def listar_historico_checkin(
             categorias_bertimbau=c.categorias_bertimbau,
             categorias_regras=c.categorias_regras or [],
             alerta_sintoma_fisico=c.alerta_sintoma_fisico or [],
+            sinais_atencao=c.sinais_atencao or [],
             score_anomalia=c.score_anomalia,
             bertimbau_disponivel=True,
             recomendacao="Registro histórico salvo."

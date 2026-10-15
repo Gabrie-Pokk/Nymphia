@@ -20,8 +20,9 @@ class GestanteRegister(BaseModel):
     email: EmailStr = Field(..., max_length=120)
     senha: str = Field(..., min_length=8, max_length=72)
     recusa_ia: bool = False
-    aceite_termos: bool = Field(True, description="Aceite dos Termos de Uso e Política de Privacidade")
-    consentimento_dados_saude: bool = Field(True, description="Consentimento específico para tratamento de dados de saúde (Art. 11, I da LGPD)")
+    # Consentimento nunca é presumido: o cliente precisa mandar True de forma explícita
+    aceite_termos: bool = Field(False, description="Aceite dos Termos de Uso e Política de Privacidade")
+    consentimento_dados_saude: bool = Field(False, description="Consentimento específico para tratamento de dados de saúde (Art. 11, I da LGPD)")
     termos_versao: Optional[str] = "1.0-2026"
 
     @model_validator(mode="after")
@@ -65,7 +66,7 @@ class ProfissionalRegister(BaseModel):
     registro_tipo: str = Field(..., pattern="^(CRM|COREN)$")
     registro_numero: str = Field(..., min_length=3, max_length=12)
     registro_uf: str = Field(..., min_length=2, max_length=2)
-    aceite_termos: bool = Field(True, description="Aceite dos Termos de Uso do Profissional e Política de Privacidade")
+    aceite_termos: bool = Field(False, description="Aceite dos Termos de Uso do Profissional e Política de Privacidade")
     termos_versao: Optional[str] = "1.0-2026"
 
     @model_validator(mode="after")
@@ -92,10 +93,11 @@ class ProfissionalRegister(BaseModel):
     @field_validator("registro_numero")
     @classmethod
     def validar_registro_numero(cls, v: str) -> str:
-        v_clean = v.strip()
-        if not REGISTRO_REGEX.match(v_clean):
-            raise ValueError("O número de registro deve conter entre 3 e 10 dígitos numéricos.")
-        return v_clean
+        # Aceita "123.456", "123456-SP", "123 456": guarda só os dígitos.
+        digitos = re.sub(r"[^0-9]", "", v or "")
+        if not 3 <= len(digitos) <= 10:
+            raise ValueError("O número de registro deve ter entre 3 e 10 dígitos.")
+        return digitos
 
     @field_validator("registro_uf")
     @classmethod
@@ -146,7 +148,7 @@ class ParceiroRegister(BaseModel):
     nome: str = Field(..., min_length=2, max_length=100)
     email: EmailStr = Field(..., max_length=120)
     senha: str = Field(..., min_length=8, max_length=72)
-    aceite_termos: bool = Field(True, description="Aceite dos Termos de Uso e Política de Privacidade")
+    aceite_termos: bool = Field(False, description="Aceite dos Termos de Uso e Política de Privacidade")
     termos_versao: Optional[str] = "1.0-2026"
 
     @model_validator(mode="after")
@@ -195,12 +197,12 @@ class EsqueciSenhaPayload(BaseModel):
     perfil: Optional[str] = Field(None, pattern="^(gestante|profissional|parceiro)?$")
 
 class EsqueciSenhaResponse(BaseModel):
+    # O código de redefinição vai só por e-mail. Ele nunca aparece na resposta.
     mensagem: str
     sucesso: bool
-    reset_token: Optional[str] = None
 
 class RedefinirSenhaPayload(BaseModel):
-    token: str = Field(..., min_length=10)
+    token: str = Field(..., min_length=20, max_length=200)
     nova_senha: str = Field(..., min_length=8, max_length=72)
 
     @field_validator("nova_senha")
@@ -376,9 +378,16 @@ class CheckinOut(BaseModel):
     categorias_bertimbau: Optional[Dict[str, float]]
     categorias_regras: List[str]
     alerta_sintoma_fisico: List[str]
+    sinais_atencao: List[str] = Field(default_factory=list)
     score_anomalia: Optional[float]
     bertimbau_disponivel: bool = True
     recomendacao: Optional[str] = "Registro histórico salvo."
+
+    @field_validator("sinais_atencao", mode="before")
+    @classmethod
+    def _sinais_atencao_vazio(cls, v):
+        # Check-ins gravados antes de 15/10/2026 não têm essa coluna preenchida
+        return v or []
 
     @field_serializer("data_hora")
     def serialize_data_hora(self, dt: datetime, _info):

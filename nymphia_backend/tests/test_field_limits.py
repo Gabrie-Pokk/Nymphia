@@ -4,6 +4,8 @@ from datetime import date, timedelta
 def test_nome_com_numeros_rejeitado(client):
     # Gestante
     res = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Maria123",
         "email": "maria123@teste.com",
         "senha": "senhaSegura123"
@@ -13,6 +15,7 @@ def test_nome_com_numeros_rejeitado(client):
 
     # Profissional
     res_prof = client.post("/auth/profissional/cadastro", json={
+        "aceite_termos": True,
         "nome": "Dr. Lucas 2",
         "email": "lucas2@med.com",
         "senha": "senhaMed123",
@@ -24,6 +27,7 @@ def test_nome_com_numeros_rejeitado(client):
 
     # Parceiro
     res_parc = client.post("/auth/parceiro/cadastro", json={
+        "aceite_termos": True,
         "nome": "Carlos 99",
         "email": "carlos99@teste.com",
         "senha": "senhaSegura123"
@@ -33,6 +37,8 @@ def test_nome_com_numeros_rejeitado(client):
 def test_onboarding_inconsistencia_obstetrica_rejeitada(client):
     # Cadastra gestante válida
     res = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Carla Mendes",
         "email": "carla.mendes@teste.com",
         "senha": "senhaSegura123"
@@ -55,6 +61,8 @@ def test_onboarding_inconsistencia_obstetrica_rejeitada(client):
 
 def test_onboarding_limites_idade_e_dum_futura_rejeitados(client):
     res = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Fernanda Souza",
         "email": "fernanda.souza@teste.com",
         "senha": "senhaSegura123"
@@ -88,6 +96,8 @@ def test_onboarding_limites_idade_e_dum_futura_rejeitados(client):
 
 def test_checkin_limites_fisiologicos(client):
     res = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Mariana Dias",
         "email": "mariana.dias@teste.com",
         "senha": "senhaSegura123"
@@ -113,6 +123,8 @@ def test_checkin_limites_fisiologicos(client):
 
 def test_dispositivos_pressao_sistolica_menor_que_diastolica_rejeitada(client):
     res = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Juliana Prado",
         "email": "juliana.prado@teste.com",
         "senha": "senhaSegura123"
@@ -137,6 +149,8 @@ def test_dispositivos_pressao_sistolica_menor_que_diastolica_rejeitada(client):
 
 def test_dispositivo_sistolica_limites_fisiologicos(client):
     res = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Renata Lima",
         "email": "renata.lima@teste.com",
         "senha": "senhaSegura123"
@@ -154,6 +168,8 @@ def test_dispositivo_sistolica_limites_fisiologicos(client):
 
 def test_chat_mensagem_vazia_rejeitada(client):
     res = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Paula Costa",
         "email": "paula.costa@teste.com",
         "senha": "senhaSegura123"
@@ -169,6 +185,8 @@ def test_chat_mensagem_vazia_rejeitada(client):
 
 def test_codigo_convite_formato_invalido_rejeitado(client):
     res = client.post("/auth/gestante/cadastro", json={
+        "aceite_termos": True,
+        "consentimento_dados_saude": True,
         "nome": "Larissa Rocha",
         "email": "larissa.rocha@teste.com",
         "senha": "senhaSegura123"
