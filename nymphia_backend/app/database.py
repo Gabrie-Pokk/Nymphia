@@ -169,7 +169,13 @@ def executar_migracoes_automaticas():
     except Exception as e:
         logger.error(f"Erro ao criar tabelas novas: {e}")
 
-    # Manutenções que precisam rodar uma única vez por banco
+
+def executar_manutencoes_unicas():
+    """
+    Manutenções que rodam uma única vez por banco. Ficam separadas das
+    migrações porque, na troca de banco, a cópia dos dados antigos precisa
+    acontecer antes delas (app/copia_de_banco.py).
+    """
     _executar_uma_vez("rotacao_senha_vazada_2026_10_08", rotacionar_credenciais_vazadas_automaticamente)
     _executar_uma_vez("remover_ocr_simulado_2026_10_15", _remover_valores_de_ocr_simulado)
     _executar_uma_vez("profissionais_para_conferencia_manual_2026_10_15", profissionais_para_conferencia_manual)

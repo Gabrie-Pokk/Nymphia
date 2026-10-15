@@ -57,12 +57,22 @@ def garantir_chave_jwt_segura() -> None:
 async def lifespan(app: FastAPI):
     # Inicialização resiliente e não-bloqueante no startup
     logger.info("Iniciando Nymphia Backend — Cada batimento importa.")
+    from app.database import Base, engine, executar_migracoes_automaticas, executar_manutencoes_unicas
     try:
-        from app.database import Base, engine, executar_migracoes_automaticas
         Base.metadata.create_all(bind=engine)
         executar_migracoes_automaticas()
     except Exception as e:
         logger.error(f"Aviso na inicialização do banco: {e}")
+
+    # Troca de banco: copia o antigo (NYMPHIA_DATABASE_URL_ANTIGO) uma vez, antes
+    # de qualquer manutenção. Se falhar, a inicialização para de propósito.
+    from app.copia_de_banco import copiar_banco_antigo_se_preciso
+    copiar_banco_antigo_se_preciso()
+
+    try:
+        executar_manutencoes_unicas()
+    except Exception as e:
+        logger.error(f"Aviso nas manutenções do banco: {e}")
 
     # Sem chave segura, o servidor não atende ninguém (a exceção derruba a inicialização)
     if is_prod:
