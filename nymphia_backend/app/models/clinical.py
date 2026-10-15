@@ -15,6 +15,13 @@ class PerfilClinico(Base):
     partos_normais = Column(Integer, default=0, nullable=False)
     partos_cesareos = Column(Integer, default=0, nullable=False)
     perdas_gestacionais = Column(Integer, default=0, nullable=False)
+    # Usados pelos modelos v2 e pelos fatores clínicos (15/10/2026). Vazio = não informado.
+    numero_fetos = Column(Integer, nullable=True)            # 1 único, 2 gêmeos, 3 trigêmeos ou mais
+    mes_inicio_prenatal = Column(Integer, nullable=True)     # mês da gestação em que começou o pré-natal
+    uf_residencia = Column(Integer, nullable=True)           # código IBGE do estado (11 a 53)
+    pre_eclampsia_previa = Column(Boolean, nullable=True)
+    hipertensao_cronica = Column(Boolean, nullable=True)
+    diabetes_previo = Column(Boolean, nullable=True)
     dum = Column(Date, nullable=False)
     dpp = Column(Date, nullable=False)
     dpp_editada_manualmente = Column(Boolean, default=False, nullable=False)
@@ -94,3 +101,26 @@ class RegistroAntropometrico(Base):
     criado_em = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     gestante = relationship("Gestante", back_populates="registros_antropometricos")
+
+
+class TriagemEPDS(Base):
+    """
+    Respostas da Escala de Edimburgo (EPDS). Guarda a posição de cada resposta e
+    os pontos dados pela chave da escala; o texto das perguntas não é guardado.
+    Dado de saúde mental: só a gestante e o profissional com vínculo ativo veem.
+    """
+    __tablename__ = "triagens_epds"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    gestante_id = Column(String(36), ForeignKey("gestantes.id", ondelete="CASCADE"), nullable=False, index=True)
+    data_hora = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)  # hora do servidor
+    semana_gestacional = Column(Integer, nullable=True)
+    respostas = Column(JSON, nullable=False)          # posição escolhida em cada pergunta (0 a 3)
+    pontos_por_item = Column(JSON, nullable=False)    # pontos de cada pergunta pela chave da escala
+    pontuacao = Column(Integer, nullable=False)       # 0 a 30
+    pontos_autolesao = Column(Integer, nullable=False)  # pergunta 10
+    nivel = Column(String(20), nullable=False)        # urgente | atencao | sem_sinais
+    versao_questionario = Column(String(255), nullable=True)
+    profissional_notificado = Column(Boolean, default=False, nullable=False)
+
+    gestante = relationship("Gestante", back_populates="triagens_epds")

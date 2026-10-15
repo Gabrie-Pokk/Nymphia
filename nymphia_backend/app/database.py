@@ -52,6 +52,12 @@ logger = logging.getLogger("nymphia.database")
 # para cada banco: TIMESTAMP no PostgreSQL, DATETIME no SQLite. (O PostgreSQL
 # não tem o tipo DATETIME; usar DATETIME nele fazia a migração falhar.)
 COLUNAS_ADICIONADAS_DEPOIS = [
+    ("perfis_clinicos", "numero_fetos", "INTEGER"),
+    ("perfis_clinicos", "mes_inicio_prenatal", "INTEGER"),
+    ("perfis_clinicos", "uf_residencia", "INTEGER"),
+    ("perfis_clinicos", "pre_eclampsia_previa", "BOOLEAN"),
+    ("perfis_clinicos", "hipertensao_cronica", "BOOLEAN"),
+    ("perfis_clinicos", "diabetes_previo", "BOOLEAN"),
     ("perfis_clinicos", "altura_cm", "FLOAT"),
     ("perfis_clinicos", "peso_pre_gestacional", "FLOAT"),
     ("perfis_clinicos", "maternidade_latitude", "FLOAT"),

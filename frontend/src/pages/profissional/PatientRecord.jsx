@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 import TriageDisclaimer from '../../components/TriageDisclaimer';
 import AiTransparencyModal from '../../components/AiTransparencyModal';
+import ResumoRiscos from '../../components/ResumoRiscos';
 import { User, Activity, AlertTriangle, FileText, MessageSquare, Plus, CheckCircle2, ShieldCheck, Heart, Info, Bot } from 'lucide-react';
 
 export default function PatientRecord({ patientId, onBack }) {
@@ -68,6 +69,12 @@ export default function PatientRecord({ patientId, onBack }) {
   }
 
   const { identificacao, perfil_clinico, historico_familiar, riscos_calculados, checkins, exames, mensagens_autorizadas, observacoes_medicas } = ficha;
+  const triagensEpds = ficha.triagens_epds || [];
+  const NIVEL_EPDS = {
+    urgente: { rotulo: 'Pergunta 10 positiva', cor: 'var(--color-vermelho, #C0392B)' },
+    atencao: { rotulo: 'Triagem positiva (10 ou mais)', cor: '#B45309' },
+    sem_sinais: { rotulo: 'Abaixo do corte', cor: '#1E7A46' }
+  };
 
   return (
     <div>
@@ -127,43 +134,10 @@ export default function PatientRecord({ patientId, onBack }) {
         </div>
 
         <p className="text-muted" style={{ fontSize: '0.78rem', marginBottom: '12px' }}>
-          Triagem multivariada baseada no perfil e histórico familiar da paciente:
+          Estimativas populacionais (DATASUS) a partir do cadastro da paciente, e fatores clínicos informados por ela:
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-          {riscos_calculados?.condicoes && Object.entries(riscos_calculados.condicoes).map(([cond, val]) => (
-            <div
-              key={cond}
-              style={{
-                backgroundColor: '#FFFFFF',
-                padding: '10px',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--color-border)'
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <strong style={{ fontSize: '0.82rem', textTransform: 'capitalize' }}>
-                  {cond.replace(/_/g, ' ')}
-                  {cond === 'itu' && <span title="Precisão de 1% devido a desbalanceamento hospitalar do SUS" style={{ color: 'var(--color-dourado)', marginLeft: '4px', cursor: 'help' }}>⚠️</span>}
-                </strong>
-                <span
-                  style={{
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    color: val.nivel === 'alto' ? 'var(--color-vermelho)' : val.nivel === 'moderado' ? '#D97706' : '#27AE60'
-                  }}
-                >
-                  {val.nivel.toUpperCase()} ({Math.round(val.probabilidade * 100)}%)
-                </span>
-              </div>
-              {val.fonte === 'regra_clinica_simples' && (
-                <div style={{ fontSize: '0.68rem', color: 'var(--color-texto-suave, #6B6B6B)', marginTop: '4px' }}>
-                  Estimativa por regra clínica simples (o modelo treinado não está ligado neste servidor).
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+        <ResumoRiscos riscos={riscos_calculados} modo="profissional" />
 
         {/* Carimbo de Prontuário CFM 2.454/2026 */}
         <div style={{ marginTop: '12px', padding: '10px 12px', backgroundColor: 'var(--color-creme)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', fontSize: '0.74rem', color: 'var(--color-vinho)', lineHeight: '1.4' }}>
@@ -197,6 +171,42 @@ export default function PatientRecord({ patientId, onBack }) {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Triagem emocional (EPDS) */}
+      <div className="card">
+        <h3 style={{ fontSize: '1.05rem', marginBottom: '8px' }}>Triagem Emocional (EPDS)</h3>
+        {triagensEpds.length === 0 ? (
+          <p className="text-muted" style={{ fontSize: '0.85rem', margin: 0 }}>A paciente ainda não respondeu à escala.</p>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+            <thead>
+              <tr style={{ textAlign: 'left', color: 'var(--color-text-muted)' }}>
+                <th style={{ padding: '4px 6px' }}>Data</th>
+                <th style={{ padding: '4px 6px' }}>Semana</th>
+                <th style={{ padding: '4px 6px' }}>Pontos</th>
+                <th style={{ padding: '4px 6px' }}>Resultado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {triagensEpds.map((t) => (
+                <tr key={t.id} style={{ borderTop: '1px solid var(--color-border)' }}>
+                  <td style={{ padding: '4px 6px' }}>{new Date(t.data_hora).toLocaleString('pt-BR')}</td>
+                  <td style={{ padding: '4px 6px' }}>{t.semana_gestacional ?? '-'}</td>
+                  <td style={{ padding: '4px 6px' }}>{t.pontuacao}/30</td>
+                  <td style={{ padding: '4px 6px', color: NIVEL_EPDS[t.nivel]?.cor, fontWeight: 700 }}>
+                    {NIVEL_EPDS[t.nivel]?.rotulo || t.nivel}
+                    {t.pensamento_de_se_machucar ? ' · pensamento de se machucar' : ''}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <p className="text-muted" style={{ fontSize: '0.72rem', margin: '8px 0 0' }}>
+          Escala de Edimburgo. Corte de triagem: 10 ou mais (validação brasileira, Santos et al., 2007).
+          Qualquer resposta positiva na pergunta 10 pede avaliação do risco de suicídio. Triagem não é diagnóstico.
+        </p>
       </div>
 
       {/* Trechos de Conversa Autorizados */}

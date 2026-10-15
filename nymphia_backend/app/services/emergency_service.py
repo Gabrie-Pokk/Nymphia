@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime
 from typing import Optional, Dict, Any
@@ -6,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.models.clinical import CheckinRegistro, PerfilClinico
 from app.models.interaction import EventoEmergencia
 from app.models.relations import Vinculo
+from app.services.notificacao_equipe import avisar_equipe, emails_da_equipe
 
 logger = logging.getLogger("nymphia.emergency")
 
@@ -46,14 +48,20 @@ async def process_emergency_event(
         .first()
     )
 
+    # Até 15/10/2026 aqui só havia um log e o evento era gravado como "profissional
+    # notificado", e a tela dizia à gestante que a equipe tinha sido avisada sem
+    # nada ter sido enviado. Agora só conta como avisado o e-mail aceito pelo
+    # servidor; sem SMTP configurado, fica False e a tela diz isso.
+    contexto["equipe_vinculada"] = vinculo_ativo is not None
     profissional_notificado = False
     if vinculo_ativo:
         try:
-            # Simulação de envio paralelo de push / webhook para o profissional
-            logger.info(f"Disparando notificação paralela de emergência ao profissional {vinculo_ativo.profissional_id}")
-            profissional_notificado = True
-        except Exception as e:
-            logger.error(f"Falha não-bloqueante ao notificar profissional: {e}")
+            profissional_notificado = await asyncio.wait_for(
+                asyncio.to_thread(avisar_equipe, emails_da_equipe(db, gestante_id), "botão de emergência"),
+                timeout=8,
+            )
+        except Exception as e:  # inclui o tempo esgotado: a resposta não espera mais que isso
+            logger.error(f"Falha não-bloqueante ao avisar a equipe: {e}")
             profissional_notificado = False
 
     evento = EventoEmergencia(

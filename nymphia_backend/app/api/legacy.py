@@ -48,11 +48,9 @@ def risco_gestante(dados: DadosGestanteLegacy):
         "partos_normais": dados.qtd_partos_normais,
         "partos_cesareos": dados.qtd_partos_cesarea,
         "perdas_gestacionais": dados.qtd_filhos_perdidos,
-        "gravidez_multipla": dados.tipo_gravidez,
-        "consultas_prenatal": dados.qtd_consultas_prenatal,
+        "numero_fetos": dados.tipo_gravidez,
         "mes_inicio_prenatal": dados.mes_inicio_prenatal,
-        "leitos_obstetricos": dados.leitos_obstetricos_estabelecimento or 15.0,
-        "leitos_sus": dados.leitos_obstetricos_sus or 12.0,
+        # Consultas e leitos do hospital não entram mais: só se sabem no parto
     }
     res = calculate_maternal_risks(perfil, [])
     cond = res["condicoes"]
@@ -73,11 +71,7 @@ def risco_gestante(dados: DadosGestanteLegacy):
 
 @router.post("/risco/internacao")
 def risco_internacao(dados: DadosInternacaoLegacy):
-    perfil = {
-        "idade": dados.idade,
-        "uf_cod": dados.uf,
-        "municipio_cod": dados.municipio
-    }
+    perfil = {"idade": dados.idade, "uf_residencia": dados.uf}
     res = calculate_maternal_risks(perfil, [])
     cond = res["condicoes"]
     return {

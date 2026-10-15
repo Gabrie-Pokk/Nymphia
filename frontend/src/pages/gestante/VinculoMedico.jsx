@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 import { Link, ShieldCheck, UserCheck, Trash2, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { nomeComTitulo } from '../../utils/nomeProfissional';
 
 export default function VinculoMedico({ onBack }) {
   const { authHeaders } = useAuth();
@@ -49,7 +50,7 @@ export default function VinculoMedico({ onBack }) {
         throw new Error(data.detail || 'Código inválido ou já utilizado.');
       }
 
-      setSucesso(`Vínculo ativo com Dr(a). ${data.profissional_nome || 'Profissional'} estabelecido com sucesso!`);
+      setSucesso(`Vínculo ativo com ${nomeComTitulo(data.profissional_nome)} estabelecido com sucesso!`);
       setCodigoConvite('');
       carregarProfissionais();
     } catch (err) {

@@ -58,3 +58,6 @@ Thumbs.db
 # Expo local
 .expo/
 expo-env.d.ts
+
+# Texto licenciado da EPDS: o repositório é público, então o texto vai pela variável NYMPHIA_EPDS_JSON no servidor
+nymphia_backend/app/data/epds_ptbr.json

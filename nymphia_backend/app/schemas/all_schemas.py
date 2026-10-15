@@ -238,6 +238,12 @@ class PerfilClinicoBase(BaseModel):
     partos_normais: int = Field(0, ge=0, le=20, description="Partos normais prévios (máx. 20)")
     partos_cesareos: int = Field(0, ge=0, le=10, description="Partos cesáreos prévios (máx. 10)")
     perdas_gestacionais: int = Field(0, ge=0, le=15, description="Abortos/óbitos fetais prévios (máx. 15)")
+    numero_fetos: Optional[int] = Field(None, ge=1, le=3, description="1 único, 2 gêmeos, 3 trigêmeos ou mais")
+    mes_inicio_prenatal: Optional[int] = Field(None, ge=1, le=9, description="Mês da gestação em que começou o pré-natal")
+    uf_residencia: Optional[int] = Field(None, ge=11, le=53, description="Código IBGE do estado onde mora")
+    pre_eclampsia_previa: Optional[bool] = None
+    hipertensao_cronica: Optional[bool] = None
+    diabetes_previo: Optional[bool] = None
     dum: date
     dpp: date
     dpp_editada_manualmente: bool = False
@@ -294,6 +300,12 @@ class PerfilClinicoUpdate(BaseModel):
     partos_normais: Optional[int] = Field(None, ge=0, le=20)
     partos_cesareos: Optional[int] = Field(None, ge=0, le=10)
     perdas_gestacionais: Optional[int] = Field(None, ge=0, le=15)
+    numero_fetos: Optional[int] = Field(None, ge=1, le=3, description="1 único, 2 gêmeos, 3 trigêmeos ou mais")
+    mes_inicio_prenatal: Optional[int] = Field(None, ge=1, le=9, description="Mês da gestação em que começou o pré-natal")
+    uf_residencia: Optional[int] = Field(None, ge=11, le=53, description="Código IBGE do estado onde mora")
+    pre_eclampsia_previa: Optional[bool] = None
+    hipertensao_cronica: Optional[bool] = None
+    diabetes_previo: Optional[bool] = None
     dum: Optional[date] = None
     dpp: Optional[date] = None
     dpp_editada_manualmente: Optional[bool] = None
@@ -380,7 +392,7 @@ class CheckinOut(BaseModel):
     alerta_sintoma_fisico: List[str]
     sinais_atencao: List[str] = Field(default_factory=list)
     score_anomalia: Optional[float]
-    bertimbau_disponivel: bool = True
+    bertimbau_disponivel: bool = False  # True só com o modelo carregado de verdade
     recomendacao: Optional[str] = "Registro histórico salvo."
 
     @field_validator("sinais_atencao", mode="before")
@@ -410,7 +422,7 @@ class ConversaEnviarRequest(BaseModel):
 class ConversaResponse(BaseModel):
     resposta: str
     alerta_emergencia: bool
-    fonte: str  # "regras_urgencia" | "base_clinica_ia" | "llm"
+    fonte: str  # "regras_urgencia" | "base_clinica_escrita" | "modelo_de_resposta_por_palavras_chave" | "gemini_ia" | "assistente_nymphia"
 
 class MensagemOut(BaseModel):
     id: int
@@ -484,6 +496,7 @@ class EmergenciaResponse(BaseModel):
     evento_id: int
     data_hora: datetime
     profissional_notificado: bool
+    equipe_vinculada: bool = False
     orientacao_samu: str = "Disque 192 imediatamente."
 
 # --- Vinculo Schemas ---
@@ -780,6 +793,8 @@ class RegistroAntropometricoOut(BaseModel):
     edema: Optional[str] = None
     observacoes: Optional[str] = None
     criado_em: datetime
+    # Pressão, inchaço e ganho rápido avaliados na hora de salvar
+    alertas: List[Dict[str, Any]] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -795,7 +810,9 @@ class PainelAntropometriaResponse(BaseModel):
     peso_atual_kg: Optional[float] = None
     ganho_peso_acumulado_kg: Optional[float] = None
     imc_atual: Optional[float] = None
-    semana_gestacional_atual: int
+    # None quando não há DUM nem pesagem: o app não inventa mais a semana
+    semana_gestacional_atual: Optional[int] = None
+    semana_pela_dum: bool = False
     avaliacao_ganho_ufrj: Optional[Dict[str, Any]] = None
     avaliacao_atalah: Optional[Dict[str, Any]] = None
     avaliacao_altura_uterina: Optional[Dict[str, Any]] = None
@@ -803,12 +820,17 @@ class PainelAntropometriaResponse(BaseModel):
     guia_educativo: Dict[str, Any]
     alerta_ganho_subito: bool = False
     mensagem_alerta: Optional[str] = None
+    # Pressão alta, inchaço intenso e ganho rápido, do mais grave para o mais leve
+    alertas: List[Dict[str, Any]] = Field(default_factory=list)
+    # Gráfico de ganho de peso: faixa recomendada por semana e uma marca por pesagem
+    curva_ganho_recomendada: Optional[List[Dict[str, Any]]] = None
+    pontos_ganho: List[Dict[str, Any]] = Field(default_factory=list)
 
 class SegurancaMovimentoRequest(BaseModel):
     disposicao: str = Field("disposta", pattern="^(disposta|leve_cansaco|exausta)$")
     queixas: List[str] = Field(default_factory=list)
     sinais_alerta: List[str] = Field(default_factory=list)
-    semana_gestacional: Optional[int] = 24
+    semana_gestacional: Optional[int] = Field(None, ge=1, le=44)
 
 class SegurancaMovimentoResponse(BaseModel):
     apta_exercicio: bool

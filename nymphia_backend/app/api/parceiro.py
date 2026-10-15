@@ -19,6 +19,7 @@ from app.schemas.all_schemas import (
 from app.security.jwt_auth import get_current_gestante, get_current_parceiro
 from app.services.rules_engine import avaliar
 from app.services.ai_text_service import classify_text_emotions
+from app.services.ai_text_service import bertimbau_disponivel as _bertimbau_ligado
 
 logger = logging.getLogger("nymphia.parceiro")
 
@@ -465,7 +466,7 @@ def registrar_checkin_pelo_parceiro(
         alerta_sintoma_fisico=novo_checkin.alerta_sintoma_fisico,
         sinais_atencao=novo_checkin.sinais_atencao or [],
         score_anomalia=novo_checkin.score_anomalia,
-        bertimbau_disponivel=True,
+        bertimbau_disponivel=_bertimbau_ligado(),
         recomendacao=recomendacao
     )
 

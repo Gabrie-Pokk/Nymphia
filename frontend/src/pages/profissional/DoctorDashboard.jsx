@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Users, AlertTriangle, Calendar, Clock, ChevronRight, UserPlus, RefreshCw } from 'lucide-react';
 import TriageDisclaimer from '../../components/TriageDisclaimer';
 import { apiFetch } from '../../utils/api';
+import { nomeComTitulo } from '../../utils/nomeProfissional';
 
 export default function DoctorDashboard({ onSelectPatient, onNavigateGenerateInvite }) {
   const { user, authHeaders } = useAuth();
@@ -46,7 +47,7 @@ export default function DoctorDashboard({ onSelectPatient, onNavigateGenerateInv
           <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
             Painel Obstétrico
           </span>
-          <h2 style={{ margin: 0 }}>Dr(a). {user?.nome}</h2>
+          <h2 style={{ margin: 0 }}>{nomeComTitulo(user?.nome)}</h2>
         </div>
         <button
           className="btn btn-primary"

@@ -174,10 +174,10 @@ CONHECIMENTO_CLINICO = {
             "Checagem prévia obrigatória: Antes de qualquer exercício, é fundamental avaliar se a gestante apresenta sangramento, perda de líquido, cólica rítmica ou tontura (contraindicações absolutas que suspendem qualquer treino);",
             "Dor lombar: Focar em báscula pélvica na bola suíça, postura gato-vaca suave em 4 apoios e alongamento de piriforme sentado; PROIBIR hiperextensão lombar brusca e levantamento de cargas do chão sem dobrar os joelhos;",
             "Dor pélvica / sínfise púbica (DSP): Manter movimentos simétricos e estáveis; PROIBIR passadas, afundos, agachamentos unilaterais e aberturas exageradas de pernas;",
-            "A partir de 16 semanas: É ESTRITAMENTE PROIBIDO permanecer deitada de costas no chão (decúbito dorsal) por mais de 3 minutos, pois o peso do útero comprime a veia cava inferior e reduz o oxigênio para o feto;",
+            "Barriga para cima: se ao deitar de costas der tontura, enjoo ou mal-estar, mudar para o lado, sentada ou em pé (diretriz canadense de atividade física na gestação, 2019);",
             "Melhor postura de descanso: Decúbito lateral esquerdo com almofada entre os joelhos para alinhar a bacia."
         ],
-        "orientacao": "Pergunte sempre à gestante como ela está se sentindo fisicamente e se sente dores ou cansaço antes de indicar qualquer posição. Você pode usar a ferramenta 'Visão Corporal & Postura IA' da Nymphia para calibrar os movimentos pela câmera com o MediaPipe."
+        "orientacao": "Pergunte sempre à gestante como ela está se sentindo fisicamente e se sente dores ou cansaço antes de indicar qualquer posição. A tela 'Postura e movimento' da Nymphia tem o passo a passo dos exercícios em texto e voz."
     },
     "antropometria_peso": {
         "resumo": "ANTROPOMETRIA E GANHO PONDERAL GESTACIONAL (UFRJ / MS 2022 / IOM): O acompanhamento do peso e altura uterina no pré-natal é uma das ferramentas mais eficazes para prevenir desfechos adversos.",
@@ -454,10 +454,10 @@ def _formatar_conversa_clinica_natural(tema: str, nome_gestante: Optional[str] =
             f"Vale a pena também conferir com a maternidade escolhida se eles têm alguma lista de recomendações específicas. Em qual semana você está agora?"
         ),
         "exercicios_posicoes": (
-            f"Oi{vocativo}! Praticar exercícios e cuidar da postura durante a gestação traz um alívio maravilhoso para as costas, reduz o inchaço e prepara o corpo para o parto.\n\n"
+            f"Oi{vocativo}! Movimentar o corpo e cuidar da postura durante a gestação costuma aliviar as costas e faz bem para você.\n\n"
             f"Porém, para sua total segurança e do bebê, antes de indicar qualquer posição, me conte: como você está se sentindo hoje? Está com alguma dor na lombar ou na bacia (sínfise púbica), ou sentindo cansaço? Teve algum sangramento ou contração?\n\n"
-            f"Lembre-se de duas regras de ouro: a partir de 16 semanas, nunca fique deitada de costas no chão por muito tempo para não comprimir a veia cava; e se sentir dor na bacia, evite movimentos com uma perna só (como afundos). "
-            f"Você também pode abrir a nossa tela 'Visão Corporal & Postura IA' no menu para que a câmera com MediaPipe calibre seus movimentos e te guie em tempo real! Como você está se sentindo agora?"
+            f"Duas dicas: se ao deitar de barriga para cima der tontura, enjoo ou mal-estar, vire de lado; e se sentir dor na bacia, evite movimentos com uma perna só (como afundos). "
+            f"No menu, a tela 'Postura e movimento' tem o passo a passo dos exercícios. Como você está se sentindo agora?"
         ),
         "antropometria_peso": (
             f"Oi{vocativo}! O acompanhamento do peso na gestação é essencial para a saúde sua e do bebê, sem cobranças ou julgamentos sobre seu corpo.\n\n"
@@ -559,10 +559,10 @@ SYSTEM_PROMPT_NYMPHIA = (
     "nem listas de tópicos pré-formatadas. Se ela te der um 'oi' ou 'tudo bem', apenas cumprimente com carinho e pergunte como ela está.\n"
     "3. SEGURANÇA BIOMECÂNICA, POSIÇÕES E EXERCÍCIOS: Antes de indicar qualquer postura ou exercício, pergunte ativamente "
     "como a gestante está se sentindo (energia, dor lombar, dor pélvica/sínfise púbica, contrações). "
-    "NUNCA recomende decúbito dorsal prolongado (deitar de costas no chão) a partir da 16ª semana (risco de síndrome de compressão da veia cava). "
+    "Se deitar de barriga para cima der tontura, enjoo ou mal-estar, oriente mudar para o lado, sentada ou em pé (diretriz canadense de 2019). "
     "Se houver dor na sínfise púbica/bacia, proíba afundos ou passadas unilaterais. Se houver sangramento ou perda de líquido, "
-    "oriente repouso imediato em decúbito lateral esquerdo e busca do pronto-atendimento. Recomende a ferramenta 'Visão Corporal & Postura IA' "
-    "com MediaPipe Pose da Nymphia para orientação postural pela câmera em tempo real com total privacidade.\n"
+    "oriente repouso imediato em decúbito lateral esquerdo e busca do pronto-atendimento. Recomende a tela 'Postura e movimento' "
+    "da Nymphia, com o passo a passo dos exercícios em texto e voz (o app não mede o corpo).\n"
     "4. ANTROPOMETRIA E GANHO PONDERAL: Ao falar sobre peso, desmistifique o 'comer por dois'. Explique que a qualidade nutricional "
     "(ferro, cálcio, ácido fólico, ômega 3) é o essencial e que cada corpo tem uma faixa ideal de ganho pelas curvas da UFRJ / Ministério da Saúde (2022). "
     "Adote linguagem acolhedora e jamais de julgamento corporal.\n"
@@ -826,8 +826,8 @@ def generate_chat_response(
             return _construir_resposta_saudacao(texto_limpo, nome_gestante), False, "assistente_nymphia"
         tema_clinico = _buscar_tema_clinico(texto_limpo)
         if tema_clinico and tema_clinico in CONHECIMENTO_CLINICO:
-            return _formatar_conversa_clinica_natural(tema_clinico, nome_gestante), False, "base_clinica_ia"
-        return _gerar_resposta_dinamica_ia(texto_limpo, scores, active_categories, nome_gestante), False, "bertimbau_ia"
+            return _formatar_conversa_clinica_natural(tema_clinico, nome_gestante), False, "base_clinica_escrita"
+        return _gerar_resposta_dinamica_ia(texto_limpo, scores, active_categories, nome_gestante), False, "modelo_de_resposta_por_palavras_chave"
 
     # 2. IA Conversacional Real: Usa e abusa da API com histórico, contexto e dados do obstetra
     scores, active_categories = classify_text_emotions(texto_limpo)
@@ -856,8 +856,8 @@ def generate_chat_response(
 
     if tema_detectado and tema_detectado in CONHECIMENTO_CLINICO:
         base_resp = _formatar_conversa_clinica_natural(tema_detectado, nome_gestante)
-        return f"{base_resp}{adendo_medico}", False, "base_clinica_ia"
+        return f"{base_resp}{adendo_medico}", False, "base_clinica_escrita"
 
     base_resp = _gerar_resposta_dinamica_ia(texto_limpo, scores, active_categories, nome_gestante)
-    return f"{base_resp}{adendo_medico}", False, "bertimbau_ia"
+    return f"{base_resp}{adendo_medico}", False, "modelo_de_resposta_por_palavras_chave"
 

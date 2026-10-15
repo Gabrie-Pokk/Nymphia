@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PerguntasRiscoGestacional, { paraApi, CAMPOS_RISCO } from '../../components/PerguntasRiscoGestacional';
 import { Calendar, Heart, Shield, Plus, Trash2, ArrowRight, ArrowLeft, CheckCircle2, AlertTriangle, Building2, MapPin } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import TriageDisclaimer from '../../components/TriageDisclaimer';
@@ -64,9 +65,15 @@ export default function OnboardingClinico({ onCompleted }) {
   // REGRA SEÇÃO 13.1: Um ÚNICO objeto de estado para o formulário inteiro!
   const [formState, setFormState] = useState({
     // Etapa 1: Dados Pessoais e Obstétricos
-    idade: 28,
-    estado_civil: 'Casada / União Estável',
-    escolaridade: 'Superior Completo',
+    idade: '',
+    estado_civil: '',
+    escolaridade: '',
+    numero_fetos: '',
+    mes_inicio_prenatal: '',
+    uf_residencia: '',
+    pre_eclampsia_previa: '',
+    hipertensao_cronica: '',
+    diabetes_previo: '',
     gestacoes_anteriores: 0,
     partos_normais: 0,
     partos_cesareos: 0,
@@ -154,6 +161,10 @@ export default function OnboardingClinico({ onCompleted }) {
   const avancarEtapa = () => {
     setErro('');
     if (etapa === 1) {
+      if (formState.idade === '') {
+        setErro('Informe sua idade.');
+        return;
+      }
       if (formState.idade < 10 || formState.idade > 65) {
         setErro('Idade materna deve estar entre 10 e 65 anos.');
         return;
@@ -206,8 +217,9 @@ export default function OnboardingClinico({ onCompleted }) {
     try {
       const perfilPayload = {
         idade: Number(formState.idade),
-        estado_civil: formState.estado_civil,
-        escolaridade: formState.escolaridade,
+        estado_civil: formState.estado_civil || null,
+        escolaridade: formState.escolaridade || null,
+        ...paraApi(formState),
         gestacoes_anteriores: Number(formState.gestacoes_anteriores),
         partos_normais: Number(formState.partos_normais),
         partos_cesareos: Number(formState.partos_cesareos),
@@ -322,7 +334,7 @@ export default function OnboardingClinico({ onCompleted }) {
               min={10}
               max={65}
               value={formState.idade}
-              onChange={(e) => updateField('idade', Number(e.target.value))}
+              onChange={(e) => updateField('idade', e.target.value === '' ? '' : Number(e.target.value))}
               required
             />
           </div>
@@ -411,6 +423,7 @@ export default function OnboardingClinico({ onCompleted }) {
               value={formState.estado_civil}
               onChange={(e) => updateField('estado_civil', e.target.value)}
             >
+              <option value="">Prefiro não informar</option>
               <option value="Solteira">Solteira</option>
               <option value="Casada / União Estável">Casada / União Estável</option>
               <option value="Divorciada / Separada">Divorciada / Separada</option>
@@ -427,6 +440,7 @@ export default function OnboardingClinico({ onCompleted }) {
               value={formState.escolaridade}
               onChange={(e) => updateField('escolaridade', e.target.value)}
             >
+              <option value="">Prefiro não informar</option>
               <option value="Fundamental Incompleto">Fundamental Incompleto</option>
               <option value="Fundamental Completo">Fundamental Completo</option>
               <option value="Médio Incompleto">Médio Incompleto</option>
@@ -436,6 +450,11 @@ export default function OnboardingClinico({ onCompleted }) {
               <option value="Pós-Graduação">Pós-Graduação</option>
             </select>
           </div>
+
+          <PerguntasRiscoGestacional
+            valores={Object.fromEntries(CAMPOS_RISCO.map((c) => [c, formState[c]]))}
+            onChange={updateField}
+          />
 
           <button
             type="button"

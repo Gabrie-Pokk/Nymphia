@@ -5,7 +5,7 @@ import TriageDisclaimer from '../../components/TriageDisclaimer';
 import { formatDateTime } from '../../utils/dateUtils';
 import { apiFetch } from '../../utils/api';
 import FullScreenSuccessModal from '../../components/FullScreenSuccessModal';
-import { AlertTriangle, CheckCircle, Plus, Minus, Send, Brain, Sparkles, History, CalendarCheck, LogIn } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Plus, Minus, Send, Sparkles, History, CalendarCheck, LogIn } from 'lucide-react';
 
 const HUMORES = [
   { nivel: 1, emoji: '😫', label: 'Muito Mal' },
@@ -582,16 +582,6 @@ export default function DailyCheckin({ onBack }) {
                 {h.alerta_sintoma_fisico && h.alerta_sintoma_fisico.length > 0 && (
                   <span style={{ backgroundColor: '#FDEEE9', color: '#C0392B', padding: '3px 8px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700 }}>
                     ⚠️ {h.alerta_sintoma_fisico.join(', ')}
-                  </span>
-                )}
-                {/* Visualização da classificação neural BERTimbau no histórico */}
-                {h.categorias_bertimbau && Object.entries(h.categorias_bertimbau).some(([_, p]) => p >= 0.4) && (
-                  <span style={{ background: '#F4EAE6', color: '#5C1A2A', padding: '2px 8px', borderRadius: '10px', fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    <Brain size={12} />
-                    {Object.entries(h.categorias_bertimbau)
-                      .filter(([_, p]) => p >= 0.4)
-                      .map(([cat]) => cat.replace(/_/g, ' '))
-                      .join(', ')}
                   </span>
                 )}
               </div>

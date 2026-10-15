@@ -4,6 +4,7 @@ import BackButton from '../../components/BackButton';
 import TriageDisclaimer from '../../components/TriageDisclaimer';
 import { apiFetch } from '../../utils/api';
 import FullScreenSuccessModal from '../../components/FullScreenSuccessModal';
+import GraficoGanhoPeso from '../../components/GraficoGanhoPeso';
 import {
   Scale,
   TrendingUp,
@@ -21,8 +22,22 @@ import {
   ChevronUp,
   HelpCircle,
   ShieldCheck,
-  Sliders
+  Sliders,
+  Phone
 } from 'lucide-react';
+
+const hojeIso = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+const dataCurta = (iso) => (iso ? new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR') : '');
+
+// Cores por gravidade dos alertas de pressão, inchaço e ganho rápido
+const ESTILO_ALERTA = {
+  urgente: { fundo: '#FDEDEC', borda: '#C0392B', texto: '#7B241C', rotulo: 'Urgente' },
+  atencao: { fundo: '#FFF9F0', borda: '#E67E22', texto: '#7E3C00', rotulo: 'Atenção' }
+};
 
 // Números em kg no formato brasileiro (4,2 em vez de 4.23)
 const formatarKg = (valor) =>
@@ -57,7 +72,10 @@ export default function Antropometria({ onBack }) {
 
   // Form novo registro
   const [novoPeso, setNovoPeso] = useState('');
-  const [novaSemana, setNovaSemana] = useState(24);
+  // Sem semana padrão: antes vinha 24 e muita gente salvava assim
+  const [novaSemana, setNovaSemana] = useState('');
+  const [novaData, setNovaData] = useState(hojeIso());
+  const [alertaRegistro, setAlertaRegistro] = useState(null);
   const [novaAU, setNovaAU] = useState('');
   const [novaCircunferencia, setNovaCircunferencia] = useState('');
   const [novaPressao, setNovaPressao] = useState('');
@@ -77,9 +95,7 @@ export default function Antropometria({ onBack }) {
     try {
       const data = await apiFetch('/antropometria/painel');
       setPainel(data);
-      if (data.semana_gestacional_atual) {
-        setNovaSemana(data.semana_gestacional_atual);
-      }
+      setNovaSemana(data.semana_gestacional_atual ?? '');
       if (data.altura_cm) setFormAltura(data.altura_cm);
       if (data.peso_pre_gestacional) setFormPesoPre(data.peso_pre_gestacional);
 
@@ -149,7 +165,9 @@ export default function Antropometria({ onBack }) {
     try {
       const payload = {
         peso_atual_kg: parseFloat(novoPeso),
-        semana_gestacional: parseInt(novaSemana, 10),
+        // Com DUM o servidor calcula a semana pela data; o número daqui só vale sem DUM
+        semana_gestacional: parseInt(novaSemana, 10) || 1,
+        data_registro: novaData || null,
         altura_uterina_cm: novaAU ? parseFloat(novaAU) : null,
         circunferencia_abdominal_cm: novaCircunferencia ? parseFloat(novaCircunferencia) : null,
         pressao_arterial: novaPressao.trim() || null,
@@ -157,21 +175,31 @@ export default function Antropometria({ onBack }) {
         observacoes: novaObs.trim() || null
       };
 
-      await apiFetch('/antropometria/registro', {
+      const salvo = await apiFetch('/antropometria/registro', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
       setModalRegistroAberto(false);
-      setSucessoMsg('Nova pesagem registrada com sucesso!');
-      setModalSucessoDados({
-        title: 'Pesagem Registrada com Sucesso! ⚖️',
-        subtitle: 'Sua pesagem foi comparada com a recomendação brasileira de ganho de peso (FEBRASGO 2023).',
-        highlightText: `Semana ${novaSemana} • ${novoPeso} kg ${novaAU ? '• Altura Uterina: ' + novaAU + ' cm' : ''}`,
-        confirmButtonText: 'Continuar no Painel'
-      });
-      setModalSucessoAberto(true);
+      const alertas = salvo?.alertas || [];
+      const urgente = alertas.find((a) => a.nivel === 'urgente');
+      if (urgente) {
+        // Pressão alta não pode ficar escondida atrás de um "salvo com sucesso"
+        setAlertaRegistro(urgente);
+      } else {
+        setSucessoMsg('Nova pesagem registrada com sucesso!');
+        setModalSucessoDados({
+          title: 'Pesagem registrada',
+          subtitle: alertas.length
+            ? alertas.map((a) => a.titulo).join(' • ')
+            : 'Sua pesagem foi comparada com a recomendação brasileira de ganho de peso (FEBRASGO 2023).',
+          highlightText: `Semana ${salvo?.semana_gestacional ?? novaSemana} • ${novoPeso} kg ${novaAU ? '• Altura Uterina: ' + novaAU + ' cm' : ''}`,
+          confirmButtonText: 'Continuar no Painel'
+        });
+        setModalSucessoAberto(true);
+      }
+      setNovaData(hojeIso());
 
       setNovoPeso('');
       setNovaAU('');
@@ -302,30 +330,37 @@ export default function Antropometria({ onBack }) {
         </div>
       )}
 
-      {/* Alerta de Ganho Rápido / Suspeita de Edema */}
-      {painel?.alerta_ganho_subito && (
-        <div
-          className="card"
-          style={{
-            backgroundColor: '#FFF9F0',
-            border: '2px solid #E67E22',
-            color: '#7E3C00',
-            marginBottom: '16px'
-          }}
-        >
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-            <AlertTriangle size={24} color="#E67E22" style={{ flexShrink: 0, marginTop: '2px' }} />
-            <div>
-              <strong style={{ display: 'block', fontSize: '0.92rem', marginBottom: '4px' }}>
-                Atenção ao Ganho Ponderal Recente
-              </strong>
-              <p style={{ margin: 0, fontSize: '0.85rem', lineHeight: '1.4' }}>
-                {painel.mensagem_alerta}
-              </p>
+      {/* Alertas: pressão alta, inchaço intenso e ganho rápido (do mais grave para o mais leve) */}
+      {(painel?.alertas || []).map((alerta, i) => {
+        const estilo = ESTILO_ALERTA[alerta.nivel] || ESTILO_ALERTA.atencao;
+        return (
+          <div
+            key={`${alerta.tipo}-${i}`}
+            className="card"
+            role="alert"
+            style={{ backgroundColor: estilo.fundo, border: `2px solid ${estilo.borda}`, color: estilo.texto, marginBottom: '16px' }}
+          >
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+              <AlertTriangle size={24} color={estilo.borda} style={{ flexShrink: 0, marginTop: '2px' }} />
+              <div>
+                <strong style={{ display: 'block', fontSize: '0.92rem', marginBottom: '4px' }}>
+                  {estilo.rotulo}: {alerta.titulo}
+                </strong>
+                <p style={{ margin: 0, fontSize: '0.85rem', lineHeight: '1.4' }}>{alerta.orientacao}</p>
+                {alerta.nivel === 'urgente' && (
+                  <a
+                    href="tel:192"
+                    className="btn"
+                    style={{ marginTop: '8px', display: 'inline-flex', alignItems: 'center', gap: '6px', backgroundColor: estilo.borda, color: '#FFFFFF', fontSize: '0.82rem', padding: '6px 12px', borderRadius: 'var(--radius-sm)', textDecoration: 'none' }}
+                  >
+                    <Phone size={14} /> Ligar para o SAMU (192)
+                  </a>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })}
 
       {/* Resumo de Antropometria Base (Altura e Peso Inicial) */}
       <div className="card" style={{ border: '1.5px solid var(--color-rosa)', marginBottom: '14px' }}>
@@ -454,7 +489,9 @@ export default function Antropometria({ onBack }) {
               <span style={{ fontWeight: 700, fontSize: '0.92rem', color: ganhoUFRJ.cor }}>
                 Ganho de peso (referência brasileira): {ganhoUFRJ.diagnostico}
               </span>
-              <span className="badge-gold" style={{ fontSize: '0.7rem' }}>Semana {ganhoUFRJ.semana}</span>
+              <span className="badge-gold" style={{ fontSize: '0.7rem' }}>
+                Semana {ganhoUFRJ.semana}{ganhoUFRJ.data_pesagem ? ` • pesagem de ${dataCurta(ganhoUFRJ.data_pesagem)}` : ''}
+              </span>
             </div>
             
             <p style={{ margin: '0 0 10px 0', fontSize: '0.84rem', color: 'var(--color-text)', lineHeight: '1.45' }}>
@@ -500,8 +537,17 @@ export default function Antropometria({ onBack }) {
             {au.detalhe}
           </p>
           <span style={{ display: 'block', fontSize: '0.74rem', color: 'var(--color-text-muted)', marginTop: '6px' }}>
-            Faixa esperada P10 a P90 para a {au.semana}ª semana: de {au.p10} cm a {au.p90} cm.
+            {au.p10 != null
+              ? `Faixa esperada (P10 a P90) para a ${au.semana_referencia ?? au.semana}ª semana: de ${String(au.p10).replace('.', ',')} cm a ${String(au.p90).replace('.', ',')} cm.`
+              : ''}
+            {au.data_medida ? ` Medida em ${dataCurta(au.data_medida)}.` : ''}
+            {au.observacao ? ` ${au.observacao}` : ''}
           </span>
+          {au.referencia && (
+            <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+              Referência: {au.referencia}.
+            </span>
+          )}
         </div>
       )}
 
@@ -540,6 +586,21 @@ export default function Antropometria({ onBack }) {
             <span className="badge-gold" style={{ fontSize: '0.7rem' }}>Vigente no Brasil</span>
           </div>
           
+          {painel?.curva_ganho_recomendada ? (
+            <div style={{ marginBottom: '14px' }}>
+              <h4 style={{ margin: '0 0 2px 0', fontSize: '0.92rem', color: 'var(--color-vinho)' }}>Seu ganho de peso</h4>
+              <p className="text-muted" style={{ fontSize: '0.76rem', margin: '0 0 8px 0' }}>
+                Faixa recomendada para quem começou a gestação com IMC {classPre?.categoria?.toLowerCase() || ''} (FEBRASGO 2023).
+                {(painel?.pontos_ganho || []).length === 0 ? ' Registre uma pesagem para ver seu ponto no gráfico.' : ' Toque num ponto para ver o valor.'}
+              </p>
+              <GraficoGanhoPeso curva={painel.curva_ganho_recomendada} pontos={painel.pontos_ganho || []} />
+            </div>
+          ) : (
+            <p className="text-muted" style={{ fontSize: '0.82rem', marginBottom: '12px' }}>
+              Informe altura e peso de antes da gravidez para ver o gráfico do seu ganho de peso.
+            </p>
+          )}
+
           <p style={{ fontSize: '0.85rem', lineHeight: '1.45', color: 'var(--color-text)', marginBottom: '8px' }}>
             Em 2022 o <strong>Ministério da Saúde</strong> passou a usar, na Caderneta da Gestante, as <strong>curvas brasileiras de ganho de peso</strong> criadas pelo Consórcio Brasileiro de Nutrição Materno-Infantil (coordenado na UFRJ) a partir de gestantes brasileiras. Em 2023 a <strong>FEBRASGO</strong> publicou as faixas recomendadas abaixo.
           </p>
@@ -709,31 +770,58 @@ export default function Antropometria({ onBack }) {
                 let corAtual = bio.cor;
                 let detalheAtual = bio.valor_detectado;
 
+                // Mesmos critérios do servidor (anthropometry_service.processar_nutricao_baseada_em_exames)
                 if (bio.id === 'ferro_hemoglobina' && (examesInterativos.hemoglobina || examesInterativos.ferritina)) {
                   const hb = parseFloat(examesInterativos.hemoglobina);
                   const ferr = parseFloat(examesInterativos.ferritina);
-                  const temAnemia = (!isNaN(hb) && hb < 11.0) || (!isNaN(ferr) && ferr < 30.0);
-                  statusAtual = temAnemia ? 'Atenção: Indicativo de Anemia / Estoque Baixo de Ferro' : 'Níveis de Hemoglobina e Ferro Adequados';
-                  corAtual = temAnemia ? '#C0392B' : '#27AE60';
+                  // Anemia é hemoglobina abaixo de 11; ferritina baixa sozinha é estoque baixo
+                  const temAnemia = !isNaN(hb) && hb < 11.0;
+                  const estoqueBaixo = !isNaN(ferr) && ferr < 30.0;
+                  statusAtual = temAnemia
+                    ? 'Atenção: hemoglobina abaixo de 11 g/dL, compatível com anemia. Converse com sua equipe.'
+                    : estoqueBaixo
+                      ? 'Atenção: estoque de ferro baixo (ferritina abaixo de 30). Converse com sua equipe.'
+                      : 'Hemoglobina e ferro dentro do esperado';
+                  corAtual = temAnemia ? '#C0392B' : estoqueBaixo ? '#E67E22' : '#27AE60';
                   detalheAtual = `Informado: ${!isNaN(hb) ? `Hb: ${hb} g/dL` : ''} ${!isNaN(ferr) ? `(Ferritina: ${ferr} ng/mL)` : ''}`.trim();
                 } else if (bio.id === 'glicemia' && examesInterativos.glicemia) {
                   const glic = parseFloat(examesInterativos.glicemia);
-                  const temDG = !isNaN(glic) && glic >= 92.0;
-                  statusAtual = temDG ? 'Atenção: Glicemia Limítrofe (Critério >= 92 mg/dL)' : 'Glicemia de Jejum Normal (< 92 mg/dL)';
-                  corAtual = temDG ? '#E67E22' : '#27AE60';
-                  detalheAtual = `Informado: ${glic} mg/dL`;
+                  if (!isNaN(glic)) {
+                    if (glic >= 126) {
+                      statusAtual = 'Atenção: jejum de 126 mg/dL ou mais. Mostre este exame para sua equipe o quanto antes.';
+                      corAtual = '#C0392B';
+                    } else if (glic >= 92) {
+                      statusAtual = 'Atenção: jejum entre 92 e 125 mg/dL, faixa usada no critério de diabetes gestacional. Mostre para sua equipe.';
+                      corAtual = '#E67E22';
+                    } else {
+                      statusAtual = 'Glicemia de jejum abaixo de 92 mg/dL';
+                      corAtual = '#27AE60';
+                    }
+                    detalheAtual = `Informado: ${glic} mg/dL`;
+                  }
                 } else if (bio.id === 'vitamina_d' && examesInterativos.vitamina_d) {
                   const vit = parseFloat(examesInterativos.vitamina_d);
-                  const baixa = !isNaN(vit) && vit < 30.0;
-                  statusAtual = baixa ? 'Atenção: Vitamina D Subótima (< 30 ng/mL)' : 'Vitamina D em Faixa Ideal (>= 30 ng/mL)';
-                  corAtual = baixa ? '#F39C12' : '#27AE60';
-                  detalheAtual = `Informado: ${vit} ng/mL`;
+                  if (!isNaN(vit)) {
+                    if (vit < 20) {
+                      statusAtual = 'Atenção: vitamina D abaixo de 20 ng/mL (deficiência). Mostre para sua equipe.';
+                      corAtual = '#E67E22';
+                    } else if (vit < 30) {
+                      statusAtual = 'Vitamina D abaixo de 30 ng/mL, valor recomendado para gestantes. Converse com sua equipe.';
+                      corAtual = '#F39C12';
+                    } else {
+                      statusAtual = 'Vitamina D dentro do recomendado para gestantes (30 ng/mL ou mais)';
+                      corAtual = '#27AE60';
+                    }
+                    detalheAtual = `Informado: ${vit} ng/mL`;
+                  }
                 } else if (bio.id === 'tsh_tireoide' && examesInterativos.tsh) {
                   const tsh = parseFloat(examesInterativos.tsh);
-                  const normal = !isNaN(tsh) && tsh >= 0.4 && tsh <= 3.0;
-                  statusAtual = normal ? 'TSH em Faixa Eutireoidiana Gestacional' : 'Atenção: Variação de TSH (Avaliar com Obstetra)';
-                  corAtual = normal ? '#27AE60' : '#E67E22';
-                  detalheAtual = `Informado: ${tsh} mUI/L`;
+                  if (!isNaN(tsh)) {
+                    // A faixa de TSH na gestação depende do trimestre e do laboratório: quem interpreta é a equipe
+                    statusAtual = `TSH: ${tsh} mUI/L. Sua equipe interpreta pelo trimestre e pela referência do laboratório.`;
+                    corAtual = '#C9A84C';
+                    detalheAtual = `Informado: ${tsh} mUI/L`;
+                  }
                 }
 
                 return (
@@ -990,7 +1078,28 @@ export default function Antropometria({ onBack }) {
                 </div>
                 <div>
                   <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
-                    Semana Gestacional *
+                    Data da medida *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    max={hojeIso()}
+                    value={novaData}
+                    onChange={(e) => setNovaData(e.target.value)}
+                    className="input"
+                    style={{ width: '100%' }}
+                  />
+                </div>
+              </div>
+
+              {painel?.semana_pela_dum ? (
+                <p className="text-muted" style={{ fontSize: '0.76rem', margin: '-4px 0 12px 0' }}>
+                  A semana de gestação é calculada pela data da medida e pela sua DUM.
+                </p>
+              ) : (
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
+                    Semana de gestação no dia da medida *
                   </label>
                   <input
                     type="number"
@@ -999,11 +1108,15 @@ export default function Antropometria({ onBack }) {
                     required
                     value={novaSemana}
                     onChange={(e) => setNovaSemana(e.target.value)}
+                    placeholder="Ex: 26"
                     className="input"
                     style={{ width: '100%' }}
                   />
+                  <span className="text-muted" style={{ fontSize: '0.72rem' }}>
+                    Para o app calcular sozinho, informe a data da última menstruação no cadastro clínico.
+                  </span>
                 </div>
-              </div>
+              )}
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
                 <div>
@@ -1047,7 +1160,7 @@ export default function Antropometria({ onBack }) {
                     type="text"
                     value={novaPressao}
                     onChange={(e) => setNovaPressao(e.target.value)}
-                    placeholder="Ex: 120x80"
+                    placeholder="Ex: 120/80 ou 12 por 8"
                     className="input"
                     style={{ width: '100%' }}
                   />
@@ -1187,6 +1300,36 @@ export default function Antropometria({ onBack }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Pressão alta na pesagem que acabou de ser salva */}
+      {alertaRegistro && (
+        <div
+          role="alertdialog"
+          aria-modal="true"
+          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: '16px' }}
+        >
+          <div className="card" style={{ maxWidth: '420px', width: '100%', border: '2px solid #C0392B', backgroundColor: '#FFFFFF' }}>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+              <AlertTriangle size={28} color="#C0392B" style={{ flexShrink: 0 }} />
+              <div>
+                <h3 style={{ margin: '0 0 6px 0', color: '#7B241C', fontSize: '1.05rem' }}>{alertaRegistro.titulo}</h3>
+                <p style={{ margin: '0 0 12px 0', fontSize: '0.88rem', lineHeight: '1.45', color: '#4A2020' }}>
+                  {alertaRegistro.orientacao}
+                </p>
+                <p style={{ margin: '0 0 12px 0', fontSize: '0.78rem', color: '#7B241C' }}>A medida foi salva.</p>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <a href="tel:192" className="btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', backgroundColor: '#C0392B', color: '#FFFFFF', textDecoration: 'none', padding: '8px 14px', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem' }}>
+                    <Phone size={16} /> Ligar para o SAMU (192)
+                  </a>
+                  <button type="button" className="btn btn-secondary" style={{ fontSize: '0.85rem' }} onClick={() => setAlertaRegistro(null)}>
+                    Entendi
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

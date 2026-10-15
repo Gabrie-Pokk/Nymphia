@@ -32,6 +32,7 @@ import SubscriptionScreen from './pages/gestante/SubscriptionScreen';
 import QuizGostos from './pages/gestante/QuizGostos';
 import BodyVision from './pages/gestante/BodyVision';
 import Antropometria from './pages/gestante/Antropometria';
+import BemEstarEmocional from './pages/gestante/BemEstarEmocional';
 
 // Páginas do Profissional
 import DoctorDashboard from './pages/profissional/DoctorDashboard';
@@ -48,7 +49,7 @@ const SUBROTAS_GESTANTE = [
   '/checkin', '/conversa', '/agenda', '/prenatal-card', '/exames',
   '/diario-visual', '/dispositivos', '/vinculo-medico', '/comunidade',
   '/assinatura', '/planos', '/meus-dados', '/quiz-gostos',
-  '/visao-corporal', '/antropometria'
+  '/visao-corporal', '/antropometria', '/bem-estar-emocional'
 ];
 
 const SUBROTAS_PROFISSIONAL = [
@@ -340,6 +341,7 @@ export default function App() {
                 {currentPath === '/quiz-gostos' && <QuizGostos onBack={() => navigate('/')} />}
                 {currentPath === '/visao-corporal' && <BodyVision onBack={() => navigate('/')} />}
                 {currentPath === '/antropometria' && <Antropometria onBack={() => navigate('/')} />}
+                {currentPath === '/bem-estar-emocional' && <BemEstarEmocional onBack={() => navigate('/')} />}
               </>
             )}
           </>

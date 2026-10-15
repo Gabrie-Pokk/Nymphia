@@ -1,0 +1,582 @@
+{
+  "gerado_em": "2026-10-15 17:12",
+  "sklearn": "1.7.2",
+  "variaveis_excluidas": {
+    "SINASC": {
+      "APGAR1, APGAR5, PESO, SEMAGESTAC, GESTACAO": "medidos no parto; são o próprio desfecho",
+      "PARTO, LOCNASC, CODESTAB e leitos do CNES": "dizem como e onde o bebê nasceu, só se sabe no parto",
+      "CONSULTAS": "número total de consultas; quem nasce antes tem menos consultas, o modelo aprenderia a resposta"
+    },
+    "SIH": {
+      "SEXO": "sempre feminino em leito obstétrico; não informa nada",
+      "MUNIC_RES como número": "código de município tratado como quantidade não tem sentido; virou estado (categoria)",
+      "diagnósticos secundários": "preenchidos em menos de 1% das internações; não sustentam um modelo",
+      "estado (UF) em vez de região": "subia a AUC (pré-eclâmpsia 0,66 para 0,70; diabetes 0,68 para 0,75), mas o ganho vinha de diferenças entre estados na forma de registrar a internação; a região guarda a diferença real, como a pré-eclâmpsia mais frequente no Nordeste",
+      "raça/cor": "o ganho vinha de a raça faltar mais nos casos (30%) do que nos controles (21%), um efeito do registro do hospital; entre os registros preenchidos não havia diferença"
+    }
+  },
+  "sensibilidade_alvo": 0.8,
+  "modelos": {
+    "bem_estar_fetal": {
+      "condicao": "bem_estar_fetal",
+      "base": "SINASC (coorte de nascidos vivos)",
+      "algoritmo_escolhido": "gradient_boosting",
+      "auc_validacao_por_algoritmo": {
+        "gradient_boosting": 0.6141,
+        "random_forest_comparacao": 0.6109
+      },
+      "variaveis": [
+        "idade",
+        "estado_civil",
+        "escolaridade",
+        "gestacoes_anteriores",
+        "partos_normais",
+        "partos_cesareos",
+        "perdas_anteriores",
+        "fetos",
+        "mes_inicio_prenatal"
+      ],
+      "n_treino": 2298222,
+      "n_calibracao": 766074,
+      "n_teste": 766074,
+      "casos_teste": 119122,
+      "prevalencia_teste": 0.1555,
+      "auc_roc": 0.6135,
+      "auc_roc_so_idade": 0.5395,
+      "auc_pr": 0.2948,
+      "brier": 0.12223,
+      "erro_calibracao_esperado": 0.00104,
+      "probabilidade_media_prevista": 0.15522,
+      "ponto_fn_primeiro": {
+        "limiar": 0.1232,
+        "sensibilidade": 0.8024,
+        "especificidade": 0.2951,
+        "valor_preditivo_positivo": 0.1733,
+        "valor_preditivo_negativo": 0.8902,
+        "fracao_sinalizada": 0.72,
+        "matriz": {
+          "verdadeiro_positivo": 95581,
+          "falso_negativo": 23541,
+          "falso_positivo": 456013,
+          "verdadeiro_negativo": 190939
+        }
+      },
+      "calibracao_por_decil": [
+        {
+          "previsto": 0.0992,
+          "observado": 0.1,
+          "n": 76608
+        },
+        {
+          "previsto": 0.1125,
+          "observado": 0.1131,
+          "n": 76608
+        },
+        {
+          "previsto": 0.1198,
+          "observado": 0.1192,
+          "n": 76608
+        },
+        {
+          "previsto": 0.1269,
+          "observado": 0.1284,
+          "n": 76608
+        },
+        {
+          "previsto": 0.132,
+          "observado": 0.1309,
+          "n": 76607
+        },
+        {
+          "previsto": 0.1378,
+          "observado": 0.1387,
+          "n": 76607
+        },
+        {
+          "previsto": 0.1477,
+          "observado": 0.1487,
+          "n": 76607
+        },
+        {
+          "previsto": 0.162,
+          "observado": 0.1614,
+          "n": 76607
+        },
+        {
+          "previsto": 0.1795,
+          "observado": 0.1779,
+          "n": 76607
+        },
+        {
+          "previsto": 0.3348,
+          "observado": 0.3365,
+          "n": 76607
+        }
+      ],
+      "segundos": 83.2
+    },
+    "malformacao": {
+      "condicao": "malformacao",
+      "base": "SINASC (coorte de nascidos vivos)",
+      "algoritmo_escolhido": "gradient_boosting",
+      "auc_validacao_por_algoritmo": {
+        "gradient_boosting": 0.5574,
+        "random_forest_comparacao": 0.5473
+      },
+      "variaveis": [
+        "idade",
+        "estado_civil",
+        "escolaridade",
+        "gestacoes_anteriores",
+        "partos_normais",
+        "partos_cesareos",
+        "perdas_anteriores",
+        "fetos",
+        "mes_inicio_prenatal"
+      ],
+      "n_treino": 2263326,
+      "n_calibracao": 754442,
+      "n_teste": 754443,
+      "casos_teste": 6591,
+      "prevalencia_teste": 0.00874,
+      "auc_roc": 0.5646,
+      "auc_roc_so_idade": 0.5439,
+      "auc_pr": 0.0116,
+      "brier": 0.00865,
+      "erro_calibracao_esperado": 0.00037,
+      "probabilidade_media_prevista": 0.00873,
+      "ponto_fn_primeiro": {
+        "limiar": 0.00755,
+        "sensibilidade": 0.8289,
+        "especificidade": 0.2258,
+        "valor_preditivo_positivo": 0.0093,
+        "valor_preditivo_negativo": 0.9934,
+        "fracao_sinalizada": 0.7747,
+        "matriz": {
+          "verdadeiro_positivo": 5463,
+          "falso_negativo": 1128,
+          "falso_positivo": 579017,
+          "verdadeiro_negativo": 168835
+        }
+      },
+      "calibracao_por_decil": [
+        {
+          "previsto": 0.0063,
+          "observado": 0.0067,
+          "n": 75445
+        },
+        {
+          "previsto": 0.007,
+          "observado": 0.0064,
+          "n": 75445
+        },
+        {
+          "previsto": 0.0075,
+          "observado": 0.0074,
+          "n": 75445
+        },
+        {
+          "previsto": 0.0082,
+          "observado": 0.0079,
+          "n": 75444
+        },
+        {
+          "previsto": 0.0084,
+          "observado": 0.0079,
+          "n": 75444
+        },
+        {
+          "previsto": 0.0084,
+          "observado": 0.008,
+          "n": 75444
+        },
+        {
+          "previsto": 0.0084,
+          "observado": 0.0087,
+          "n": 75444
+        },
+        {
+          "previsto": 0.0091,
+          "observado": 0.0093,
+          "n": 75444
+        },
+        {
+          "previsto": 0.0102,
+          "observado": 0.01,
+          "n": 75444
+        },
+        {
+          "previsto": 0.0139,
+          "observado": 0.0149,
+          "n": 75444
+        }
+      ],
+      "segundos": 44.3
+    },
+    "pre_eclampsia": {
+      "condicao": "pre_eclampsia",
+      "base": "SIH/SUS 2022 (caso-controle: internação pela condição x parto normal)",
+      "algoritmo_escolhido": "gradient_boosting",
+      "auc_validacao_por_algoritmo": {
+        "gradient_boosting": 0.6657,
+        "random_forest_comparacao": 0.6628
+      },
+      "variaveis": [
+        "idade",
+        "regiao"
+      ],
+      "n_treino": 96325,
+      "n_calibracao": 32108,
+      "n_teste": 32109,
+      "casos_teste": 1976,
+      "prevalencia_teste": 0.06154,
+      "auc_roc": 0.6543,
+      "auc_roc_so_idade": 0.6075,
+      "auc_pr": 0.105,
+      "brier": 0.05668,
+      "erro_calibracao_esperado": 0.00444,
+      "probabilidade_media_prevista": 0.06188,
+      "ponto_fn_primeiro": {
+        "limiar": 0.04593,
+        "sensibilidade": 0.8031,
+        "especificidade": 0.4033,
+        "valor_preditivo_positivo": 0.0811,
+        "valor_preditivo_negativo": 0.969,
+        "fracao_sinalizada": 0.6094,
+        "matriz": {
+          "verdadeiro_positivo": 1587,
+          "falso_negativo": 389,
+          "falso_positivo": 17980,
+          "verdadeiro_negativo": 12153
+        }
+      },
+      "calibracao_por_decil": [
+        {
+          "previsto": 0.0265,
+          "observado": 0.028,
+          "n": 3211
+        },
+        {
+          "previsto": 0.0274,
+          "observado": 0.0265,
+          "n": 3211
+        },
+        {
+          "previsto": 0.0307,
+          "observado": 0.0305,
+          "n": 3211
+        },
+        {
+          "previsto": 0.0374,
+          "observado": 0.0417,
+          "n": 3211
+        },
+        {
+          "previsto": 0.0459,
+          "observado": 0.0517,
+          "n": 3211
+        },
+        {
+          "previsto": 0.0616,
+          "observado": 0.062,
+          "n": 3211
+        },
+        {
+          "previsto": 0.0687,
+          "observado": 0.0698,
+          "n": 3211
+        },
+        {
+          "previsto": 0.0747,
+          "observado": 0.0698,
+          "n": 3211
+        },
+        {
+          "previsto": 0.0963,
+          "observado": 0.1037,
+          "n": 3211
+        },
+        {
+          "previsto": 0.1497,
+          "observado": 0.1318,
+          "n": 3210
+        }
+      ],
+      "segundos": 3.1
+    },
+    "eclampsia": {
+      "condicao": "eclampsia",
+      "base": "SIH/SUS 2022 (caso-controle: internação pela condição x parto normal)",
+      "algoritmo_escolhido": "gradient_boosting",
+      "auc_validacao_por_algoritmo": {
+        "gradient_boosting": 0.6062,
+        "random_forest_comparacao": 0.6006
+      },
+      "variaveis": [
+        "idade",
+        "regiao"
+      ],
+      "n_treino": 90972,
+      "n_calibracao": 30324,
+      "n_teste": 30325,
+      "casos_teste": 192,
+      "prevalencia_teste": 0.00633,
+      "auc_roc": 0.5652,
+      "auc_roc_so_idade": 0.5565,
+      "auc_pr": 0.0079,
+      "brier": 0.00629,
+      "erro_calibracao_esperado": 0.00115,
+      "probabilidade_media_prevista": 0.00631,
+      "ponto_fn_primeiro": {
+        "limiar": 0.00525,
+        "sensibilidade": 0.8385,
+        "especificidade": 0.2338,
+        "valor_preditivo_positivo": 0.0069,
+        "valor_preditivo_negativo": 0.9956,
+        "fracao_sinalizada": 0.7666,
+        "matriz": {
+          "verdadeiro_positivo": 161,
+          "falso_negativo": 31,
+          "falso_positivo": 23087,
+          "verdadeiro_negativo": 7046
+        }
+      },
+      "calibracao_por_decil": [
+        {
+          "previsto": 0.0019,
+          "observado": 0.003,
+          "n": 3033
+        },
+        {
+          "previsto": 0.0039,
+          "observado": 0.0063,
+          "n": 3033
+        },
+        {
+          "previsto": 0.0048,
+          "observado": 0.0053,
+          "n": 3033
+        },
+        {
+          "previsto": 0.0052,
+          "observado": 0.0073,
+          "n": 3033
+        },
+        {
+          "previsto": 0.0059,
+          "observado": 0.0053,
+          "n": 3033
+        },
+        {
+          "previsto": 0.0066,
+          "observado": 0.0053,
+          "n": 3032
+        },
+        {
+          "previsto": 0.0066,
+          "observado": 0.0056,
+          "n": 3032
+        },
+        {
+          "previsto": 0.0069,
+          "observado": 0.0059,
+          "n": 3032
+        },
+        {
+          "previsto": 0.0086,
+          "observado": 0.0082,
+          "n": 3032
+        },
+        {
+          "previsto": 0.0125,
+          "observado": 0.0112,
+          "n": 3032
+        }
+      ],
+      "segundos": 3.0
+    },
+    "diabetes_gestacional": {
+      "condicao": "diabetes_gestacional",
+      "base": "SIH/SUS 2022 (caso-controle: internação pela condição x parto normal)",
+      "algoritmo_escolhido": "gradient_boosting",
+      "auc_validacao_por_algoritmo": {
+        "gradient_boosting": 0.6843,
+        "random_forest_comparacao": 0.6828
+      },
+      "variaveis": [
+        "idade",
+        "regiao"
+      ],
+      "n_treino": 92845,
+      "n_calibracao": 30948,
+      "n_teste": 30949,
+      "casos_teste": 816,
+      "prevalencia_teste": 0.02637,
+      "auc_roc": 0.6827,
+      "auc_roc_so_idade": 0.6877,
+      "auc_pr": 0.0494,
+      "brier": 0.02539,
+      "erro_calibracao_esperado": 0.00186,
+      "probabilidade_media_prevista": 0.02632,
+      "ponto_fn_primeiro": {
+        "limiar": 0.01517,
+        "sensibilidade": 0.8995,
+        "especificidade": 0.3034,
+        "valor_preditivo_positivo": 0.0338,
+        "valor_preditivo_negativo": 0.9911,
+        "fracao_sinalizada": 0.702,
+        "matriz": {
+          "verdadeiro_positivo": 734,
+          "falso_negativo": 82,
+          "falso_positivo": 20991,
+          "verdadeiro_negativo": 9142
+        }
+      },
+      "calibracao_por_decil": [
+        {
+          "previsto": 0.0043,
+          "observado": 0.0052,
+          "n": 3095
+        },
+        {
+          "previsto": 0.0114,
+          "observado": 0.0078,
+          "n": 3095
+        },
+        {
+          "previsto": 0.0132,
+          "observado": 0.0136,
+          "n": 3095
+        },
+        {
+          "previsto": 0.0152,
+          "observado": 0.022,
+          "n": 3095
+        },
+        {
+          "previsto": 0.0181,
+          "observado": 0.0171,
+          "n": 3095
+        },
+        {
+          "previsto": 0.0242,
+          "observado": 0.0252,
+          "n": 3095
+        },
+        {
+          "previsto": 0.0292,
+          "observado": 0.0291,
+          "n": 3095
+        },
+        {
+          "previsto": 0.0382,
+          "observado": 0.0355,
+          "n": 3095
+        },
+        {
+          "previsto": 0.045,
+          "observado": 0.0456,
+          "n": 3095
+        },
+        {
+          "previsto": 0.0644,
+          "observado": 0.0627,
+          "n": 3094
+        }
+      ],
+      "segundos": 3.9
+    },
+    "itu": {
+      "condicao": "itu",
+      "base": "SIH/SUS 2022 (caso-controle: internação pela condição x parto normal)",
+      "algoritmo_escolhido": "gradient_boosting",
+      "auc_validacao_por_algoritmo": {
+        "gradient_boosting": 0.5069,
+        "random_forest_comparacao": 0.5292
+      },
+      "variaveis": [
+        "idade",
+        "regiao"
+      ],
+      "n_treino": 90452,
+      "n_calibracao": 30151,
+      "n_teste": 30151,
+      "casos_teste": 18,
+      "prevalencia_teste": 0.0006,
+      "auc_roc": 0.5843,
+      "auc_roc_so_idade": 0.4405,
+      "auc_pr": 0.0008,
+      "brier": 0.0006,
+      "erro_calibracao_esperado": 0.0004,
+      "probabilidade_media_prevista": 0.00063,
+      "ponto_fn_primeiro": {
+        "limiar": 0.00066,
+        "sensibilidade": 0.9444,
+        "especificidade": 0.2583,
+        "valor_preditivo_positivo": 0.0008,
+        "valor_preditivo_negativo": 0.9999,
+        "fracao_sinalizada": 0.7418,
+        "matriz": {
+          "verdadeiro_positivo": 17,
+          "falso_negativo": 1,
+          "falso_positivo": 22349,
+          "verdadeiro_negativo": 7784
+        }
+      },
+      "calibracao_por_decil": [
+        {
+          "previsto": 0.0004,
+          "observado": 0.0,
+          "n": 3016
+        },
+        {
+          "previsto": 0.0004,
+          "observado": 0.0,
+          "n": 3015
+        },
+        {
+          "previsto": 0.0005,
+          "observado": 0.001,
+          "n": 3015
+        },
+        {
+          "previsto": 0.0007,
+          "observado": 0.0007,
+          "n": 3015
+        },
+        {
+          "previsto": 0.0007,
+          "observado": 0.0013,
+          "n": 3015
+        },
+        {
+          "previsto": 0.0007,
+          "observado": 0.001,
+          "n": 3015
+        },
+        {
+          "previsto": 0.0007,
+          "observado": 0.001,
+          "n": 3015
+        },
+        {
+          "previsto": 0.0007,
+          "observado": 0.0007,
+          "n": 3015
+        },
+        {
+          "previsto": 0.0007,
+          "observado": 0.0003,
+          "n": 3015
+        },
+        {
+          "previsto": 0.0011,
+          "observado": 0.0,
+          "n": 3015
+        }
+      ],
+      "segundos": 2.3,
+      "aviso": "Só 92 casos (N39 em leito obstétrico). Infecção urinária na gestação é registrada como O23, que não veio nesta base. Não usar até treinar com O23."
+    }
+  }
+}

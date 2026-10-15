@@ -8,7 +8,7 @@ from sqlalchemy import func
 
 from app.database import get_db
 from app.models.auth import Gestante, Profissional
-from app.models.clinical import PerfilClinico, HistoricoFamiliar, CheckinRegistro, Exame
+from app.models.clinical import PerfilClinico, HistoricoFamiliar, CheckinRegistro, Exame, TriagemEPDS
 from app.models.interaction import EventoEmergencia, Mensagem, EventoAgenda
 from app.models.relations import Vinculo, CodigoConvite, LogAcesso
 from app.models.governance import ObservacaoProfissional
@@ -18,7 +18,8 @@ from app.schemas.all_schemas import (
     ObservacaoProfissionalCreate, ObservacaoProfissionalOut
 )
 from app.security.jwt_auth import get_current_gestante, get_current_profissional, get_current_profissional_aprovado
-from app.services.ai_risk_service import calculate_maternal_risks
+from app.services.ai_risk_service import calculate_maternal_risks, perfil_para_modelos
+from app.api.epds import resumos_da_gestante
 
 router = APIRouter(prefix="/vinculo", tags=["Vínculo Gestante-Profissional e Painel"])
 
@@ -192,7 +193,7 @@ def listar_minhas_gestantes(
     """
     PAINEL DO PROFISSIONAL:
     Ordenada ESTRITAMENTE por prioridade de urgência, NUNCA alfabética.
-    Critério 1: Contagem de alertas (check-in e conversa) nos últimos 30 dias (DESC).
+    Critério 1: Contagem de alertas (check-in, conversa e triagem emocional) nos últimos 30 dias (DESC).
     Critério 2 (desempate): Check-in mais recente primeiro (DESC).
     Critério 3: Gestante sem check-in fica por ÚLTIMO dentro do seu grupo.
     """
@@ -226,9 +227,16 @@ def listar_minhas_gestantes(
             Mensagem.data_hora >= trinta_dias_atras
         ).count()
 
+        # Triagem emocional (EPDS) positiva ou com pensamento de se machucar
+        epds_alerta_30d = db.query(TriagemEPDS).filter(
+            TriagemEPDS.gestante_id == gestante.id,
+            TriagemEPDS.nivel.in_(("urgente", "atencao")),
+            TriagemEPDS.data_hora >= trinta_dias_atras
+        ).count()
+
         # Total de alertas
         total_alertas_checkin = sum(len(c.alerta_sintoma_fisico or []) for c in checkins_30d)
-        total_alertas = total_alertas_checkin + mensagens_alerta_30d
+        total_alertas = total_alertas_checkin + mensagens_alerta_30d + epds_alerta_30d
 
         # Último check-in geral
         ultimo_checkin = (
@@ -342,14 +350,8 @@ def obter_ficha_paciente(
     ).order_by(ObservacaoProfissional.criado_em.desc()).all()
 
     # Cálculo dos riscos obstétricos
-    perfil_dict = {
-        "idade": perfil.idade if perfil else 25,
-        "perdas_gestacionais": perfil.perdas_gestacionais if perfil else 0,
-        "partos_cesareos": perfil.partos_cesareos if perfil else 0,
-        "gestacoes_anteriores": perfil.gestacoes_anteriores if perfil else 0,
-    }
     historico_list = [{"parente": h.parente, "condicao": h.condicao} for h in historico]
-    riscos_calculados = calculate_maternal_risks(perfil_dict, historico_list)
+    riscos_calculados = calculate_maternal_risks(perfil_para_modelos(perfil), historico_list)
 
     return {
         "identificacao": {
@@ -361,6 +363,7 @@ def obter_ficha_paciente(
         "historico_familiar": historico,
         "riscos_calculados": riscos_calculados,
         "checkins": checkins,
+        "triagens_epds": resumos_da_gestante(db, gestante_id),
         "exames": exames,
         "emergencias": emergencias,
         "mensagens_autorizadas": mensagens_autorizadas,

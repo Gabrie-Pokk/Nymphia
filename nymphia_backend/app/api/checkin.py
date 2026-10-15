@@ -13,6 +13,7 @@ from app.schemas.all_schemas import (
 from app.security.jwt_auth import get_current_user_payload
 from app.services.rules_engine import avaliar
 from app.services.ai_text_service import classify_text_emotions
+from app.services.ai_text_service import bertimbau_disponivel as _bertimbau_ligado
 
 router = APIRouter(prefix="/checkin", tags=["Check-in Diário"])
 
@@ -88,7 +89,7 @@ def registrar_checkin(
     alertas_regras = avaliacao.urgentes
     orientacao_regras = avaliacao.orientacao
 
-    # 2. Análise emocional (BERTimbau / heurística)
+    # 2. Categorias por palavras-chave (BERTimbau só se o modelo estiver carregado de verdade)
     scores_bertimbau, categorias_emocionais = classify_text_emotions(descricao_texto)
 
     # 3. Formatar recomendação
@@ -151,7 +152,7 @@ def registrar_checkin(
         alerta_sintoma_fisico=novo_checkin.alerta_sintoma_fisico,
         sinais_atencao=novo_checkin.sinais_atencao or [],
         score_anomalia=novo_checkin.score_anomalia,
-        bertimbau_disponivel=True,
+        bertimbau_disponivel=_bertimbau_ligado(),
         recomendacao=recomendacao
     )
 
@@ -189,7 +190,7 @@ def listar_historico_checkin(
             alerta_sintoma_fisico=c.alerta_sintoma_fisico or [],
             sinais_atencao=c.sinais_atencao or [],
             score_anomalia=c.score_anomalia,
-            bertimbau_disponivel=True,
+            bertimbau_disponivel=_bertimbau_ligado(),
             recomendacao="Registro histórico salvo."
         ))
     return out

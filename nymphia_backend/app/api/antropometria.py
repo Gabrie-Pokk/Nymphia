@@ -17,21 +17,52 @@ from app.schemas.all_schemas import (
 from app.security.jwt_auth import get_current_gestante
 from app.services.anthropometry_service import (
     calcular_imc,
+    categoria_por_imc,
     classificar_imc_pre_gestacional,
     classificar_ganho_ponderal_ufrj_ms,
     avaliar_altura_uterina,
-    obter_guia_educativo_antropometria
+    obter_guia_educativo_antropometria,
+    semana_na_data,
+    ler_pressao_arterial,
+    avaliar_pressao_arterial,
+    avaliar_edema,
+    avaliar_ritmo_de_ganho,
+    curva_ganho_recomendada,
 )
 from app.services.clinical_movement_service import avaliar_seguranca_movimento
 
 router = APIRouter(prefix="/antropometria", tags=["Antropometria e Postura Materna"])
 
-def _calcular_semana_atual(dum: Optional[date]) -> int:
+def _calcular_semana_atual(dum: Optional[date]) -> Optional[int]:
+    """Semana de hoje pela DUM. Sem DUM, None: antes o app inventava 24 semanas."""
     if not dum:
-        return 24
-    hoje = datetime.utcnow().date()
-    diff = (hoje - dum).days
-    return max(1, min(42, diff // 7))
+        return None
+    return max(1, min(42, (datetime.utcnow().date() - dum).days // 7))
+
+
+def _semana_do_registro(reg: RegistroAntropometrico, dum: Optional[date]) -> int:
+    """Semana em que a medida foi feita: pela DUM quando existe, senão a informada."""
+    pela_dum = semana_na_data(dum, reg.data_registro)
+    return max(1, min(42, pela_dum if pela_dum is not None else int(reg.semana_gestacional)))
+
+
+def _alertas_do_registro(reg: RegistroAntropometrico, anterior: Optional[RegistroAntropometrico],
+                         dum: Optional[date]) -> List[dict]:
+    """Pressão, inchaço e ritmo de ganho da medida, do mais grave para o mais leve."""
+    alertas = []
+    pressao = avaliar_pressao_arterial(reg.pressao_arterial, reg.data_registro)
+    if pressao and pressao["nivel"] != "nenhum":
+        alertas.append(pressao)
+    edema = avaliar_edema(reg.edema)
+    if edema:
+        alertas.append(edema)
+    if anterior is not None:
+        ritmo = avaliar_ritmo_de_ganho(reg.peso_atual_kg, reg.data_registro, anterior.peso_atual_kg,
+                                       anterior.data_registro, _semana_do_registro(reg, dum))
+        if ritmo:
+            alertas.append(ritmo)
+    ordem = {"urgente": 0, "atencao": 1}
+    return sorted(alertas, key=lambda a: ordem.get(a["nivel"], 2))
 
 @router.get("/painel", response_model=PainelAntropometriaResponse)
 def obter_painel_antropometria(
@@ -56,67 +87,91 @@ def obter_painel_antropometria(
         .all()
     )
 
-    if perfil and perfil.dum:
-        semana_atual = _calcular_semana_atual(perfil.dum)
-    elif registros and registros[0].semana_gestacional:
-        # Sem DUM, usa a semana que a própria gestante informou na última pesagem
-        semana_atual = max(1, min(42, int(registros[0].semana_gestacional)))
+    dum = perfil.dum if perfil else None
+    ultimo_registro = registros[0] if registros else None
+    if dum:
+        semana_atual = _calcular_semana_atual(dum)
+    elif ultimo_registro:
+        # Sem DUM: a semana informada na última pesagem, somada ao tempo que passou desde ela
+        dias_desde = (datetime.utcnow().date() - ultimo_registro.data_registro).days
+        semana_atual = max(1, min(42, int(ultimo_registro.semana_gestacional) + max(0, dias_desde) // 7))
     else:
-        semana_atual = _calcular_semana_atual(None)
+        semana_atual = None
     altura_cm = perfil.altura_cm if perfil else None
     peso_pre = perfil.peso_pre_gestacional if perfil else None
-    idade_gestante = perfil.idade if (perfil and perfil.idade) else 28
+    idade_gestante = perfil.idade if perfil else None
 
     # Valores pré-gestacionais
     imc_pre = calcular_imc(peso_pre, altura_cm) if (peso_pre and altura_cm) else None
     classificacao_pre = classificar_imc_pre_gestacional(imc_pre) if imc_pre else None
 
-    # Último registro
-    ultimo_registro = registros[0] if registros else None
-    peso_atual = ultimo_registro.peso_atual_kg if ultimo_registro else peso_pre
-    au_atual = ultimo_registro.altura_uterina_cm if ultimo_registro else None
-
-    # Ganho acumulado e IMC atual
-    ganho_acumulado = None
-    if peso_atual and peso_pre:
-        ganho_acumulado = round(peso_atual - peso_pre, 2)
-
+    # Peso atual = o da última pesagem. Sem pesagem não há avaliação: antes o app
+    # usava o peso de antes da gravidez como atual e dizia "abaixo da faixa".
+    peso_atual = ultimo_registro.peso_atual_kg if ultimo_registro else None
+    ganho_acumulado = round(peso_atual - peso_pre, 2) if (peso_atual and peso_pre) else None
     imc_atual = calcular_imc(peso_atual, altura_cm) if (peso_atual and altura_cm) else None
-    
-    # Avaliação UFRJ / MS (2022) e Atalah
+
+    # O ganho é avaliado na semana em que a pesagem foi feita, não na de hoje
     avaliacao_ganho_ufrj = None
-    if peso_atual is not None:
+    if ultimo_registro is not None:
         avaliacao_ganho_ufrj = classificar_ganho_ponderal_ufrj_ms(
-            semana=semana_atual,
+            semana=_semana_do_registro(ultimo_registro, dum),
             peso_atual_kg=peso_atual,
             peso_pre_kg=peso_pre,
             altura_cm=altura_cm,
             idade_gestante=idade_gestante
         )
+        avaliacao_ganho_ufrj["data_pesagem"] = ultimo_registro.data_registro.isoformat()
 
     # A curva de Atalah foi substituída no Brasil em 2022; o campo segue no
     # contrato da API, sempre vazio, para não quebrar telas antigas.
     avaliacao_atalah = None
 
+    # Altura uterina: a medida mais recente, avaliada na semana em que foi feita
     avaliacao_au = None
-    if au_atual:
-        avaliacao_au = avaliar_altura_uterina(semana_atual, au_atual)
+    com_au = next((r for r in registros if r.altura_uterina_cm), None)
+    if com_au is not None:
+        avaliacao_au = avaliar_altura_uterina(_semana_do_registro(com_au, dum), com_au.altura_uterina_cm)
+        if avaliacao_au:
+            avaliacao_au["data_medida"] = com_au.data_registro.isoformat()
 
-    # Detecção de Ganho Súbito de Peso (> 1.0 kg em menos de 10 dias no 2º ou 3º trimestre)
+    # Alertas: pressão (a anotação mais recente), inchaço e ritmo de ganho da última pesagem
+    alertas = []
+    com_pressao = next((r for r in registros if r.pressao_arterial), None)
+    if com_pressao is not None:
+        pressao = avaliar_pressao_arterial(com_pressao.pressao_arterial, com_pressao.data_registro)
+        if pressao and pressao["nivel"] != "nenhum":
+            alertas.append(pressao)
+    if ultimo_registro is not None:
+        edema = avaliar_edema(ultimo_registro.edema)
+        if edema:
+            alertas.append(edema)
     alerta_ganho_subito = False
     mensagem_alerta = None
     if len(registros) >= 2:
-        reg_atual = registros[0]
-        reg_anterior = registros[1]
-        diff_dias = (reg_atual.data_registro - reg_anterior.data_registro).days
-        ganho_recente = reg_atual.peso_atual_kg - reg_anterior.peso_atual_kg
-        if 0 < diff_dias <= 10 and ganho_recente >= 1.0 and semana_atual >= 20:
+        ritmo = avaliar_ritmo_de_ganho(
+            registros[0].peso_atual_kg, registros[0].data_registro,
+            registros[1].peso_atual_kg, registros[1].data_registro,
+            _semana_do_registro(registros[0], dum),
+        )
+        if ritmo:
+            alertas.append(ritmo)
             alerta_ganho_subito = True
-            mensagem_alerta = (
-                f"Alerta Clínico: Identificamos um aumento de {ganho_recente:.1f} kg em {diff_dias} dias. "
-                "Ganhos rápidos superiores a 1 kg por semana podem indicar retenção hídrica acentuada "
-                "(edema) e requerem aferição da pressão arterial para rastreio de pré-eclâmpsia."
-            )
+            mensagem_alerta = f"{ritmo['titulo']}. {ritmo['orientacao']}"
+    ordem = {"urgente": 0, "atencao": 1}
+    alertas.sort(key=lambda a: ordem.get(a["nivel"], 2))
+
+    # Gráfico: faixa recomendada (pelo IMC de antes da gravidez) e os pontos de cada pesagem
+    categoria = categoria_por_imc(imc_pre) if imc_pre else None
+    curva = curva_ganho_recomendada(categoria) if categoria else None
+    pontos_ganho = []
+    if peso_pre:
+        for reg in sorted(registros, key=lambda r: (r.data_registro, r.id)):
+            pontos_ganho.append({
+                "data": reg.data_registro.isoformat(),
+                "semana": _semana_do_registro(reg, dum),
+                "ganho_kg": round(reg.peso_atual_kg - peso_pre, 2),
+            })
 
     exames = db.query(Exame).filter(Exame.gestante_id == gestante.id).all()
 
@@ -135,7 +190,11 @@ def obter_painel_antropometria(
         historico_registros=registros,
         guia_educativo=obter_guia_educativo_antropometria(exames=exames),
         alerta_ganho_subito=alerta_ganho_subito,
-        mensagem_alerta=mensagem_alerta
+        mensagem_alerta=mensagem_alerta,
+        alertas=alertas,
+        semana_pela_dum=bool(dum),
+        curva_ganho_recomendada=curva,
+        pontos_ganho=pontos_ganho,
     )
 
 @router.post("/perfil-base", status_code=status.HTTP_200_OK)
@@ -171,22 +230,55 @@ def registrar_pesagem_medicao(
     """
     Adiciona um novo registro de peso, semana gestacional, altura uterina e circunferência abdominal.
     """
-    data_reg = payload.data_registro or datetime.utcnow().date()
+    hoje = datetime.utcnow().date()
+    data_reg = payload.data_registro or hoje
+    if data_reg > hoje:
+        raise HTTPException(status_code=422, detail="A data da medida não pode estar no futuro.")
+
+    perfil = db.query(PerfilClinico).filter(PerfilClinico.gestante_id == gestante.id).first()
+    dum = perfil.dum if perfil else None
+    semana = payload.semana_gestacional
+    if dum:
+        if data_reg < dum:
+            raise HTTPException(status_code=422, detail="A data da medida é anterior à data da última menstruação.")
+        # Com DUM, a semana vem da data: a tela sugeria 24 semanas e muita gente salvava assim
+        semana = max(1, min(44, semana_na_data(dum, data_reg)))
+
+    pressao_txt = None
+    if payload.pressao_arterial and payload.pressao_arterial.strip():
+        leitura = ler_pressao_arterial(payload.pressao_arterial)
+        if leitura is None:
+            raise HTTPException(
+                status_code=422,
+                detail="Não entendi a pressão. Escreva como 120/80 (ou 12 por 8), com a máxima primeiro.",
+            )
+        pressao_txt = f"{leitura[0]}/{leitura[1]}"
+
+    anterior = (
+        db.query(RegistroAntropometrico)
+        .filter(RegistroAntropometrico.gestante_id == gestante.id, RegistroAntropometrico.data_registro <= data_reg)
+        .order_by(RegistroAntropometrico.data_registro.desc(), RegistroAntropometrico.id.desc())
+        .first()
+    )
+
     novo_reg = RegistroAntropometrico(
         gestante_id=gestante.id,
         data_registro=data_reg,
-        semana_gestacional=payload.semana_gestacional,
+        semana_gestacional=semana,
         peso_atual_kg=payload.peso_atual_kg,
         altura_uterina_cm=payload.altura_uterina_cm,
         circunferencia_abdominal_cm=payload.circunferencia_abdominal_cm,
-        pressao_arterial=payload.pressao_arterial,
+        pressao_arterial=pressao_txt,
         edema=payload.edema or "ausente",
         observacoes=payload.observacoes
     )
     db.add(novo_reg)
     db.commit()
     db.refresh(novo_reg)
-    return novo_reg
+
+    resposta = RegistroAntropometricoOut.model_validate(novo_reg).model_dump()
+    resposta["alertas"] = _alertas_do_registro(novo_reg, anterior, dum)
+    return resposta
 
 @router.delete("/registro/{registro_id}", status_code=status.HTTP_200_OK)
 def remover_registro(

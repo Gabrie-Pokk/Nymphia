@@ -13,7 +13,7 @@ from app.api import (
     agenda, vinculo, exames, risco, emergencia,
     parceiro, comunidade, dispositivos,
     governance, lgpd, legacy, assinaturas, antropometria,
-    arquivos, admin
+    arquivos, admin, epds
 )
 from app.services.ai_risk_service import carregar_modelos_ml
 from app.services.ai_text_service import carregar_bertimbau
@@ -246,6 +246,7 @@ app.include_router(legacy.router)
 app.include_router(antropometria.router)
 app.include_router(arquivos.router)
 app.include_router(admin.router)
+app.include_router(epds.router)
 
 # Tratamento Global de Exceções (Degradação Graciosa e Sanitização de Erros em Produção)
 @app.exception_handler(Exception)

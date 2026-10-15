@@ -23,12 +23,17 @@ def test_transparencia_clinica_cfm_2454_e_cdc(client: TestClient):
     assert "malformacao" in modelos
     assert "itu" in modelos
 
-    # Validação do modelo de ITU com transparência sobre precisão 0.01 / 1%
-    itu = modelos["itu"]
-    assert itu["precisao"] == 0.01
-    assert itu["alerta_cdc_transparencia"] is True
-    assert "desbalanceamento" in itu["justificativa_tecnica"].lower()
-    assert "SIH/SUS" in itu["justificativa_tecnica"]
+    # ITU sem modelo confiável: o relatório diz por quê (poucos casos; o código certo é O23)
+    assert "O23" in modelos["itu"]["aviso"]
+
+    # Os números publicados são os do treino v2, não valores escritos à mão (antes: AUC 0,84 inventado)
+    import json
+    from pathlib import Path
+    reais = json.loads((Path(__file__).resolve().parent.parent / "modelos" / "metricas_modelos_v2.json")
+                       .read_text(encoding="utf-8"))["modelos"]
+    for nome, publicado in modelos.items():
+        assert publicado["auc_roc"] == reais[nome]["auc_roc"]
+        assert publicado["sensibilidade"] == reais[nome]["ponto_fn_primeiro"]["sensibilidade"]
 
     # Rota alternativa /risco/transparencia-clinica
     res_alt = client.get("/risco/transparencia-clinica")
@@ -52,7 +57,8 @@ def test_carimbo_samd_em_calculo_de_risco(client: TestClient):
 
     assert "carimbo_samd_cfm" in data
     assert "CFM nº 2.454/2026" in data["carimbo_samd_cfm"]
-    assert "alerta_transparencia_cdc" in data["condicoes"]["itu"]
+    assert data["condicoes"]["itu"]["fonte"] == "indisponivel"
+    assert "O23" in data["condicoes"]["itu"]["motivo"]
 
 
 def test_diretrizes_comunidade_stf_tema_987(client: TestClient):
