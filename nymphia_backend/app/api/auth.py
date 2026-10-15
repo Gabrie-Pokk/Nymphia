@@ -35,10 +35,15 @@ def _hash_token(token: str) -> str:
 
 
 def _url_publica() -> str:
-    # No Render, RENDER_EXTERNAL_URL é o endereço do próprio serviço
+    # Vence NYMPHIA_URL_PUBLICA. Sem ela: no Render, RENDER_EXTERNAL_URL; no
+    # Coolify, o primeiro endereço de COOLIFY_URL (ele cria essa variável).
+    coolify = (os.getenv("COOLIFY_URL") or "").split(",")[0].strip()
+    if coolify and not coolify.startswith(("http://", "https://")):
+        coolify = "https://" + coolify
     return (
         os.getenv("NYMPHIA_URL_PUBLICA")
         or os.getenv("RENDER_EXTERNAL_URL")
+        or coolify
         or "https://nymphia-global.onrender.com"
     ).rstrip("/")
 

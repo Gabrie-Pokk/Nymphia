@@ -35,13 +35,6 @@ TABELAS_DE_CONTAS = ("gestantes", "profissionais", "parceiros")
 TAMANHO_DO_LOTE = 500
 
 
-def _normalizar_url(url: str) -> str:
-    url = url.strip()
-    if url.startswith("postgres://"):
-        return url.replace("postgres://", "postgresql://", 1)
-    return url
-
-
 def _mesmo_banco(url_a, url_b) -> bool:
     a, b = make_url(str(url_a)), url_b
     return (
@@ -129,14 +122,15 @@ def copiar_banco_antigo_se_preciso(destino: Optional[Engine] = None, url_origem:
     """
     if url_origem is None:
         url_origem = os.getenv(VARIAVEL_BANCO_ANTIGO, "")
-    url_origem = _normalizar_url(url_origem or "")
-    if not url_origem:
+    if not (url_origem or "").strip():
         return None
 
     if destino is None:
         from app.database import engine as destino
 
+    from app.config import limpar_endereco_do_banco
     try:
+        url_origem = limpar_endereco_do_banco(url_origem)
         mesmo = _mesmo_banco(url_origem, destino.url)
     except Exception:
         raise RuntimeError(
