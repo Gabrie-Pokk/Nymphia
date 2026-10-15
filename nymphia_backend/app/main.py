@@ -29,23 +29,29 @@ import threading
 from contextlib import asynccontextmanager
 
 def is_dev_env() -> bool:
-    env = (os.getenv("ENVIRONMENT") or os.getenv("ENV") or settings.ENVIRONMENT or "").lower()
-    return env in ["development", "dev", "local"]
+    from app.config import ambiente_de_desenvolvimento
+    return ambiente_de_desenvolvimento()
 
 is_prod = not is_dev_env()
 
-# Em produção o servidor se recusa a ligar com segredo fraco ou público.
-# Assim um deploy mal configurado falha na hora, em vez de rodar inseguro.
-if is_prod:
+
+def garantir_chave_jwt_segura() -> None:
+    """
+    Em produção, a chave que assina os logins nunca é a pública do
+    repositório. Se NYMPHIA_SECRET_KEY vier ausente, curta ou igual ao valor
+    público, o servidor usa uma chave aleatória guardada no próprio banco
+    (criada na primeira vez). Sem banco, o servidor não sobe.
+    """
     from app.config import problemas_de_configuracao_em_producao
-    _problemas_config = problemas_de_configuracao_em_producao(settings)
-    if _problemas_config:
-        for _problema in _problemas_config:
-            logger.critical(f"[CONFIGURAÇÃO INSEGURA] {_problema}")
-        raise RuntimeError(
-            "Configuração insegura para produção: " + " ".join(_problemas_config)
-            + " Gere um segredo com: python -c \"import secrets; print(secrets.token_urlsafe(64))\""
-        )
+    problemas = problemas_de_configuracao_em_producao(settings)
+    if not problemas:
+        return
+    from app.database import obter_ou_criar_segredo
+    settings.NYMPHIA_SECRET_KEY = obter_ou_criar_segredo("jwt_hs256")
+    logger.warning(
+        "[SEGURANÇA] " + " ".join(problemas)
+        + " Usando a chave aleatória guardada no banco (tabela segredos_servidor)."
+    )
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -57,6 +63,10 @@ async def lifespan(app: FastAPI):
         executar_migracoes_automaticas()
     except Exception as e:
         logger.error(f"Aviso na inicialização do banco: {e}")
+
+    # Sem chave segura, o servidor não atende ninguém (a exceção derruba a inicialização)
+    if is_prod:
+        garantir_chave_jwt_segura()
 
     # Seed de demonstração executado apenas em desenvolvimento quando explicitamente habilitado
     env_name = (os.getenv("ENVIRONMENT") or os.getenv("ENV") or settings.ENVIRONMENT or "").lower()
@@ -276,5 +286,6 @@ else:
             "slogan": "Cada batimento importa.",
             "status": "online",
             "documentacao": "/docs",
-            "modelos_ativos": ["Random Forest x6", "Isolation Forest", "BERTimbau (PT-BR)"]
+            # Quais modelos estão ligados de verdade depende da memória do servidor
+            "estado_dos_modelos": "/health",
         }

@@ -32,6 +32,28 @@ class Settings(BaseSettings):
 settings = Settings()
 
 
+_NOMES_DE_DESENVOLVIMENTO = {"development", "dev", "local"}
+
+
+def ambiente_de_desenvolvimento() -> bool:
+    """
+    True só em desenvolvimento. Ordem de decisão:
+      1. ENVIRONMENT ou ENV definidos no ambiente decidem;
+      2. sem eles, rodando no Render (variável RENDER, que o próprio Render
+         cria) é produção. Antes, um serviço sem ENVIRONMENT ficava em modo
+         de desenvolvimento: documentação aberta, CORS livre, simulador de
+         pagamento ligado e a chave pública aceita;
+      3. senão, vale o ENVIRONMENT do .env (padrão: development).
+    """
+    import os
+    explicito = (os.getenv("ENVIRONMENT") or os.getenv("ENV") or "").strip().lower()
+    if explicito:
+        return explicito in _NOMES_DE_DESENVOLVIMENTO
+    if os.getenv("RENDER"):
+        return False
+    return (settings.ENVIRONMENT or "").strip().lower() in _NOMES_DE_DESENVOLVIMENTO
+
+
 # Valor que está no código público do repositório. Com ele, qualquer pessoa
 # consegue fabricar um token de login de qualquer conta.
 SEGREDO_PUBLICO_DO_REPOSITORIO = "nymphia_super_secret_production_ready_key_change_me_in_prod_12345"

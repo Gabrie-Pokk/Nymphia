@@ -1,5 +1,6 @@
 import os
 import logging
+import threading
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
@@ -25,8 +26,56 @@ DISCLAIMER_TEXT = (
     "Está sujeita a falsos positivos e falsos negativos. Decisões clínicas cabem exclusivamente ao médico obstetra."
 )
 
+# Trava do carregamento. Antes, enquanto o primeiro carregamento ainda rodava,
+# cada /health (o Render chama a cada poucos segundos) e cada cálculo de risco
+# começava OUTRO carregamento completo em paralelo. Quatro cópias dos modelos
+# estouravam os 512 MB do plano grátis ("Out of memory"), o servidor reiniciava
+# e o ciclo se repetia: era a origem dos 503 e dos deploys que nunca terminavam.
+_trava_carregamento = threading.Lock()
+
+# Medido em 15/10/2026 (Python 3.10 e bibliotecas de produção): só o modelo
+# bem_estar_fetal ocupa ~350 MB de RAM e o malformacao ~60 MB; os outros cinco
+# juntos, ~6 MB. Com tudo carregado o processo passa de 512 MB, o limite do
+# plano grátis do Render. Em máquina com menos de 1 GB, esses dois ficam
+# desligados e as duas avaliações usam a regra clínica simples, avisando isso
+# na resposta. Com mais memória (Oracle, Hostinger), tudo é carregado.
+MODELOS_PESADOS = ("bem_estar_fetal", "malformacao")
+MEMORIA_MINIMA_PARA_MODELOS_PESADOS_MB = 1024
+CAMINHOS_LIMITE_CGROUP = ("/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory/memory.limit_in_bytes")
+
+
+def limite_de_memoria_mb() -> Optional[int]:
+    """
+    Memória disponível para o processo, em MB, ou None se não houver limite
+    conhecido. NYMPHIA_LIMITE_MEMORIA_MB vence; depois, o limite do contêiner
+    (cgroup); no Render sem limite legível, assume os 512 MB do plano grátis.
+    """
+    definido = os.getenv("NYMPHIA_LIMITE_MEMORIA_MB", "").strip()
+    if definido.isdigit():
+        return int(definido)
+    for caminho in CAMINHOS_LIMITE_CGROUP:
+        try:
+            with open(caminho) as arquivo:
+                valor = arquivo.read().strip()
+        except OSError:
+            continue
+        try:
+            bytes_limite = int(valor)
+        except ValueError:
+            continue  # "max": o contêiner não mostra limite
+        if bytes_limite < 1 << 60:  # valores enormes também querem dizer "sem limite visível"
+            return bytes_limite // (1024 * 1024)
+    # O Render pode limitar a memória fora do contêiner, sem aparecer no cgroup.
+    # Plano pago no Render: defina NYMPHIA_LIMITE_MEMORIA_MB com a memória do plano.
+    if os.getenv("RENDER"):
+        return 512
+    return None
+
+
 _modelos_estado = {
     "carregado": False,
+    "carregando": False,
+    "desligados_por_memoria": [],
     "rf": {},  # nome -> {"modelo": ..., "features": [...]}
     "isolation_forest": None,  # {"modelo": ..., "features": [...]}
 }
@@ -39,7 +88,18 @@ def carregar_modelos_ml():
     """
     if _modelos_estado["carregado"]:
         return
+    with _trava_carregamento:
+        if _modelos_estado["carregado"]:
+            return
+        _modelos_estado["carregando"] = True
+        try:
+            _carregar_modelos_sem_trava()
+        finally:
+            _modelos_estado["carregando"] = False
+            _modelos_estado["carregado"] = True
 
+
+def _carregar_modelos_sem_trava():
     try:
         import joblib
     except ImportError:
@@ -53,7 +113,19 @@ def carregar_modelos_ml():
 
     logger.info(f"Carregando modelos de ML a partir de: {MODELOS_DIR}")
 
+    limite = limite_de_memoria_mb()
+    pular = set()
+    if limite is not None and limite < MEMORIA_MINIMA_PARA_MODELOS_PESADOS_MB:
+        pular = set(MODELOS_PESADOS)
+        _modelos_estado["desligados_por_memoria"] = sorted(pular)
+        logger.warning(
+            f"Servidor com {limite} MB de memória: os modelos {', '.join(sorted(pular))} ficam desligados "
+            f"(precisam de {MEMORIA_MINIMA_PARA_MODELOS_PESADOS_MB} MB ou mais). Essas avaliações usam a regra clínica simples."
+        )
+
     for nome in NOMES_RF:
+        if nome in pular:
+            continue
         caminho_rf = model_path / f"rf_{nome}.joblib"
         if caminho_rf.exists():
             try:
@@ -84,16 +156,18 @@ def carregar_modelos_ml():
         except Exception as e:
             logger.warning(f"Falha ao carregar Isolation Forest: {e}")
 
-    _modelos_estado["carregado"] = True
-
 
 def status_modelos_ml() -> Dict[str, Any]:
-    """Retorna o estado de disponibilidade dos modelos treinados."""
-    if not _modelos_estado["carregado"]:
-        carregar_modelos_ml()
+    """
+    Estado dos modelos. NUNCA dispara carregamento: o /health precisa ser
+    leve, senão vira gatilho de estouro de memória.
+    """
     return {
         "rf_disponiveis": list(_modelos_estado["rf"].keys()),
         "isolation_forest_disponivel": _modelos_estado["isolation_forest"] is not None,
+        "carregando": _modelos_estado["carregando"],
+        "carregado": _modelos_estado["carregado"],
+        "desligados_por_memoria": list(_modelos_estado.get("desligados_por_memoria", [])),
     }
 
 
@@ -268,7 +342,12 @@ def calculate_maternal_risks(perfil: Dict[str, Any], historico_familiar: List[Di
 
     condicoes_dict = {}
     for k, v in probabilidades.items():
-        item = {"probabilidade": v, "nivel": _get_level(v)}
+        # Diz de onde veio cada número: modelo treinado ou regra clínica simples
+        item = {
+            "probabilidade": v,
+            "nivel": _get_level(v),
+            "fonte": "modelo_random_forest" if f"rf_{k}" in modelos_usados else "regra_clinica_simples",
+        }
         if k == "itu":
             item["alerta_transparencia_cdc"] = (
                 "Modelo de triagem com precisão estatística de 0,01 (1%) decorrente do desbalanceamento da base SIH/SUS. "
