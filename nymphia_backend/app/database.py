@@ -78,6 +78,37 @@ COLUNAS_ADICIONADAS_DEPOIS = [
 ]
 
 
+def obter_ou_criar_segredo(nome: str) -> str:
+    """
+    Devolve um segredo guardado no banco (tabela segredos_servidor), criando um
+    aleatório na primeira vez. Serve para o servidor nunca precisar da chave
+    pública do repositório: se o ambiente não trouxer uma chave forte, a
+    aplicação gera a própria e reutiliza a mesma a cada reinício.
+    """
+    import secrets as _secrets
+    from datetime import datetime as _dt
+    from sqlalchemy.exc import IntegrityError
+
+    with engine.begin() as conn:
+        conn.execute(text(
+            "CREATE TABLE IF NOT EXISTS segredos_servidor ("
+            "nome VARCHAR(100) PRIMARY KEY, valor TEXT NOT NULL, criado_em VARCHAR(40) NOT NULL)"
+        ))
+        linha = conn.execute(text("SELECT valor FROM segredos_servidor WHERE nome = :n"), {"n": nome}).first()
+    if linha:
+        return linha[0]
+    try:
+        with engine.begin() as conn:
+            conn.execute(
+                text("INSERT INTO segredos_servidor (nome, valor, criado_em) VALUES (:n, :v, :c)"),
+                {"n": nome, "v": _secrets.token_urlsafe(64), "c": _dt.utcnow().isoformat()},
+            )
+    except IntegrityError:
+        pass  # outro processo criou ao mesmo tempo; vale o que está no banco
+    with engine.begin() as conn:
+        return conn.execute(text("SELECT valor FROM segredos_servidor WHERE nome = :n"), {"n": nome}).scalar_one()
+
+
 def _tipo_data() -> str:
     return "DATETIME" if db_url.startswith("sqlite") else "TIMESTAMP"
 

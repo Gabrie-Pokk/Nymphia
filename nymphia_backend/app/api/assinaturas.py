@@ -85,8 +85,8 @@ from app.services.payment_service import (
 )
 
 def is_dev_env() -> bool:
-    env = (os.getenv("ENVIRONMENT") or os.getenv("ENV") or settings.ENVIRONMENT or "").lower()
-    return env in ["development", "dev", "local"]
+    from app.config import ambiente_de_desenvolvimento
+    return ambiente_de_desenvolvimento()
 
 @router.post("/pagamentos/webhook", status_code=status.HTTP_200_OK)
 async def webhook_mercado_pago(

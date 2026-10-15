@@ -35,7 +35,12 @@ def _hash_token(token: str) -> str:
 
 
 def _url_publica() -> str:
-    return os.getenv("NYMPHIA_URL_PUBLICA", "https://nymphia-global.onrender.com").rstrip("/")
+    # No Render, RENDER_EXTERNAL_URL é o endereço do próprio serviço
+    return (
+        os.getenv("NYMPHIA_URL_PUBLICA")
+        or os.getenv("RENDER_EXTERNAL_URL")
+        or "https://nymphia-global.onrender.com"
+    ).rstrip("/")
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 

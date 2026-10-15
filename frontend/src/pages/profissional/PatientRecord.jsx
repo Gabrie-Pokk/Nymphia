@@ -156,6 +156,11 @@ export default function PatientRecord({ patientId, onBack }) {
                   {val.nivel.toUpperCase()} ({Math.round(val.probabilidade * 100)}%)
                 </span>
               </div>
+              {val.fonte === 'regra_clinica_simples' && (
+                <div style={{ fontSize: '0.68rem', color: 'var(--color-texto-suave, #6B6B6B)', marginTop: '4px' }}>
+                  Estimativa por regra clínica simples (o modelo treinado não está ligado neste servidor).
+                </div>
+              )}
             </div>
           ))}
         </div>
