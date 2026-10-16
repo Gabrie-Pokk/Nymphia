@@ -30,9 +30,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Atualiza pip, setuptools e wheel para suporte pleno a metadados modernos
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Copia e instala dependências Python de produção com PyTorch CPU leve (sem CUDA gigante)
+# Copia e instala as dependências Python de produção (sem PyTorch desde 16/10/2026)
 COPY nymphia_backend/requirements-prod.txt ./requirements.txt
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copia código do backend e modelos treinados

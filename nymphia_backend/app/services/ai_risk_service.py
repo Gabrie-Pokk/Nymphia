@@ -608,12 +608,27 @@ def calculate_maternal_risks(perfil: Dict[str, Any], historico_familiar: List[Di
         "score_anomalia": atip["score"],
         "padrao_atipico_detectado": atip["anomalo"],
         "aviso_legal": DISCLAIMER_TEXT,
-        "carimbo_samd_cfm": (
-            "Triagem com suporte de IA supervisionada (SaMD Classe II / CFM nº 2.454/2026). "
-            "Apoio estatístico à decisão médica. Diagnóstico e conduta sob responsabilidade exclusiva do médico assistente."
-        ),
-        "enquadramento_regulatorio": "SaMD Risco Médio (Classe II) - Resolução CFM nº 2.454/2026 e RDC Anvisa nº 657/2022",
+        "carimbo_samd_cfm": CARIMBO_PRONTUARIO,
+        "enquadramento_regulatorio": f"{CLASSIFICACAO_RISCO_CFM} {SITUACAO_ANVISA}",
     }
+
+
+# Textos regulatórios (16/10/2026). A Resolução CFM nº 2.454/2026 manda quem
+# desenvolve a IA fazer uma avaliação preliminar de risco (Art. 12) pelo Anexo II
+# e informar o nível (Art. 13). "Classe II" é classe de dispositivo médico da
+# ANVISA, que a Nymphia não tem: não houve notificação nem registro.
+CLASSIFICACAO_RISCO_CFM = (
+    "Risco médio, pela avaliação preliminar da própria Nymphia (Resolução CFM nº 2.454/2026, Arts. 12 e 13 e "
+    "Anexo II): o sistema influencia decisões, mas um profissional revisa cada resultado."
+)
+SITUACAO_ANVISA = (
+    "Sem notificação ou registro na ANVISA. Para ser oferecido como software de dispositivo médico "
+    "(RDC nº 657/2022), o produto ainda precisa ser regularizado."
+)
+CARIMBO_PRONTUARIO = (
+    "Estimativa estatística com apoio de IA, registrada no prontuário como pede o Art. 4º, V da Resolução "
+    "CFM nº 2.454/2026. Diagnóstico e conduta são decisões do médico assistente."
+)
 
 
 def _transparencia_v2(nome: str, m: Dict[str, Any]) -> Dict[str, Any]:
@@ -700,10 +715,12 @@ def obter_transparencia_clinica() -> Dict[str, Any]:
         "versao_protocolo": "2026.3",
         "versao_modelos": "3.0" if metricas_v3 else "2.0",
         "marco_regulatorio": "Resolução CFM nº 2.454/2026; Código de Defesa do Consumidor (Lei 8.078/1990); RDC Anvisa nº 657/2022",
-        "classificacao_samd": "Software as a Medical Device (SaMD) de Risco Médio / Classe II",
+        "classificacao_risco_cfm": CLASSIFICACAO_RISCO_CFM,
+        "situacao_anvisa": SITUACAO_ANVISA,
         "finalidade_exclusiva": (
-            "Estimativa estatística populacional e suporte informativo ao pré-natal. É PROIBIDO usar este sistema "
-            "para diagnóstico ou prescrição sem a equipe de saúde (Art. 5º, §2º da CFM 2.454/2026)."
+            "Estimativa estatística populacional e apoio informativo ao pré-natal. Não serve para diagnóstico nem "
+            "prescrição. Pela Resolução CFM nº 2.454/2026 (Art. 5º, § 2º), o médico não pode deixar a IA comunicar "
+            "diagnóstico, prognóstico ou conduta sem mediação humana."
         ),
         "como_ler": (
             "AUC de 0,5 é acaso e de 1,0 é perfeito. Sensibilidade e especificidade estão no ponto de corte que pega "
@@ -719,10 +736,7 @@ def obter_transparencia_clinica() -> Dict[str, Any]:
             "suposicoes": base_sintetica.get("suposicoes"),
         } if metricas_v3 else None,
         "variaveis_excluidas": (_modelos_estado.get("metricas") or {}).get("variaveis_excluidas"),
-        "carimbo_prontuario": (
-            "Avaliação assistida por algoritmo supervisionado de IA (CFM 2.454/2026). "
-            "Decisão diagnóstica e conduta terapêutica são privativas do médico obstetra assistente."
-        ),
+        "carimbo_prontuario": CARIMBO_PRONTUARIO,
         "canal_revisao_humana": "/meus-dados/solicitar-revisao-ia",
         "artigo_lgpd_revisao": "Art. 20 da LGPD (Direito à Revisão Humana de Decisões Automatizadas)",
         "modelos": modelos,

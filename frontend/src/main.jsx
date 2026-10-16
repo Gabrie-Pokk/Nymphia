@@ -14,3 +14,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </AuthProvider>
   </React.StrictMode>,
 )
+
+// Service Worker do PWA (funciona offline, inclusive a tela de emergência).
+// Fica aqui, e não num <script> dentro do index.html, para a CSP não precisar
+// liberar script inline.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .catch((err) => console.warn('[Nymphia PWA] Falha ao registrar Service Worker:', err));
+  });
+}

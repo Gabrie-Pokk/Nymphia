@@ -16,7 +16,6 @@ from app.api import (
     arquivos, admin, epds
 )
 from app.services.ai_risk_service import carregar_modelos_ml
-from app.services.ai_text_service import carregar_bertimbau
 
 # Configuração de Logging
 logging.basicConfig(
@@ -91,8 +90,6 @@ async def lifespan(app: FastAPI):
     def _aquecer_modelos_background():
         try:
             carregar_modelos_ml()
-            if os.getenv("NYMPHIA_CARREGAR_BERTIMBAU", "0").strip().lower() in ("1", "true", "sim", "yes"):
-                carregar_bertimbau()
         except Exception as e:
             logger.warning(f"Aviso no pré-carregamento assíncrono: {e}")
 
@@ -102,6 +99,26 @@ async def lifespan(app: FastAPI):
     logger.info("Encerrando Nymphia Backend.")
 
 from app.security.rate_limiter import auth_rate_limiter, admin_rate_limiter
+
+# O que o app carrega de verdade (16/10/2026): só arquivos do próprio site, as
+# fontes do Google e documentos abertos como blob na área da equipe. Nenhum
+# script de fora (o guia de postura não usa mais o MediaPipe). Por enquanto a
+# política só relata; ativar de vez é um passo à parte (PENDENCIAS.md).
+CSP_REPORT_ONLY = "; ".join([
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: blob:",
+    "frame-src 'self' blob:",
+    "connect-src 'self'",
+    "worker-src 'self'",
+    "manifest-src 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "object-src 'none'",
+])
 
 app = FastAPI(
     title="Nymphia — Inteligência Artificial Obstétrica",
@@ -178,8 +195,8 @@ async def seguranca_governanca_middleware(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    # A câmera é liberada só para o próprio site (antropometria e visão corporal).
-    # Microfone continua bloqueado.
+    # A câmera é liberada só para o próprio site: o guia de postura usa como
+    # espelho, sem gravar nem enviar. Microfone continua bloqueado.
     response.headers["Permissions-Policy"] = "geolocation=(self), camera=(self), microphone=()"
 
     # Respostas da API trazem dados pessoais e de saúde: o navegador não deve
@@ -188,10 +205,8 @@ async def seguranca_governanca_middleware(request: Request, call_next):
     if "cache-control" not in response.headers and response.headers.get("content-type", "").startswith("application/json"):
         response.headers["Cache-Control"] = "no-store"
 
-    # 4. Content-Security-Policy em modo Report-Only
-    response.headers["Content-Security-Policy-Report-Only"] = (
-        "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; img-src 'self' data: blob:"
-    )
+    # 4. Content-Security-Policy em modo Report-Only (ver CSP_REPORT_ONLY)
+    response.headers["Content-Security-Policy-Report-Only"] = CSP_REPORT_ONLY
     if "Content-Security-Policy" in response.headers:
         del response.headers["Content-Security-Policy"]
 

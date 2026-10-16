@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
+import { formatDate } from '../../utils/dateUtils';
 import { 
   MessageCircle, Flag, Send, ShieldAlert, Heart, Plus, 
   Sparkles, CheckCircle2, SlidersHorizontal, AlertTriangle, X,
@@ -527,7 +528,7 @@ export default function CommunityFeed({ onBack }) {
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                    {new Date(p.criado_em).toLocaleDateString('pt-BR')}
+                    {formatDate(p.criado_em)}
                   </span>
                   <button
                     onClick={() => handleAbrirDenuncia(p.id)}
@@ -1133,7 +1134,7 @@ export default function CommunityFeed({ onBack }) {
                         {item.ocultado ? '🚫 Ocultado Preventivamente' : '⚠️ Sinalizado para Auditoria'}
                       </span>
                       <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-                        {new Date(item.criado_em).toLocaleDateString('pt-BR')}
+                        {formatDate(item.criado_em)}
                       </span>
                     </div>
 

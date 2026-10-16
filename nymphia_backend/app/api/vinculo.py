@@ -4,7 +4,7 @@ from typing import List, Optional
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, inspect as sa_inspect
 
 from app.database import get_db
 from app.models.auth import Gestante, Profissional
@@ -15,13 +15,39 @@ from app.models.governance import ObservacaoProfissional
 from app.schemas.all_schemas import (
     CodigoConviteOut, UsarCodigoRequest, SolicitarVinculoRequest,
     ResponderVinculoRequest, VinculoOut, PacientePainelItem,
-    ObservacaoProfissionalCreate, ObservacaoProfissionalOut
+    ObservacaoProfissionalCreate, ObservacaoProfissionalOut, _serialize_datetime_utc
 )
 from app.security.jwt_auth import get_current_gestante, get_current_profissional, get_current_profissional_aprovado
 from app.services.ai_risk_service import calculate_maternal_risks, perfil_para_modelos
 from app.api.epds import resumos_da_gestante
 
 router = APIRouter(prefix="/vinculo", tags=["Vínculo Gestante-Profissional e Painel"])
+
+def _linha(registro, excluir=()):
+    """Linha do banco como dicionário, com os horários marcados como UTC.
+
+    Sem o "Z", o navegador lê o horário UTC como se fosse local e a ficha
+    mostrava check-ins, mensagens e observações 3 horas adiantados.
+    """
+    if registro is None:
+        return None
+    dados = {}
+    for coluna in sa_inspect(registro).mapper.column_attrs:
+        if coluna.key in excluir:
+            continue
+        valor = getattr(registro, coluna.key)
+        dados[coluna.key] = _serialize_datetime_utc(valor) if isinstance(valor, datetime) else valor
+    return dados
+
+
+def _linhas(registros, excluir=()):
+    return [_linha(r, excluir) for r in registros]
+
+
+# Colunas antigas do check-in que não vão para a ficha: a "anomalia" era um
+# número fixo e as categorias do BERTimbau vinham, na verdade, de palavras-chave.
+COLUNAS_ANTIGAS_DO_CHECKIN = ("categorias_bertimbau", "score_anomalia")
+
 
 def generate_random_code(length: int = 8) -> str:
     chars = string.ascii_uppercase + string.digits
@@ -359,15 +385,15 @@ def obter_ficha_paciente(
             "email": gestante.email,
             "recusa_ia": gestante.recusa_ia
         },
-        "perfil_clinico": perfil,
-        "historico_familiar": historico,
+        "perfil_clinico": _linha(perfil),
+        "historico_familiar": _linhas(historico),
         "riscos_calculados": riscos_calculados,
-        "checkins": checkins,
+        "checkins": _linhas(checkins, excluir=COLUNAS_ANTIGAS_DO_CHECKIN),
         "triagens_epds": resumos_da_gestante(db, gestante_id),
-        "exames": exames,
-        "emergencias": emergencias,
-        "mensagens_autorizadas": mensagens_autorizadas,
-        "observacoes_medicas": observacoes_medicas,
+        "exames": _linhas(exames),
+        "emergencias": _linhas(emergencias),
+        "mensagens_autorizadas": _linhas(mensagens_autorizadas),
+        "observacoes_medicas": _linhas(observacoes_medicas),
         "somente_leitura": True
     }
 

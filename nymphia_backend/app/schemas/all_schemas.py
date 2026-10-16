@@ -1,7 +1,22 @@
 import re
 from datetime import datetime, date, timedelta
-from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator, model_validator, field_serializer
+from typing import Annotated, List, Optional, Dict, Any
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, PlainSerializer, field_validator, model_validator
+
+
+def _serialize_datetime_utc(dt: Optional[datetime]) -> Optional[str]:
+    if dt is None:
+        return None
+    iso = dt.isoformat()
+    if dt.tzinfo is None and not iso.endswith("Z") and not ("+" in iso or iso.count("-") > 2):
+        return iso + "Z"
+    return iso
+
+
+# O banco guarda os horários em UTC sem fuso (datetime.utcnow). Na resposta eles
+# saem com "Z" para o navegador converter para o horário local. Sem isso, no
+# Brasil o horário aparecia 3 horas adiantado.
+DataHoraUTC = Annotated[datetime, PlainSerializer(_serialize_datetime_utc, return_type=str, when_used="json")]
 
 # Regex para nomes: apenas letras (com acentos), espaços, apóstrofos e hífens. Proíbe números e símbolos.
 NOME_REGEX = re.compile(r"^[A-Za-zÀ-ÖØ-öø-ÿ\s'.\-]{2,100}$")
@@ -224,8 +239,8 @@ class SolicitacaoRevisaoIAOut(BaseModel):
     recurso_analisado: str
     status: str
     resposta_revisao: Optional[str] = None
-    criado_em: datetime
-    respondido_em: Optional[datetime] = None
+    criado_em: DataHoraUTC
+    respondido_em: Optional[DataHoraUTC] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -333,7 +348,7 @@ class PerfilClinicoUpdate(BaseModel):
 class PerfilClinicoOut(PerfilClinicoBase):
     id: int
     gestante_id: str
-    atualizado_em: datetime
+    atualizado_em: DataHoraUTC
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -375,28 +390,20 @@ class CheckinCreate(BaseModel):
             raise ValueError("Máximo de 20 sintomas por registro.")
         return [s.strip()[:80] for s in v if s.strip()]
 
-def _serialize_datetime_utc(dt: Optional[datetime]) -> Optional[str]:
-    if dt is None:
-        return None
-    iso = dt.isoformat()
-    if dt.tzinfo is None and not iso.endswith("Z") and not ("+" in iso or iso.count("-") > 2):
-        return iso + "Z"
-    return iso
-
 class CheckinOut(BaseModel):
     id: int
-    data_hora: datetime
+    data_hora: DataHoraUTC
     humor: int
     descricao: Optional[str]
     sintomas: List[str]
     movimentos_bebe: int
     semana_gestacional: Optional[int]
-    categorias_bertimbau: Optional[Dict[str, float]]
+    # Categorias marcadas por palavras-chave (não é modelo de IA). Os campos
+    # categorias_bertimbau e score_anomalia saíram em 16/10/2026: o BERTimbau
+    # nunca rodou no servidor e a "anomalia" era um número fixo (0,65 ou 0,05).
     categorias_regras: List[str]
     alerta_sintoma_fisico: List[str]
     sinais_atencao: List[str] = Field(default_factory=list)
-    score_anomalia: Optional[float]
-    bertimbau_disponivel: bool = False  # True só com o modelo carregado de verdade
     recomendacao: Optional[str] = "Registro histórico salvo."
 
     @field_validator("sinais_atencao", mode="before")
@@ -404,10 +411,6 @@ class CheckinOut(BaseModel):
     def _sinais_atencao_vazio(cls, v):
         # Check-ins gravados antes de 15/10/2026 não têm essa coluna preenchida
         return v or []
-
-    @field_serializer("data_hora")
-    def serialize_data_hora(self, dt: datetime, _info):
-        return _serialize_datetime_utc(dt)
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -432,13 +435,9 @@ class MensagemOut(BaseModel):
     id: int
     papel: str
     conteudo: str
-    data_hora: datetime
+    data_hora: DataHoraUTC
     alerta_emergencia: bool
     autorizado_compartilhar: bool
-
-    @field_serializer("data_hora")
-    def serialize_data_hora(self, dt: datetime, _info):
-        return _serialize_datetime_utc(dt)
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -464,15 +463,11 @@ class EventoAgendaOut(BaseModel):
     gestante_id: str
     tipo: str
     titulo: str
-    data_hora: datetime
+    data_hora: DataHoraUTC
     notas: Optional[str]
     concluido: bool
     recorrencia: Optional[str]
-    criado_em: datetime
-
-    @field_serializer("data_hora", "criado_em")
-    def serialize_event_dates(self, dt: datetime, _info):
-        return _serialize_datetime_utc(dt)
+    criado_em: DataHoraUTC
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -485,7 +480,7 @@ class ExameOut(BaseModel):
     arquivo_url: str
     valores_extraidos: Optional[Dict[str, Any]]
     observacoes: Optional[str]
-    criado_em: datetime
+    criado_em: DataHoraUTC
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -498,7 +493,7 @@ class EmergenciaNotificarRequest(BaseModel):
 class EmergenciaResponse(BaseModel):
     status: str
     evento_id: int
-    data_hora: datetime
+    data_hora: DataHoraUTC
     profissional_notificado: bool
     equipe_vinculada: bool = False
     orientacao_samu: str = "Disque 192 imediatamente."
@@ -506,7 +501,7 @@ class EmergenciaResponse(BaseModel):
 # --- Vinculo Schemas ---
 class CodigoConviteOut(BaseModel):
     codigo: str
-    expira_em: datetime
+    expira_em: DataHoraUTC
 
 class UsarCodigoRequest(BaseModel):
     codigo: str = Field(..., min_length=8, max_length=8)
@@ -536,8 +531,8 @@ class VinculoOut(BaseModel):
     gestante_nome: Optional[str] = None
     status: str
     origem: str
-    criado_em: datetime
-    respondido_em: Optional[datetime]
+    criado_em: DataHoraUTC
+    respondido_em: Optional[DataHoraUTC]
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -547,9 +542,9 @@ class PacientePainelItem(BaseModel):
     nome: str
     semana_gestacional: Optional[int]
     total_alertas_30d: int
-    ultimo_checkin: Optional[datetime]
+    ultimo_checkin: Optional[DataHoraUTC]
     ultimo_checkin_relativo: str
-    proxima_consulta: Optional[datetime]
+    proxima_consulta: Optional[DataHoraUTC]
     vinculo_id: int
 
 # --- Parceiro Schemas ---
@@ -598,7 +593,7 @@ class ComentarioOut(BaseModel):
     apelido: str
     conteudo: str
     sinalizado: bool
-    criado_em: datetime
+    criado_em: DataHoraUTC
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -610,7 +605,7 @@ class PostOut(BaseModel):
     sinalizado: bool
     ocultado: bool = False
     motivo_sinalizacao: Optional[str] = None
-    criado_em: datetime
+    criado_em: DataHoraUTC
     comentarios: List[ComentarioOut] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
@@ -636,7 +631,7 @@ class RecursoOut(BaseModel):
     justificativa: str
     status: str
     decisao_motivo: Optional[str] = None
-    criado_em: datetime
+    criado_em: DataHoraUTC
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -649,7 +644,7 @@ class ModeracaoItemOut(BaseModel):
     ocultado: bool
     motivo_sinalizacao: Optional[str] = None
     motivo_ocultacao: Optional[str] = None
-    criado_em: datetime
+    criado_em: DataHoraUTC
     recurso_status: Optional[str] = None
     recurso_decisao: Optional[str] = None
 
@@ -665,7 +660,7 @@ class PreferenciasComunidadeOut(BaseModel):
     interesses: List[str] = Field(default_factory=list)
     estilo_vida: Optional[str] = None
     grupos_recomendados: List[str] = Field(default_factory=list)
-    atualizado_em: Optional[datetime] = None
+    atualizado_em: Optional[DataHoraUTC] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -696,7 +691,7 @@ class MedicaoOut(BaseModel):
     sistolica: Optional[int]
     diastolica: Optional[int]
     glicemia: Optional[float]
-    data_hora: datetime
+    data_hora: DataHoraUTC
     origem: str
 
     model_config = ConfigDict(from_attributes=True)
@@ -708,7 +703,7 @@ class LogAcessoOut(BaseModel):
     acessado_por_id: str
     acessado_por_tipo: str
     recurso: str
-    data_hora: datetime
+    data_hora: DataHoraUTC
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -728,7 +723,7 @@ class ObservacaoProfissionalOut(BaseModel):
     profissional_id: str
     gestante_id: str
     observacao: str
-    criado_em: datetime
+    criado_em: DataHoraUTC
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -747,9 +742,9 @@ class AssinaturaOut(BaseModel):
     status: str
     valor_mensal: float
     forma_pagamento: Optional[str] = None
-    iniciada_em: datetime
-    expira_em: Optional[datetime] = None
-    proxima_cobranca: Optional[datetime] = None
+    iniciada_em: DataHoraUTC
+    expira_em: Optional[DataHoraUTC] = None
+    proxima_cobranca: Optional[DataHoraUTC] = None
     recursos_liberados: List[str] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
@@ -796,7 +791,7 @@ class RegistroAntropometricoOut(BaseModel):
     pressao_arterial: Optional[str] = None
     edema: Optional[str] = None
     observacoes: Optional[str] = None
-    criado_em: datetime
+    criado_em: DataHoraUTC
     # Pressão, inchaço e ganho rápido avaliados na hora de salvar
     alertas: List[Dict[str, Any]] = Field(default_factory=list)
 

@@ -63,11 +63,14 @@ class CheckinRegistro(Base):
     sintomas = Column(JSON, default=list, nullable=False)
     movimentos_bebe = Column(Integer, default=0, nullable=False)
     semana_gestacional = Column(Integer, nullable=True)
+    # Não é mais gravada (16/10/2026). Os check-ins antigos guardam ali a contagem
+    # de palavras-chave em forma de probabilidade; o BERTimbau nunca rodou.
     categorias_bertimbau = Column(JSON, nullable=True)
     categorias_regras = Column(JSON, default=list, nullable=False)
     alerta_sintoma_fisico = Column(JSON, default=list, nullable=False)
     # Sinais de atenção (falar com o pré-natal hoje); os urgentes ficam em alerta_sintoma_fisico
     sinais_atencao = Column(JSON, nullable=True)
+    # Não é mais gravada (16/10/2026): era um número fixo, 0,65 com urgência e 0,05 sem.
     score_anomalia = Column(Float, nullable=True)
 
     gestante = relationship("Gestante", back_populates="checkins")

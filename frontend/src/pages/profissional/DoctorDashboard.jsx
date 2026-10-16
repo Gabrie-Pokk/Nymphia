@@ -5,6 +5,7 @@ import TriageDisclaimer from '../../components/TriageDisclaimer';
 import { apiFetch } from '../../utils/api';
 import { nomeComTitulo } from '../../utils/nomeProfissional';
 
+import { formatDate } from '../../utils/dateUtils';
 export default function DoctorDashboard({ onSelectPatient, onNavigateGenerateInvite }) {
   const { user, authHeaders } = useAuth();
   const [pacientes, setPacientes] = useState([]);
@@ -184,7 +185,7 @@ export default function DoctorDashboard({ onSelectPatient, onNavigateGenerateInv
                     <span>Último check-in: <strong>{p.ultimo_checkin_relativo}</strong></span>
                     {p.proxima_consulta && (
                       <span>
-                        Próx. Consulta: <strong>{new Date(p.proxima_consulta).toLocaleDateString('pt-BR')}</strong>
+                        Próx. Consulta: <strong>{formatDate(p.proxima_consulta)}</strong>
                       </span>
                     )}
                   </div>

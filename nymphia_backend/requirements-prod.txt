@@ -1,21 +1,23 @@
-# Dependências de produção do Nymphia (com suporte a IA BERTimbau leve e Random Forest)
-fastapi==0.111.0
-uvicorn[standard]==0.30.1
-pydantic==2.7.1
-scikit-learn==1.7.2
-joblib==1.4.2
-numpy==1.26.4
-pandas==2.2.2
-python-multipart==0.0.9
-sqlalchemy==2.0.30
+# Dependências de produção do Nymphia (16/10/2026)
+#
+# Versões que instalam do Python 3.10 ao 3.13 com pacote pronto (wheel) para
+# Linux, Windows e macOS, sem precisar compilar nada. Os modelos .joblib foram
+# treinados com scikit-learn 1.7.2: mudar essa versão exige retreinar.
+# PyTorch, transformers, safetensors, accelerate e gdown saíram com o BERTimbau.
+fastapi==0.115.14
+uvicorn[standard]==0.54.0
+pydantic==2.11.10
+pydantic-settings==2.15.0
+email-validator==2.3.0
+python-multipart==0.0.32
+sqlalchemy==2.0.54
+psycopg2-binary==2.9.13
+alembic==1.20.0
 bcrypt==4.1.3
-pyjwt==2.8.0
-transformers>=4.40.0
-safetensors>=0.4.3
-accelerate>=0.28.0
-gdown>=5.0.0
-requests>=2.31.0
-pydantic-settings>=2.2.1
-reportlab>=4.1.0
-psycopg2-binary>=2.9.9
-alembic>=1.13.0
+pyjwt==2.15.1
+scikit-learn==1.7.2
+joblib==1.6.0
+numpy==2.2.6
+pandas==2.3.3
+requests==2.34.2
+reportlab==4.5.1

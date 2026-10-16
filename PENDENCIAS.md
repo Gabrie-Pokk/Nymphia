@@ -88,4 +88,4 @@
   - A remoção de `SEXO` elevou a acurácia global e a precisão em todos os modelos (ex: acurácia da Eclâmpsia subiu de 83,3% para 89,9%, e o ROC-AUC do ITU subiu de 0,7815 para 0,8162).
   - Contudo, houve uma discreta redução no Recall positivo (ex: Recall da Pré-Eclâmpsia passou de 63,6% para 60,1%).
 - **O que preciso de você para destravar**:
-  - Decidir se aprova promover os modelos sem `SEXO` para a pasta oficial `nymphia_backend/modelos/` e atualizar `app/modelos.py`. Caso aprove, basta copiar os arquivos de `nymphia_backend/modelos_experimentais_sem_sexo/`.
+  - **Resolvido em 16/10/2026:** os modelos v2 e v3 já não usam `SEXO`. A pasta experimental foi removida.

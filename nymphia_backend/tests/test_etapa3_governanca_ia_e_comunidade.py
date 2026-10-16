@@ -3,16 +3,21 @@ from fastapi.testclient import TestClient
 
 def test_transparencia_clinica_cfm_2454_e_cdc(client: TestClient):
     """
-    Verifica a publicação obrigatória das métricas dos modelos de IA,
-    classificação SaMD e justificativa do desbalanceamento de ITU (CFM 2.454/2026 e CDC).
+    Verifica a publicação obrigatória das métricas dos modelos de IA, o nível de
+    risco informado (CFM 2.454/2026, Art. 13), a situação na ANVISA sem exagero e
+    a justificativa do desbalanceamento de ITU.
     """
     res = client.get("/modelos/transparencia-clinica")
     assert res.status_code == 200
     data = res.json()
 
     assert "CFM nº 2.454/2026" in data["marco_regulatorio"]
-    assert "SaMD" in data["classificacao_samd"]
-    assert "PROIBIDO" in data["finalidade_exclusiva"]
+    assert "classificacao_samd" not in data
+    assert "Risco médio" in data["classificacao_risco_cfm"] and "Anexo II" in data["classificacao_risco_cfm"]
+    # Sem notificação na ANVISA, nada de "Classe II" ou de selo de dispositivo médico
+    assert data["situacao_anvisa"].startswith("Sem notificação ou registro na ANVISA")
+    assert "Classe II" not in str(data)
+    assert "Não serve para diagnóstico" in data["finalidade_exclusiva"]
     assert "modelos" in data
 
     modelos = data["modelos"]
@@ -65,7 +70,9 @@ def test_carimbo_samd_em_calculo_de_risco(client: TestClient):
     data = res.json()
 
     assert "carimbo_samd_cfm" in data
-    assert "CFM nº 2.454/2026" in data["carimbo_samd_cfm"]
+    assert "CFM nº 2.454/2026" in data["carimbo_samd_cfm"] and "Art. 4º, V" in data["carimbo_samd_cfm"]
+    assert "Classe II" not in data["carimbo_samd_cfm"] + data["enquadramento_regulatorio"]
+    assert "Sem notificação ou registro na ANVISA" in data["enquadramento_regulatorio"]
     assert data["condicoes"]["itu"]["fonte"] == "indisponivel"
     assert "O23" in data["condicoes"]["itu"]["motivo"]
 

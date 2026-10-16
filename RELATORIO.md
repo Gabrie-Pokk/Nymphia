@@ -182,7 +182,7 @@ Health status: 200, tempo de resposta: 2.95s
 2. **Métricas Reais dos Modelos (Regra Inviolável 1)**:
    - Todas as métricas foram calculadas diretamente sobre os arquivos salvos em disco e salvas em `METRICAS_REAIS.md`. Nenhuma métrica foi inventada.
 3. **Feature "SEXO" no Modelo do SIH**:
-   - Confirmado que para `ESPEC == "02"` (obstetrícia hospitalar), a variância de sexo é zero (100% feminino). Modelos sem a feature foram treinados e preservados em pasta isolada `modelos_experimentais_sem_sexo/`.
+   - Confirmado que para `ESPEC == "02"` (obstetrícia hospitalar), a variância de sexo é zero (100% feminino). Modelos sem a feature foram treinados e preservados em pasta isolada `modelos_experimentais_sem_sexo/` (removida em 16/10/2026: os modelos v2 e v3 já não usam `SEXO`).
 
 ---
 

@@ -6,6 +6,7 @@ import AiTransparencyModal from '../../components/AiTransparencyModal';
 import ResumoRiscos from '../../components/ResumoRiscos';
 import { User, Activity, AlertTriangle, FileText, MessageSquare, Plus, CheckCircle2, ShieldCheck, Heart, Info, Bot } from 'lucide-react';
 
+import { formatDateTime } from '../../utils/dateUtils';
 export default function PatientRecord({ patientId, onBack }) {
   const { authHeaders } = useAuth();
   const [ficha, setFicha] = useState(null);
@@ -114,13 +115,13 @@ export default function PatientRecord({ patientId, onBack }) {
         </div>
       </div>
 
-      {/* Riscos Obstétricos Calculados (6 Condições CFM 2.454) */}
+      {/* Riscos calculados pelos modelos */}
       <div className="card" style={{ borderLeft: '5px solid var(--color-dourado)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
           <div>
             <h3 style={{ fontSize: '1.05rem', margin: 0 }}>Rastreio Estatístico Populacional (SINASC/SIH)</h3>
             <span style={{ fontSize: '0.72rem', color: 'var(--color-vinho)', fontWeight: 600 }}>
-              🛡️ SaMD Classe II • Resolução CFM nº 2.454/2026 (Art. 4º, V)
+              IA de risco médio pela avaliação da própria Nymphia (CFM 2.454/2026) • sem registro na ANVISA
             </span>
           </div>
           <button
@@ -140,10 +141,10 @@ export default function PatientRecord({ patientId, onBack }) {
 
         <ResumoRiscos riscos={riscos_calculados} modo="profissional" />
 
-        {/* Carimbo de Prontuário CFM 2.454/2026 */}
+        {/* Registro do uso de IA no prontuário (CFM 2.454/2026, Art. 4º, V) */}
         <div style={{ marginTop: '12px', padding: '10px 12px', backgroundColor: 'var(--color-creme)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', fontSize: '0.74rem', color: 'var(--color-vinho)', lineHeight: '1.4' }}>
-          <strong>Carimbo Auditável de Prontuário (CFM 2.454/2026):</strong>{' '}
-          {riscos_calculados?.carimbo_samd_cfm || 'Triagem com suporte de IA supervisionada (SaMD Classe II / CFM nº 2.454/2026). Decisão diagnóstica privativa do médico obstetra assistente.'}
+          <strong>Registro do uso de IA no prontuário:</strong>{' '}
+          {riscos_calculados?.carimbo_samd_cfm || 'Estimativa estatística com apoio de IA, registrada no prontuário como pede o Art. 4º, V da Resolução CFM nº 2.454/2026. Diagnóstico e conduta são decisões do médico assistente.'}
         </div>
       </div>
 
@@ -159,7 +160,7 @@ export default function PatientRecord({ patientId, onBack }) {
             {checkins.map((c) => (
               <div key={c.id} style={{ padding: '8px 10px', backgroundColor: '#FFFFFF', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', fontSize: '0.82rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                  <strong>{new Date(c.data_hora).toLocaleString('pt-BR')}</strong>
+                  <strong>{formatDateTime(c.data_hora)}</strong>
                   <span className="badge-gold" style={{ fontSize: '0.68rem' }}>Humor {c.humor}/5</span>
                 </div>
                 {c.descricao && <p style={{ margin: '2px 0', color: 'var(--color-text-main)' }}>"{c.descricao}"</p>}
@@ -192,7 +193,7 @@ export default function PatientRecord({ patientId, onBack }) {
             <tbody>
               {triagensEpds.map((t) => (
                 <tr key={t.id} style={{ borderTop: '1px solid var(--color-border)' }}>
-                  <td style={{ padding: '4px 6px' }}>{new Date(t.data_hora).toLocaleString('pt-BR')}</td>
+                  <td style={{ padding: '4px 6px' }}>{formatDateTime(t.data_hora)}</td>
                   <td style={{ padding: '4px 6px' }}>{t.semana_gestacional ?? '-'}</td>
                   <td style={{ padding: '4px 6px' }}>{t.pontuacao}/30</td>
                   <td style={{ padding: '4px 6px', color: NIVEL_EPDS[t.nivel]?.cor, fontWeight: 700 }}>
@@ -224,7 +225,7 @@ export default function PatientRecord({ patientId, onBack }) {
             {mensagens_autorizadas.map((m) => (
               <div key={m.id} style={{ padding: '8px 12px', backgroundColor: '#FFFFFF', borderRadius: 'var(--radius-sm)', borderLeft: '4px solid var(--color-rosa)' }}>
                 <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-                  {new Date(m.data_hora).toLocaleString('pt-BR')}
+                  {formatDateTime(m.data_hora)}
                 </span>
                 <p style={{ fontSize: '0.85rem', margin: '4px 0 0 0' }}>"{m.conteudo}"</p>
               </div>
@@ -274,7 +275,7 @@ export default function PatientRecord({ patientId, onBack }) {
               {observacoes_medicas.map((obs) => (
                 <div key={obs.id} style={{ padding: '8px 12px', backgroundColor: '#FFFFFF', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', fontSize: '0.85rem' }}>
                   <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-                    Registrado em: {new Date(obs.criado_em).toLocaleString('pt-BR')}
+                    Registrado em: {formatDateTime(obs.criado_em)}
                   </span>
                   <p style={{ margin: '4px 0 0 0', color: 'var(--color-vinho)', fontWeight: 500 }}>
                     {obs.observacao}

@@ -48,12 +48,14 @@ def test_health_nao_carrega_modelos(client, monkeypatch, modelos_zerados):
     assert "modelos_carregando" in res.json()
 
 
-def test_health_ignora_pedido_publico_de_recarregar_bertimbau(client, monkeypatch):
-    from app.services import ai_text_service
-    chamadas = []
-    monkeypatch.setattr(ai_text_service, "carregar_bertimbau", lambda forcar=False: chamadas.append(forcar))
-    client.get("/health?recarregar_ia=true")
-    assert chamadas == []
+def test_health_ignora_pedido_publico_de_recarregar_ia(client, monkeypatch, modelos_zerados):
+    def proibido():
+        raise AssertionError("o /health não pode carregar modelos")
+
+    monkeypatch.setattr(ai_risk_service, "_carregar_modelos_sem_trava", proibido)
+    res = client.get("/health?recarregar_ia=true")
+    assert res.status_code == 200
+    assert not any("bertimbau" in chave for chave in res.json())
 
 
 # --- Ambiente ---

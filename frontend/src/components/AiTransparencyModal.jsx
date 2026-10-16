@@ -95,7 +95,7 @@ export default function AiTransparencyModal({ isOpen, onClose }) {
                 Governança de IA & Transparência Clínica
               </h3>
               <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.85)' }}>
-                Resolução CFM nº 2.454/2026 • Código de Defesa do Consumidor • RDC Anvisa 657/2022
+                Resolução CFM nº 2.454/2026 • Código de Defesa do Consumidor • LGPD
               </span>
             </div>
           </div>
@@ -184,7 +184,7 @@ export default function AiTransparencyModal({ isOpen, onClose }) {
               gap: '6px'
             }}
           >
-            <ShieldCheck size={16} /> Marco Regulatório SaMD
+            <ShieldCheck size={16} /> Marco Regulatório
           </button>
         </div>
 
@@ -211,10 +211,10 @@ export default function AiTransparencyModal({ isOpen, onClose }) {
               >
                 <Info size={20} color="var(--color-dourado)" style={{ flexShrink: 0, marginTop: '2px' }} />
                 <div style={{ fontSize: '0.82rem', color: '#78350F' }}>
-                  <strong>Aviso Mandatório (Resolução CFM nº 2.454/2026, Art. 5º, §2º):</strong> A inteligência artificial
-                  Nymphia opera estritamente como ferramenta de suporte e triagem preditiva populacional. É expressamente
-                  vedado ao sistema emitir diagnósticos definitivos ou prescrever condutas de forma autônoma. Decisões clínicas
-                  cabem exclusivamente ao médico obstetra assistente.
+                  <strong>Aviso (Resolução CFM nº 2.454/2026, Art. 4º, I e Art. 5º, § 2º):</strong> a IA da Nymphia é só
+                  apoio, com estimativas estatísticas populacionais. Ela não dá diagnóstico nem prescreve conduta, e o médico
+                  não pode deixar que ela comunique diagnóstico, prognóstico ou tratamento sem mediação humana. A decisão
+                  clínica é do médico assistente.
                 </div>
               </div>
 
@@ -362,17 +362,23 @@ export default function AiTransparencyModal({ isOpen, onClose }) {
                   </h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <div style={{ border: '1px solid var(--color-border)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
-                      <strong style={{ color: 'var(--color-vinho)' }}>Classificação SaMD (Anvisa / CFM):</strong>
+                      <strong style={{ color: 'var(--color-vinho)' }}>Nível de risco (CFM 2.454/2026, Art. 13):</strong>
                       <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: 'var(--color-text-main)' }}>
-                        O sistema Nymphia enquadra-se como Software as a Medical Device (SaMD) de Risco Médio (Classe II),
-                        segundo a RDC Anvisa nº 657/2022 e o Anexo II da Resolução CFM nº 2.454/2026.
+                        {dados?.classificacao_risco_cfm || 'Risco médio, pela avaliação preliminar da própria Nymphia (Resolução CFM nº 2.454/2026, Arts. 12 e 13 e Anexo II): o sistema influencia decisões, mas um profissional revisa cada resultado.'}
                       </p>
                     </div>
 
                     <div style={{ border: '1px solid var(--color-border)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
-                      <strong style={{ color: 'var(--color-vinho)' }}>Carimbo Auditável em Prontuário (Art. 4º, V):</strong>
+                      <strong style={{ color: 'var(--color-vinho)' }}>Situação na ANVISA:</strong>
+                      <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: 'var(--color-text-main)' }}>
+                        {dados?.situacao_anvisa || 'Sem notificação ou registro na ANVISA. Para ser oferecido como software de dispositivo médico (RDC nº 657/2022), o produto ainda precisa ser regularizado.'}
+                      </p>
+                    </div>
+
+                    <div style={{ border: '1px solid var(--color-border)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
+                      <strong style={{ color: 'var(--color-vinho)' }}>Registro do uso de IA no prontuário (Art. 4º, V):</strong>
                       <div style={{ fontStyle: 'italic', backgroundColor: 'var(--color-creme)', padding: '8px', borderRadius: '4px', marginTop: '6px', fontSize: '0.8rem' }}>
-                        "{dados?.carimbo_prontuario || 'Informações apoiadas por algoritmos preditivos de Inteligência Artificial (SaMD - CFM nº 2.454/2026). Decisão diagnóstica privativa do médico assistente.'}"
+                        "{dados?.carimbo_prontuario || 'Estimativa estatística com apoio de IA, registrada no prontuário como pede o Art. 4º, V da Resolução CFM nº 2.454/2026. Diagnóstico e conduta são decisões do médico assistente.'}"
                       </div>
                     </div>
 

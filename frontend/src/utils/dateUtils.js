@@ -9,6 +9,8 @@ export function parseDate(dateInput) {
   if (dateInput instanceof Date) return dateInput;
 
   let str = String(dateInput).trim();
+  // Só a data (AAAA-MM-DD): meio-dia local, para não virar o dia anterior no fuso do Brasil
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return new Date(`${str}T12:00:00`);
   // Se a string ISO não possuir indicação de fuso (sem 'Z' e sem offset +/-XX:XX)
   // adicionamos 'Z' para indicar que o timestamp do servidor está em UTC.
   if (!str.endsWith('Z') && !str.includes('+') && !str.match(/T.*-\d{2}:\d{2}$/)) {

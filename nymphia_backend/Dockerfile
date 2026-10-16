@@ -12,7 +12,6 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 WORKDIR /app
 
 COPY requirements-prod.txt .
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple
 RUN pip install --no-cache-dir -r requirements-prod.txt
 
 COPY . .

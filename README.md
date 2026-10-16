@@ -9,11 +9,10 @@ A **Nymphia** é uma plataforma e startup de Inteligência Artificial para acomp
 
 - **Frontend PWA**: React 18 + Vite, Progressive Web App instalável em celulares (Android & iOS) com Service Worker para emergência 100% offline.
 - **Backend**: FastAPI (Python 3.10+), SQLAlchemy 2.0, Pydantic V2, Bcrypt e JWT.
-- **Coração de Inteligência Artificial**:
-  - **Random Forest (SINASC / CNES)**: Bem-Estar Fetal e Malformação congênita.
-  - **Random Forest (SIH / DataSUS)**: Pré-Eclâmpsia, Eclâmpsia, Diabetes Gestacional e Infecções Urinárias (ITU).
-  - **Isolation Forest**: Detecção não-supervisionada de atipicidade clínica multivariada.
-  - **BERTimbau Fine-Tuned (PT-BR)**: Extração neural de estados emocionais e sintomas físicos.
+- **Coração de Inteligência Artificial** (estado de 16/10/2026):
+  - **Modelos de risco v3 (gradient boosting calibrado)**: bem-estar fetal, pré-eclâmpsia, eclâmpsia, diabetes gestacional e malformação. Treinados com SINASC e SIH; os fatores clínicos que o DATASUS não registra (pressão alta prévia, diabetes, IMC, histórico familiar) entram por simulação com efeitos publicados, declarada no app. O desempenho publicado é o medido em dados reais (`METRICAS_REAIS.md`). Infecção urinária fica sem estimativa.
+  - **Isolation Forest**: atipicidade do perfil obstétrico.
+  - **Escala de Edimburgo (EPDS)**: triagem emocional validada no Brasil. O texto livre do check-in é classificado por palavras-chave (o BERTimbau saiu em 16/10/2026: nunca rodou no servidor).
   - **Motor Determinístico FEBRASGO/MS**: Triagem imediata de sinais de alarme obstétricos.
 - **Conformidade CFM & LGPD**: Resolução CFM 2.454/2026 (direito de recusa e disclaimers estatísticos), auditoria de logs e exportação de dados (Art. 18).
 

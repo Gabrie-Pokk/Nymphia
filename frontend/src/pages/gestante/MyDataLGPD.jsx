@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 import LegalModal from '../../components/LegalModal';
+import { formatDate, formatDateTime } from '../../utils/dateUtils';
 import {
   Download,
   Shield,
@@ -270,7 +271,7 @@ export default function MyDataLGPD({ onBack }) {
                   </span>
                 </div>
                 <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                  {new Date(log.data_hora).toLocaleString('pt-BR')}
+                  {formatDateTime(log.data_hora)}
                 </span>
               </div>
             ))}
@@ -340,7 +341,7 @@ export default function MyDataLGPD({ onBack }) {
                     </div>
                   )}
                   <span style={{ fontSize: '0.72rem', color: '#999', display: 'block', marginTop: '4px' }}>
-                    Solicitado em: {new Date(rev.criado_em).toLocaleDateString('pt-BR')}
+                    Solicitado em: {formatDate(rev.criado_em)}
                   </span>
                 </div>
               ))}

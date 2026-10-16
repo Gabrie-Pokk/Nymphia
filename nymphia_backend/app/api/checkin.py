@@ -13,7 +13,6 @@ from app.schemas.all_schemas import (
 from app.security.jwt_auth import get_current_user_payload
 from app.services.rules_engine import avaliar
 from app.services.ai_text_service import classify_text_emotions
-from app.services.ai_text_service import bertimbau_disponivel as _bertimbau_ligado
 
 router = APIRouter(prefix="/checkin", tags=["Check-in Diário"])
 
@@ -50,7 +49,7 @@ def analisar_checkin_preview(payload: CheckinAnalisarRequest):
     Analisa texto sem persistir (para pré-visualização em tempo real na interface).
     """
     avaliacao = avaliar(payload.texto)
-    scores, categorias_emocionais = classify_text_emotions(payload.texto)
+    _, categorias_emocionais = classify_text_emotions(payload.texto)
     return {
         "is_urgente": avaliacao.urgente,
         "alertas_urgencia": avaliacao.urgentes,
@@ -59,7 +58,6 @@ def analisar_checkin_preview(payload: CheckinAnalisarRequest):
         "sinais_atencao": avaliacao.atencoes,
         "orientacao": avaliacao.orientacao,
         "categorias_emocionais": categorias_emocionais,
-        "scores_bertimbau": scores
     }
 
 @router.post("", response_model=CheckinOut, status_code=status.HTTP_201_CREATED)
@@ -89,8 +87,8 @@ def registrar_checkin(
     alertas_regras = avaliacao.urgentes
     orientacao_regras = avaliacao.orientacao
 
-    # 2. Categorias por palavras-chave (BERTimbau só se o modelo estiver carregado de verdade)
-    scores_bertimbau, categorias_emocionais = classify_text_emotions(descricao_texto)
+    # 2. Categorias por palavras-chave (app/services/ai_text_service.py)
+    _, categorias_emocionais = classify_text_emotions(descricao_texto)
 
     # 3. Formatar recomendação
     if is_urgent or avaliacao.nivel == "atencao":
@@ -101,7 +99,7 @@ def registrar_checkin(
             f"Registramos os sintomas ({sintomas_txt}). Mantenha-se hidratada e em repouso. "
             f"Se a intensidade aumentar ou se surgirem sinais de alerta, contate seu obstetra ou dirija-se à maternidade."
         )
-    elif "ansiedade" in categorias_emocionais or "tristeza" in categorias_emocionais:
+    elif "ansiedade" in categorias_emocionais or "tristeza_desanimo" in categorias_emocionais:
         recomendacao = (
             "Percebemos que o dia de hoje pode estar exigindo mais emocionalmente. "
             "Respire fundo, tire momentos de descanso e compartilhe com sua rede de apoio."
@@ -119,11 +117,9 @@ def registrar_checkin(
         sintomas=payload.sintomas,
         movimentos_bebe=payload.movimentos_bebe,
         semana_gestacional=payload.semana_gestacional,
-        categorias_bertimbau=scores_bertimbau,
         categorias_regras=categorias_emocionais,
         alerta_sintoma_fisico=alertas_regras,
         sinais_atencao=avaliacao.atencoes,
-        score_anomalia=0.65 if is_urgent else 0.05
     )
     db.add(novo_checkin)
 
@@ -147,12 +143,9 @@ def registrar_checkin(
         sintomas=novo_checkin.sintomas,
         movimentos_bebe=novo_checkin.movimentos_bebe,
         semana_gestacional=novo_checkin.semana_gestacional,
-        categorias_bertimbau=novo_checkin.categorias_bertimbau,
         categorias_regras=novo_checkin.categorias_regras,
         alerta_sintoma_fisico=novo_checkin.alerta_sintoma_fisico,
         sinais_atencao=novo_checkin.sinais_atencao or [],
-        score_anomalia=novo_checkin.score_anomalia,
-        bertimbau_disponivel=_bertimbau_ligado(),
         recomendacao=recomendacao
     )
 
@@ -185,12 +178,9 @@ def listar_historico_checkin(
             sintomas=c.sintomas or [],
             movimentos_bebe=c.movimentos_bebe,
             semana_gestacional=c.semana_gestacional,
-            categorias_bertimbau=c.categorias_bertimbau,
             categorias_regras=c.categorias_regras or [],
             alerta_sintoma_fisico=c.alerta_sintoma_fisico or [],
             sinais_atencao=c.sinais_atencao or [],
-            score_anomalia=c.score_anomalia,
-            bertimbau_disponivel=_bertimbau_ligado(),
-            recomendacao="Registro histórico salvo."
+                recomendacao="Registro histórico salvo."
         ))
     return out

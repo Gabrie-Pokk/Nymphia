@@ -1,6 +1,5 @@
 from fastapi import APIRouter
 from app.services.ai_risk_service import status_modelos_ml
-from app.services.ai_text_service import bertimbau_disponivel, bertimbau_diagnostico
 
 router = APIRouter(tags=["Saúde do Sistema"])
 
@@ -8,12 +7,9 @@ router = APIRouter(tags=["Saúde do Sistema"])
 def health_check():
     """
     Endpoint de monitoramento, chamado pelo Render a cada poucos segundos.
-    Só informa o estado: não carrega modelo nenhum. (Antes, qualquer pessoa
-    podia chamar /health?recarregar_ia=true e forçar o download e o
-    carregamento do BERTimbau, de 2,3 GB, derrubando o servidor.)
+    Só informa o estado: não carrega modelo nenhum.
     """
     ml_status = status_modelos_ml()
-    bert_ok = bertimbau_disponivel()
 
     return {
         "status": "online",
@@ -23,8 +19,7 @@ def health_check():
         "isolation_forest_disponivel": ml_status["isolation_forest_disponivel"],
         "modelos_carregando": ml_status["carregando"],
         "modelos_desligados_por_memoria": ml_status["desligados_por_memoria"],
-        "bertimbau_disponivel": bert_ok,
-        "bertimbau_status": bertimbau_diagnostico(),
+        "classificador_de_texto": "palavras_chave",
         "sistema_regras_urgencia": "ativo_deterministico_febrasgo",
         "degradacao_graciosa": True
     }
