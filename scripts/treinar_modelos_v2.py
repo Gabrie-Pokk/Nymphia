@@ -23,7 +23,7 @@ Dados (pasta pipeline_data):
   df_risco.parquet       SINASC, nascidos vivos (3,83 milhões de registros)
   sih_condicoes.parquet  SIH/SUS 2022, internações; usamos só leito obstétrico (ESPEC 02)
 
-Saída (nymphia_backend/modelos):
+Saída (nymphia_backend/modelos/v2):
   risco_<condicao>.joblib, atipicidade.joblib, metricas_modelos_v2.json
 
 Uso:  python scripts/treinar_modelos_v2.py            (tudo)
@@ -46,7 +46,8 @@ from sklearn.model_selection import train_test_split
 
 RAIZ = Path(__file__).resolve().parent.parent
 DADOS = RAIZ / "pipeline_data"
-SAIDA = RAIZ / "nymphia_backend" / "modelos"
+# Desde a v3 (base sintética), os pacotes v2 ficam em modelos/v2: o app usa os da v3 onde existem
+SAIDA = RAIZ / "nymphia_backend" / "modelos" / "v2"
 SEMENTE = 42
 SENSIBILIDADE_ALVO = 0.80  # ponto de corte que prioriza não deixar passar casos
 

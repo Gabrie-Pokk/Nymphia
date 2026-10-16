@@ -61,3 +61,7 @@ expo-env.d.ts
 
 # Texto licenciado da EPDS: o repositório é público, então o texto vai pela variável NYMPHIA_EPDS_JSON no servidor
 nymphia_backend/app/data/epds_ptbr.json
+
+# Base sintética completa e reserva do SINASC: o script scripts/gerar_base_sintetica.py refaz iguais (semente fixa)
+pipeline_data/base_sintetica_v3.parquet
+pipeline_data/sinasc_reserva_v3.parquet

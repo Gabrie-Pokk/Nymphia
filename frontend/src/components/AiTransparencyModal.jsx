@@ -5,6 +5,18 @@ import {
 } from 'lucide-react';
 import { apiFetch } from '../utils/api';
 
+const ROTULO_FATOR = {
+  pre_eclampsia_previa: 'Pré-eclâmpsia anterior',
+  hipertensao_cronica: 'Pressão alta antes da gravidez',
+  diabetes_previo: 'Diabetes antes da gravidez',
+  imc_baixo_peso: 'IMC abaixo de 18,5',
+  imc_sobrepeso: 'IMC de 25 a 29,9',
+  imc_obesidade: 'IMC de 30 ou mais',
+  gemeos: 'Gêmeos',
+  historico_familiar_pe: 'Mãe com pré-eclâmpsia',
+  historico_familiar_dm: 'Diabetes na família'
+};
+
 export default function AiTransparencyModal({ isOpen, onClose }) {
   const [dados, setDados] = useState(null);
   const [carregando, setCarregando] = useState(false);
@@ -213,7 +225,7 @@ export default function AiTransparencyModal({ isOpen, onClose }) {
                     Como os modelos foram avaliados
                   </h4>
                   <p className="text-muted" style={{ fontSize: '0.82rem', marginBottom: '10px' }}>
-                    Números do teste, em dados que o modelo nunca viu. Os modelos só usam o que se sabe durante a
+                    Números de teste em dados reais que o modelo nunca viu. Os modelos só usam o que se sabe durante a
                     gestação. {dados?.como_ler}
                   </p>
 
@@ -225,8 +237,8 @@ export default function AiTransparencyModal({ isOpen, onClose }) {
                         <thead>
                           <tr style={{ backgroundColor: 'var(--color-creme)', textAlign: 'left', borderBottom: '2px solid var(--color-border)' }}>
                             <th style={{ padding: '8px 10px' }}>Condição</th>
-                            <th style={{ padding: '8px 10px' }}>AUC</th>
-                            <th style={{ padding: '8px 10px' }}>Só com idade</th>
+                            <th style={{ padding: '8px 10px' }}>AUC (dados reais)</th>
+                            <th style={{ padding: '8px 10px' }}>Comparação</th>
                             <th style={{ padding: '8px 10px' }}>Sensibilidade</th>
                             <th style={{ padding: '8px 10px' }}>Especificidade</th>
                             <th style={{ padding: '8px 10px' }}>Gestantes sinalizadas</th>
@@ -236,14 +248,19 @@ export default function AiTransparencyModal({ isOpen, onClose }) {
                           {Object.entries(dados.modelos).map(([chave, m]) => {
                             const pct = (v) => (typeof v === 'number' ? `${Math.round(v * 100)}%` : '-');
                             const num = (v) => (typeof v === 'number' ? v.toFixed(2).replace('.', ',') : '-');
-                            const indisponivel = Boolean(m.aviso);
+                            const indisponivel = chave === 'itu';
+                            const versao = m.simulado ? 'v3, simulação' : m.versao === '3.0' ? 'v3' : 'v2';
+                            const comparacao = m.versao === '3.0'
+                              ? `v2 nos mesmos dados: ${num(m.auc_roc_v2_nos_mesmos_dados)}`
+                              : `só com a idade: ${num(m.auc_roc_so_com_idade)}`;
                             return (
                               <tr key={chave} style={{ borderBottom: '1px solid var(--color-border)', backgroundColor: indisponivel ? '#FEF2F2' : 'transparent' }}>
                                 <td style={{ padding: '8px 10px', fontWeight: 600 }}>
                                   {m.nome_clinico}{indisponivel ? ' (indisponível)' : ''}
+                                  <span style={{ display: 'block', fontWeight: 400, fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{versao}</span>
                                 </td>
                                 <td style={{ padding: '8px 10px' }}>{num(m.auc_roc)}</td>
-                                <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>{num(m.auc_roc_so_com_idade)}</td>
+                                <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>{comparacao}</td>
                                 <td style={{ padding: '8px 10px' }}>{pct(m.sensibilidade)}</td>
                                 <td style={{ padding: '8px 10px' }}>{pct(m.especificidade)}</td>
                                 <td style={{ padding: '8px 10px' }}>{pct(m.fracao_sinalizada_no_ponto)}</td>
@@ -261,11 +278,51 @@ export default function AiTransparencyModal({ isOpen, onClose }) {
                     </div>
                     <div>
                       As bases públicas do DATASUS não registram os fatores mais fortes (pré-eclâmpsia anterior, pressão alta
-                      ou diabetes de antes da gravidez, IMC). Por isso os modelos acertam pouco além da idade, e a Nymphia mostra
-                      esses fatores separados, com o efeito publicado na literatura. Os alarmes do check-in não dependem
-                      destes modelos: são regras clínicas feitas para não deixar passar sinais de urgência.
+                      ou diabetes de antes da gravidez, IMC). Na versão 3 esses fatores entram por simulação: o efeito de
+                      cada um vem de estudos publicados. Nos dados reais, com os fatores desconhecidos, o desempenho ficou
+                      igual ao da versão 2. A simulação não faz o modelo acertar mais em dados reais: ela faz a estimativa
+                      mudar quando a gestante informa um fator, na medida que os estudos mostram. Os alarmes do check-in não
+                      dependem destes modelos: são regras clínicas feitas para não deixar passar sinais de urgência.
                     </div>
                   </div>
+
+                  {dados?.simulacao && (
+                    <div style={{ marginTop: '14px' }}>
+                      <h4 style={{ color: 'var(--color-vinho)', margin: '0 0 6px' }}>Fatores simulados: efeito publicado e efeito no modelo</h4>
+                      <p className="text-muted" style={{ fontSize: '0.78rem', margin: '0 0 8px' }}>{dados.simulacao.o_que_e}</p>
+                      <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.76rem' }}>
+                          <thead>
+                            <tr style={{ backgroundColor: 'var(--color-creme)', textAlign: 'left' }}>
+                              <th style={{ padding: '6px 8px' }}>Condição</th>
+                              <th style={{ padding: '6px 8px' }}>Fator</th>
+                              <th style={{ padding: '6px 8px' }}>Razão de chances publicada</th>
+                              <th style={{ padding: '6px 8px' }}>No modelo</th>
+                              <th style={{ padding: '6px 8px' }}>Fonte</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {Object.entries(dados.modelos).flatMap(([chave, m]) =>
+                              Object.entries(m.efeitos_dos_fatores || {}).map(([fator, e]) => (
+                                <tr key={`${chave}-${fator}`} style={{ borderTop: '1px solid var(--color-border)' }}>
+                                  <td style={{ padding: '6px 8px' }}>{m.nome_clinico}</td>
+                                  <td style={{ padding: '6px 8px' }}>{ROTULO_FATOR[fator] || fator.replace(/_/g, ' ')}</td>
+                                  <td style={{ padding: '6px 8px' }}>{String(e.razao_de_chances_publicada ?? '-').replace('.', ',')}</td>
+                                  <td style={{ padding: '6px 8px' }}>{String(e.razao_de_chances_no_modelo ?? '-').replace('.', ',')}</td>
+                                  <td style={{ padding: '6px 8px', color: 'var(--color-text-muted)' }}>{dados.simulacao.fontes?.[e.fonte] || e.fonte}</td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                      {dados.simulacao.suposicoes?.length > 0 && (
+                        <ul style={{ fontSize: '0.76rem', margin: '8px 0 0', paddingLeft: '18px', color: 'var(--color-text-muted)' }}>
+                          {dados.simulacao.suposicoes.map((t, i) => <li key={i}>{t}</li>)}
+                        </ul>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 

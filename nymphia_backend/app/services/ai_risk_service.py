@@ -1,5 +1,17 @@
 """
-Modelos de risco da Nymphia, versão 2 (15/10/2026).
+Modelos de risco da Nymphia, versão 3 (15/10/2026).
+
+Versão 3 (base sintética, scripts/gerar_base_sintetica.py e
+scripts/treinar_modelos_v3.py): prematuridade/baixo peso, pré-eclâmpsia,
+eclâmpsia e diabetes gestacional passam a usar os fatores clínicos que o app
+pergunta (IMC, pressão alta e diabetes de antes da gravidez, pré-eclâmpsia
+anterior, casos na família). Como o DATASUS não registra esses fatores, o
+efeito deles vem de estudos publicados, por simulação: isso é dito na tela e
+no relatório. A conferência de desempenho é feita em dados reais, com os
+fatores desconhecidos. Malformação e ITU continuam na versão 2 (pasta
+modelos/v2), assim como a atipicidade do perfil.
+
+Versão 2:
 
 O que mudou em relação à versão de julho de 2026 (detalhes em
 scripts/treinar_modelos_v2.py e em modelos/metricas_modelos_v2.json):
@@ -46,7 +58,8 @@ NOMES_RF = NOMES_MODELOS  # nome antigo, mantido para quem ainda importa
 
 DISCLAIMER_TEXT = (
     "Aviso de responsabilidade (CFM 2.454/2026 e CDC): esta análise é uma estimativa estatística populacional, "
-    "feita com dados do DATASUS (SINASC e SIH) e aprendizado de máquina. NÃO CONSTITUI DIAGNÓSTICO MÉDICO e "
+    "feita com dados do DATASUS (SINASC e SIH), fatores clínicos simulados a partir de estudos publicados e "
+    "aprendizado de máquina. NÃO CONSTITUI DIAGNÓSTICO MÉDICO e "
     "não substitui a avaliação clínica. Está sujeita a falsos positivos e falsos negativos. Decisões clínicas "
     "cabem exclusivamente à equipe de saúde."
 )
@@ -62,15 +75,15 @@ DESCRICOES = {
     },
     "pre_eclampsia": {
         "titulo": "Pré-eclâmpsia",
-        "estima": "Risco de internação por pré-eclâmpsia, comparado à média das gestantes.",
+        "estima": "Chance estimada de pré-eclâmpsia nesta gestação (simulação com estudos publicados), comparada à média.",
     },
     "eclampsia": {
         "titulo": "Eclâmpsia",
-        "estima": "Risco de internação por eclâmpsia, comparado à média das gestantes.",
+        "estima": "Chance estimada de eclâmpsia (simulação com estudos publicados), comparada à média.",
     },
     "diabetes_gestacional": {
         "titulo": "Diabetes gestacional",
-        "estima": "Risco de internação com diabetes gestacional, comparado à média. A triagem por exame é para todas.",
+        "estima": "Chance estimada de diabetes gestacional (simulação com estudos publicados). A glicemia do pré-natal é para todas.",
     },
     "itu": {
         "titulo": "Infecção urinária",
@@ -120,9 +133,10 @@ _modelos_estado: Dict[str, Any] = {
     "carregado": False,
     "carregando": False,
     "desligados_por_memoria": [],
-    "modelos": {},        # nome -> pacote salvo pelo treino v2
+    "modelos": {},        # nome -> pacote salvo pelo treino (v3 onde existe, senão v2)
     "atipicidade": None,  # pacote do Isolation Forest v2
     "metricas": None,     # conteúdo de metricas_modelos_v2.json
+    "metricas_v3": None,  # conteúdo de metricas_modelos_v3.json
 }
 
 
@@ -151,30 +165,37 @@ def _carregar_modelos_sem_trava():
     if not pasta.exists():
         logger.warning(f"Pasta de modelos não encontrada: {MODELOS_DIR}")
         return
-    logger.info(f"Carregando modelos de risco v2 de {MODELOS_DIR}")
+    # v3 fica na pasta principal; o que não tem v3 (malformação, ITU, atipicidade) vem de modelos/v2
+    pastas = [pasta, pasta / "v2"]
+
+    def achar(arquivo):
+        return next((p / arquivo for p in pastas if (p / arquivo).exists()), None)
+
+    logger.info(f"Carregando modelos de risco de {MODELOS_DIR}")
     for nome in NOMES_MODELOS:
-        caminho = pasta / f"risco_{nome}.joblib"
-        if not caminho.exists():
-            logger.warning(f"Modelo {caminho.name} não encontrado; essa estimativa fica indisponível.")
+        caminho = achar(f"risco_{nome}.joblib")
+        if caminho is None:
+            logger.warning(f"Modelo risco_{nome}.joblib não encontrado; essa estimativa fica indisponível.")
             continue
         try:
             _modelos_estado["modelos"][nome] = joblib.load(str(caminho))
-            logger.info(f"Modelo '{nome}' carregado")
+            logger.info(f"Modelo '{nome}' carregado (versão {_modelos_estado['modelos'][nome].get('versao', '?')})")
         except Exception as erro:
             logger.warning(f"Falha ao carregar o modelo '{nome}': {erro}")
-    caminho_atip = pasta / "atipicidade.joblib"
-    if caminho_atip.exists():
+    caminho_atip = achar("atipicidade.joblib")
+    if caminho_atip is not None:
         try:
             _modelos_estado["atipicidade"] = joblib.load(str(caminho_atip))
             logger.info("Isolation Forest carregado com sucesso (atipicidade do perfil obstétrico)")
         except Exception as erro:
             logger.warning(f"Falha ao carregar a atipicidade: {erro}")
-    caminho_metricas = pasta / "metricas_modelos_v2.json"
-    if caminho_metricas.exists():
-        try:
-            _modelos_estado["metricas"] = json.loads(caminho_metricas.read_text(encoding="utf-8"))
-        except Exception as erro:
-            logger.warning(f"Falha ao ler as métricas dos modelos: {erro}")
+    for chave, arquivo in (("metricas", "metricas_modelos_v2.json"), ("metricas_v3", "metricas_modelos_v3.json")):
+        caminho_metricas = achar(arquivo)
+        if caminho_metricas is not None:
+            try:
+                _modelos_estado[chave] = json.loads(caminho_metricas.read_text(encoding="utf-8"))
+            except Exception as erro:
+                logger.warning(f"Falha ao ler {arquivo}: {erro}")
 
 
 def status_modelos_ml() -> Dict[str, Any]:
@@ -215,7 +236,14 @@ ROTULOS_VARIAVEIS = {
     "gestacoes_anteriores": "gestações anteriores", "partos_normais": "partos normais",
     "partos_cesareos": "cesáreas", "perdas_anteriores": "perdas anteriores", "fetos": "número de bebês",
     "mes_inicio_prenatal": "mês em que começou o pré-natal", "regiao": "estado onde mora",
+    "imc_categoria": "altura e peso de antes da gravidez (tela de Antropometria)",
+    "hipertensao_cronica": "pressão alta antes da gravidez", "diabetes_previo": "diabetes antes da gravidez",
+    "pre_eclampsia_previa": "pré-eclâmpsia em gestação anterior",
+    "historico_familiar_pe": "pré-eclâmpsia na mãe ou irmã", "historico_familiar_dm": "diabetes na família",
 }
+
+# Parentes de 1º e 2º grau aceitos no histórico familiar para diabetes (definição usada em Dode e Santos, 2009)
+_PARENTES_DIABETES = ("mãe", "mae", "pai", "irmã", "irma", "irmão", "irmao", "avó", "avo", "avô")
 
 
 def _numero(valor, minimo=None, maximo=None) -> float:
@@ -240,7 +268,49 @@ def _opcoes(valor, tabela) -> List[float]:
     return tabela.get(texto, [_NAN])
 
 
-def montar_variaveis(perfil: Dict[str, Any]) -> Dict[str, Any]:
+def _sim_nao(valor) -> float:
+    """True vira 1, False vira 0, qualquer outra coisa fica desconhecida."""
+    if valor is True:
+        return 1.0
+    if valor is False:
+        return 0.0
+    return _NAN
+
+
+def categoria_imc(imc) -> float:
+    """1 baixo peso, 2 adequado, 3 sobrepeso, 4 obesidade (cortes da OMS); NaN se não informado."""
+    valor = _numero(imc, 10, 80)
+    if math.isnan(valor):
+        return _NAN
+    return 1.0 if valor < 18.5 else 2.0 if valor < 25 else 3.0 if valor < 30 else 4.0
+
+
+def _tem_no_historico(historico: List[Dict[str, str]], parentes, termos) -> bool:
+    for h in historico or []:
+        parente = (h.get("parente") or "").strip().lower()
+        condicao = (h.get("condicao") or "").strip().lower()
+        if any(parente.startswith(p) for p in parentes) and any(t in condicao for t in termos):
+            return True
+    return False
+
+
+_TERMOS_PE = ("pré-eclâmpsia", "pre-eclampsia", "pré eclâmpsia", "pre eclampsia", "eclâmpsia", "eclampsia")
+
+
+def historico_familiar_pe(perfil: Dict[str, Any], historico: List[Dict[str, str]]) -> float:
+    """Resposta direta do cadastro; a lista de histórico familiar só pode confirmar o sim."""
+    if perfil.get("historico_familiar_pe") is True or _tem_no_historico(historico, ("mãe", "mae", "irmã", "irma"), _TERMOS_PE):
+        return 1.0
+    return _sim_nao(perfil.get("historico_familiar_pe"))
+
+
+def historico_familiar_dm(perfil: Dict[str, Any], historico: List[Dict[str, str]]) -> float:
+    if perfil.get("historico_familiar_dm") is True or _tem_no_historico(historico, _PARENTES_DIABETES, ("diabetes",)):
+        return 1.0
+    return _sim_nao(perfil.get("historico_familiar_dm"))
+
+
+def montar_variaveis(perfil: Dict[str, Any], historico_familiar: Optional[List[Dict[str, str]]] = None) -> Dict[str, Any]:
     """
     Variáveis dos modelos a partir do cadastro. O que não foi informado fica NaN
     (desconhecido); nada é inventado. Campos com mais de um código possível vêm
@@ -261,6 +331,13 @@ def montar_variaveis(perfil: Dict[str, Any]) -> Dict[str, Any]:
         "fetos": _numero(fetos, 1, 3),
         "mes_inicio_prenatal": _numero(perfil.get("mes_inicio_prenatal"), 1, 9),
         "regiao": float(int(uf) // 10) if not math.isnan(uf) else _NAN,
+        # Fatores clínicos usados pelos modelos v3
+        "imc_categoria": categoria_imc(perfil.get("imc_pre_gestacional")),
+        "hipertensao_cronica": _sim_nao(perfil.get("hipertensao_cronica")),
+        "diabetes_previo": _sim_nao(perfil.get("diabetes_previo")),
+        "pre_eclampsia_previa": _sim_nao(perfil.get("pre_eclampsia_previa")),
+        "historico_familiar_pe": historico_familiar_pe(perfil, historico_familiar or []),
+        "historico_familiar_dm": historico_familiar_dm(perfil, historico_familiar or []),
     }
 
 
@@ -269,8 +346,32 @@ def _linhas(variaveis: Dict[str, Any], features: List[str]) -> List[Dict[str, fl
     return [dict(zip(features, combinacao)) for combinacao in product(*listas)]
 
 
+def _fracao_eclampsia(fr: Dict[str, Any], variaveis: Dict[str, Any]) -> float:
+    """Fração das pré-eclâmpsias que viram eclâmpsia, por idade e região (SIH real). Mesma conta do treino v3."""
+    idade = variaveis.get("idade")
+    if not isinstance(idade, float) or math.isnan(idade):
+        return float(fr["fracao_media"])
+    z = (min(max(idade, fr["idade_min"]), fr["idade_max"]) - fr["idade_centro"]) / fr["idade_escala"]
+
+    def q_para(regiao: float) -> float:
+        logit = fr["intercepto"] + fr["coef_idade"] * z + fr["coef_idade2"] * z * z
+        logit += fr["coef_regiao"].get(str(int(regiao)), 0.0)
+        return 1.0 / (1.0 + math.exp(-logit))
+
+    regiao = variaveis.get("regiao")
+    if isinstance(regiao, float) and not math.isnan(regiao):
+        return q_para(regiao)
+    return sum(peso * q_para(float(r)) for r, peso in fr["pesos_regiao"].items())
+
+
 def _prever(pacote: Dict[str, Any], variaveis: Dict[str, Any]) -> float:
     import pandas as pd
+    derivado = pacote.get("derivado_de")
+    if derivado:  # eclâmpsia v3: pré-eclâmpsia vezes a fração de eclâmpsia
+        pacote_base = _modelos_estado["modelos"].get(derivado)
+        if pacote_base is None:
+            raise ValueError(f"modelo base '{derivado}' não carregado")
+        return _prever(pacote_base, variaveis) * _fracao_eclampsia(pacote["fracao"], variaveis)
     features = pacote["features"]
     tabela = pd.DataFrame(_linhas(variaveis, features), columns=features).astype(float)
     for coluna in pacote.get("categoricas", []):
@@ -299,6 +400,10 @@ def _nivel(risco_relativo: float) -> str:
 def _estimar(nome: str, variaveis: Dict[str, Any]) -> Dict[str, Any]:
     pacote = _modelos_estado["modelos"].get(nome)
     base = {"condicao": nome, "nome": DESCRICOES[nome]["titulo"], "o_que_estima": DESCRICOES[nome]["estima"]}
+    if nome == "diabetes_gestacional" and variaveis.get("diabetes_previo") == 1.0:
+        return {**base, "fonte": "nao_se_aplica", "tipo_saida": None, "probabilidade": None, "risco_relativo": None,
+                "nivel": None, "motivo": "Quem já tinha diabetes antes da gravidez não entra nesta estimativa: "
+                                         "o acompanhamento é o do diabetes que já existe."}
     if pacote is None or not pacote.get("confiavel", True):
         motivo = (
             "Modelo em revisão: a base de treino tinha poucos casos (92). Infecção urinária na gestação é "
@@ -307,6 +412,10 @@ def _estimar(nome: str, variaveis: Dict[str, Any]) -> Dict[str, Any]:
         )
         return {**base, "fonte": "indisponivel", "tipo_saida": None, "probabilidade": None,
                 "risco_relativo": None, "nivel": None, "motivo": motivo}
+    if not isinstance(variaveis.get("idade"), float) or math.isnan(variaveis["idade"]):
+        return {**base, "fonte": "indisponivel", "tipo_saida": None, "probabilidade": None, "risco_relativo": None,
+                "nivel": None, "motivo": "Falta a idade no cadastro clínico para calcular.",
+                "dados_faltantes": _faltantes(variaveis, pacote["features"])}
     try:
         p = _prever(pacote, variaveis)
     except Exception as erro:
@@ -317,15 +426,19 @@ def _estimar(nome: str, variaveis: Dict[str, Any]) -> Dict[str, Any]:
     relativo = round(p / media, 2) if media > 0 else None
     absoluta = pacote.get("tipo_saida") == "probabilidade"
     metricas = pacote.get("metricas", {})
+    simulado = bool(pacote.get("simulado"))
+    versao = str(pacote.get("versao", "2.0"))
     return {
         **base,
-        "fonte": "modelo_v2",
+        "fonte": "modelo_v3_simulacao" if simulado else ("modelo_v3" if versao.startswith("3") else "modelo_v2"),
+        "versao": versao,
+        "simulado": simulado,
         "tipo_saida": "probabilidade" if absoluta else "risco_relativo",
         "probabilidade": round(p, 4) if absoluta else None,
         "media_populacional": round(media, 4) if absoluta else None,
         "risco_relativo": relativo,
         "nivel": _nivel(relativo or 0.0),
-        "auc": metricas.get("auc_roc"),
+        "auc": metricas.get("auc_roc"),  # na v3, AUC em dados reais com os fatores desconhecidos
         "base": pacote.get("base"),
         "dados_faltantes": _faltantes(variaveis, pacote["features"]),
     }
@@ -336,10 +449,6 @@ def _estimar(nome: str, variaveis: Dict[str, Any]) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 _BARTSCH = "Bartsch E et al., BMJ 2016;353:i1753"
 _DUCKITT = "Duckitt K, Harrington D, BMJ 2005;330:565"
-
-
-def _parente_proximo(h: Dict[str, str]) -> bool:
-    return (h.get("parente") or "").strip().lower() in ("mãe", "irmã")
 
 
 def fatores_clinicos(perfil: Dict[str, Any], historico_familiar: List[Dict[str, str]]) -> List[Dict[str, Any]]:
@@ -365,19 +474,20 @@ def fatores_clinicos(perfil: Dict[str, Any], historico_familiar: List[Dict[str, 
     partos = [_numero(perfil.get("partos_normais"), 0, 30), _numero(perfil.get("partos_cesareos"), 0, 30)]
     if all(not math.isnan(v) for v in partos) and sum(partos) == 0:
         pe("Primeiro parto (nenhum parto anterior)", 2.91, _DUCKITT, "moderado")
-    if any(_parente_proximo(h) and any(t in (h.get("condicao") or "").lower() for t in ("pré-eclâmpsia", "pre-eclampsia", "pré eclâmpsia", "eclâmpsia", "eclampsia"))
-           for h in historico_familiar):
+    if historico_familiar_pe(perfil, historico_familiar) == 1.0:
         pe("Mãe ou irmã com pré-eclâmpsia", 2.90, _DUCKITT, "moderado")
     idade = _numero(perfil.get("idade"), 10, 55)
     if not math.isnan(idade) and idade >= 35:
         pe("35 anos ou mais", None, "fator moderado nas diretrizes; o efeito da idade já entra no modelo", "moderado")
 
-    if any(_parente_proximo(h) and "diabetes" in (h.get("condicao") or "").lower() for h in historico_familiar):
-        fatores.append({"condicao": "diabetes_gestacional", "fator": "Mãe ou irmã com diabetes",
-                        "risco_relativo_publicado": None, "fonte": "fator de risco reconhecido", "peso_diretriz": None})
+    if historico_familiar_dm(perfil, historico_familiar) == 1.0:
+        fatores.append({"condicao": "diabetes_gestacional", "fator": "Diabetes na família (pais, irmãos ou avós)",
+                        "risco_relativo_publicado": None, "razao_de_chances_publicada": 1.89,
+                        "fonte": "Dode MASO, Santos IS, Cad Saúde Pública 2009;25(5):1141-52", "peso_diretriz": None})
     if not math.isnan(imc) and imc >= 30:
         fatores.append({"condicao": "diabetes_gestacional", "fator": "IMC de 30 ou mais antes da gravidez",
-                        "risco_relativo_publicado": None, "fonte": "fator de risco reconhecido", "peso_diretriz": None})
+                        "risco_relativo_publicado": None, "razao_de_chances_publicada": 3.46,
+                        "fonte": "Zhang Y et al., Front Endocrinol 2024;15:1280692", "peso_diretriz": None})
     return fatores
 
 
@@ -394,6 +504,32 @@ def resumo_prevencao_pre_eclampsia(fatores: List[Dict[str, Any]]) -> Optional[Di
                          "prevenção com AAS em dose baixa, que só a equipe pode indicar."),
         }
     return None
+
+
+_ORDEM_NIVEL = {"baixo": 0, "moderado": 1, "alto": 2}
+
+
+def aplicar_criterio_da_diretriz(condicoes: Dict[str, Dict[str, Any]], prevencao: Optional[Dict[str, Any]]) -> None:
+    """
+    Pré-eclâmpsia e eclâmpsia nunca aparecem abaixo do que as diretrizes dizem.
+    Um fator alto (pressão alta ou diabetes de antes, pré-eclâmpsia anterior,
+    gêmeos) já é risco alto; dois moderados, risco aumentado. A estimativa do
+    modelo é populacional e pode ficar baixa para quem tem um fator e nada mais,
+    por isso o nível mostrado é o maior dos dois (prioridade: não deixar passar).
+    """
+    if not prevencao:
+        return
+    minimo = "alto" if prevencao["altos"] >= 1 else "moderado"
+    for nome in ("pre_eclampsia", "eclampsia"):
+        c = condicoes.get(nome)
+        if not c or not c.get("nivel"):
+            continue
+        c["nivel_do_modelo"] = c["nivel"]
+        if _ORDEM_NIVEL[minimo] > _ORDEM_NIVEL[c["nivel"]]:
+            c["nivel"] = minimo
+            c["motivo_nivel"] = "diretriz"
+        else:
+            c["motivo_nivel"] = "modelo"
 
 
 def _atipicidade(variaveis: Dict[str, Any]) -> Dict[str, Any]:
@@ -424,7 +560,8 @@ def perfil_para_modelos(perfil_clinico: Any, imc_pre: Optional[float] = None) ->
         return {}
     campos = ("idade", "estado_civil", "escolaridade", "gestacoes_anteriores", "partos_normais", "partos_cesareos",
               "perdas_gestacionais", "numero_fetos", "mes_inicio_prenatal", "uf_residencia",
-              "pre_eclampsia_previa", "hipertensao_cronica", "diabetes_previo")
+              "pre_eclampsia_previa", "hipertensao_cronica", "diabetes_previo",
+              "historico_familiar_pe", "historico_familiar_dm")
     dados = {c: getattr(perfil_clinico, c, None) for c in campos}
     if imc_pre is None:
         altura = getattr(perfil_clinico, "altura_cm", None)
@@ -436,27 +573,37 @@ def perfil_para_modelos(perfil_clinico: Any, imc_pre: Optional[float] = None) ->
 
 
 def calculate_maternal_risks(perfil: Dict[str, Any], historico_familiar: List[Dict[str, str]]) -> Dict[str, Any]:
-    """Estimativas dos seis modelos v2, fatores clínicos e atipicidade do perfil."""
+    """Estimativas dos seis modelos (v3 onde existe), fatores clínicos e atipicidade do perfil."""
     carregar_modelos_ml()
-    variaveis = montar_variaveis(perfil or {})
+    variaveis = montar_variaveis(perfil or {}, historico_familiar or [])
     condicoes = {nome: _estimar(nome, variaveis) for nome in NOMES_MODELOS}
     fatores = fatores_clinicos(perfil or {}, historico_familiar or [])
+    prevencao = resumo_prevencao_pre_eclampsia(fatores)
+    aplicar_criterio_da_diretriz(condicoes, prevencao)
     atip = _atipicidade(variaveis)
 
     ordem = {"alto": 2, "moderado": 1, "baixo": 0}
     niveis = [c["nivel"] for c in condicoes.values() if c["nivel"]]
     pior = max(niveis, key=lambda n: ordem[n]) if niveis else None
-    modelos_usados = [f"risco_{n}" for n, c in condicoes.items() if c["fonte"] == "modelo_v2"]
+    modelos_usados = [f"risco_{n}" for n, c in condicoes.items() if c["fonte"].startswith("modelo_")]
     if atip["disponivel"]:
         modelos_usados.append("atipicidade")
 
+    simulados = [n for n, c in condicoes.items() if c.get("simulado")]
+    versoes = {str(p.get("versao", "2.0"))[:1] for p in _modelos_estado["modelos"].values()}
     return {
-        "versao_modelos": "2.0",
+        "versao_modelos": "3.0" if "3" in versoes else "2.0",
         "tipo_modelo": "gradient_boosting_calibrado_sinasc_sih" if modelos_usados else "indisponivel",
+        "simulacao": {
+            "modelos": simulados,
+            "explicacao": ("Estas estimativas usam fatores clínicos que o DATASUS não registra. O efeito de cada "
+                           "fator vem de estudos publicados, por simulação; o desempenho foi conferido em dados "
+                           "reais sem esses fatores."),
+        } if simulados else None,
         "modelos_ativos": modelos_usados,
         "condicoes": condicoes,
         "fatores_clinicos": fatores,
-        "prevencao_pre_eclampsia": resumo_prevencao_pre_eclampsia(fatores),
+        "prevencao_pre_eclampsia": prevencao,
         "nivel_risco_global": {"alto": "ALTO", "moderado": "MODERADO", "baixo": "HABITUAL"}.get(pior),
         "score_anomalia": atip["score"],
         "padrao_atipico_detectado": atip["anomalo"],
@@ -469,40 +616,89 @@ def calculate_maternal_risks(perfil: Dict[str, Any], historico_familiar: List[Di
     }
 
 
+def _transparencia_v2(nome: str, m: Dict[str, Any]) -> Dict[str, Any]:
+    ponto = m.get("ponto_fn_primeiro", {})
+    return {
+        "nome_clinico": DESCRICOES[nome]["titulo"],
+        "o_que_estima": DESCRICOES[nome]["estima"],
+        "versao": "2.0",
+        "simulado": False,
+        "algoritmo": "Gradient boosting (HistGradientBoosting, scikit-learn) com calibração isotônica",
+        "base_dados": m.get("base"),
+        "variaveis": [ROTULOS_VARIAVEIS.get(v, v) for v in m.get("variaveis", [])],
+        "auc_roc": m.get("auc_roc"),
+        "auc_roc_so_com_idade": m.get("auc_roc_so_idade"),
+        "auc_pr": m.get("auc_pr"),
+        "brier": m.get("brier"),
+        "prevalencia_no_teste": m.get("prevalencia_teste"),
+        "casos_no_teste": m.get("casos_teste"),
+        "sensibilidade": ponto.get("sensibilidade"),
+        "especificidade": ponto.get("especificidade"),
+        "precisao": ponto.get("valor_preditivo_positivo"),
+        "fracao_sinalizada_no_ponto": ponto.get("fracao_sinalizada"),
+        "aviso": m.get("aviso"),
+    }
+
+
+def _transparencia_v3(nome: str, m: Dict[str, Any], simulado: bool = True) -> Dict[str, Any]:
+    real = m.get("conferencia_em_dados_reais", {})
+    v3 = real.get("v3", {})
+    v2 = real.get("v2_nas_mesmas_gestantes") or real.get("v2_nas_mesmas_internacoes") or {}
+    ponto = v3.get("ponto_fn_primeiro", {})
+    return {
+        "nome_clinico": DESCRICOES[nome]["titulo"],
+        "o_que_estima": DESCRICOES[nome]["estima"],
+        "versao": "3.0",
+        "simulado": simulado,
+        "algoritmo": ("Probabilidade de pré-eclâmpsia (v3) vezes a fração de eclâmpsia por idade e região do SIH"
+                      if m.get("regra") else
+                      "Gradient boosting (HistGradientBoosting, scikit-learn) com calibração isotônica"),
+        "base_dados": ("Base sintética v3: perfis reais do SINASC e fatores clínicos com efeitos publicados"
+                       if simulado else "SINASC real (mesmos dados da v2), treinado para lidar com respostas em branco"),
+        "desfecho": m.get("desfecho"),
+        "variaveis": [ROTULOS_VARIAVEIS.get(v, v) for v in m.get("variaveis", [])],
+        # Desempenho: só em dados reais, com os fatores clínicos desconhecidos (o DATASUS não os registra)
+        "conferencia_em_dados_reais": real.get("dados"),
+        "auc_roc": v3.get("auc_roc"),
+        "auc_roc_v2_nos_mesmos_dados": v2.get("auc_roc"),
+        "casos_no_teste": v3.get("casos"),
+        "brier": v3.get("brier"),
+        "erro_calibracao": v3.get("erro_calibracao_esperado"),
+        "sensibilidade": ponto.get("sensibilidade"),
+        "especificidade": ponto.get("especificidade"),
+        "precisao": ponto.get("valor_preditivo_positivo"),
+        "fracao_sinalizada_no_ponto": ponto.get("fracao_sinalizada"),
+        # Conferência de construção: o efeito que o modelo devolve x o efeito publicado que entrou no gerador
+        "efeitos_dos_fatores": m.get("efeitos_recuperados"),
+        "aviso": ("Os fatores clínicos entram por simulação, com o efeito de estudos publicados. O modelo devolve "
+                  "esses efeitos; ele não foi conferido em gestantes reais que tivessem esses fatores registrados."
+                  if simulado else None),
+    }
+
+
 def obter_transparencia_clinica() -> Dict[str, Any]:
     """
     Relatório público de transparência (CFM 2.454/2026 e CDC) com as métricas
-    REAIS do treino v2, lidas de metricas_modelos_v2.json. Até 15/10/2026 este
-    relatório publicava números que não eram os do treino (ex.: AUC 0,84).
+    REAIS: v2 (metricas_modelos_v2.json) e v3 (metricas_modelos_v3.json). Na v3,
+    desempenho só em dados reais; a AUC na base sintética não é publicada porque
+    mediria as regras do gerador.
     """
     carregar_modelos_ml()
-    metricas = (_modelos_estado.get("metricas") or {}).get("modelos", {})
+    metricas_v2 = (_modelos_estado.get("metricas") or {}).get("modelos", {})
+    metricas_v3_todas = _modelos_estado.get("metricas_v3") or {}
+    metricas_v3 = metricas_v3_todas.get("modelos", {})
     modelos = {}
     for nome in NOMES_MODELOS:
-        m = metricas.get(nome, {})
-        ponto = m.get("ponto_fn_primeiro", {})
-        modelos[nome] = {
-            "nome_clinico": DESCRICOES[nome]["titulo"],
-            "o_que_estima": DESCRICOES[nome]["estima"],
-            "algoritmo": "Gradient boosting (HistGradientBoosting, scikit-learn) com calibração isotônica",
-            "base_dados": m.get("base"),
-            "variaveis": [ROTULOS_VARIAVEIS.get(v, v) for v in m.get("variaveis", [])],
-            "auc_roc": m.get("auc_roc"),
-            "auc_roc_so_com_idade": m.get("auc_roc_so_idade"),
-            "auc_pr": m.get("auc_pr"),
-            "brier": m.get("brier"),
-            "prevalencia_no_teste": m.get("prevalencia_teste"),
-            "casos_no_teste": m.get("casos_teste"),
-            "sensibilidade": ponto.get("sensibilidade"),
-            "especificidade": ponto.get("especificidade"),
-            "precisao": ponto.get("valor_preditivo_positivo"),
-            "fracao_sinalizada_no_ponto": ponto.get("fracao_sinalizada"),
-            "aviso": m.get("aviso"),
-        }
+        pacote = _modelos_estado["modelos"].get(nome) or {}
+        if str(pacote.get("versao", "")).startswith("3") and nome in metricas_v3:
+            modelos[nome] = _transparencia_v3(nome, metricas_v3[nome], simulado=bool(pacote.get("simulado")))
+        else:
+            modelos[nome] = _transparencia_v2(nome, metricas_v2.get(nome, {}))
+    base_sintetica = metricas_v3_todas.get("base_sintetica") or {}
     return {
         "sistema": "Nymphia Perinatal AI",
-        "versao_protocolo": "2026.2",
-        "versao_modelos": "2.0",
+        "versao_protocolo": "2026.3",
+        "versao_modelos": "3.0" if metricas_v3 else "2.0",
         "marco_regulatorio": "Resolução CFM nº 2.454/2026; Código de Defesa do Consumidor (Lei 8.078/1990); RDC Anvisa nº 657/2022",
         "classificacao_samd": "Software as a Medical Device (SaMD) de Risco Médio / Classe II",
         "finalidade_exclusiva": (
@@ -510,10 +706,18 @@ def obter_transparencia_clinica() -> Dict[str, Any]:
             "para diagnóstico ou prescrição sem a equipe de saúde (Art. 5º, §2º da CFM 2.454/2026)."
         ),
         "como_ler": (
-            "Sensibilidade e especificidade estão no ponto de corte que pega 80% dos casos (prioridade de não deixar "
-            "passar). AUC de 0,5 é acaso e de 1,0 é perfeito. Os modelos do SIH comparam internações (caso-controle), "
-            "por isso mostram risco relativo à média, não porcentagem."
+            "AUC de 0,5 é acaso e de 1,0 é perfeito. Sensibilidade e especificidade estão no ponto de corte que pega "
+            "80% dos casos (prioridade de não deixar passar). Nos modelos v3, todos os números de desempenho vêm de "
+            "dados reais que não entraram no treino, com os fatores clínicos desconhecidos; o efeito de cada fator vem "
+            "de estudos publicados, por simulação. No SIH (caso-controle) só a ordenação (AUC) vale."
         ),
+        "simulacao": {
+            "o_que_e": metricas_v3_todas.get("aviso"),
+            "fontes": base_sintetica.get("fontes"),
+            "prevalencias": base_sintetica.get("prevalencias"),
+            "efeitos": base_sintetica.get("efeitos"),
+            "suposicoes": base_sintetica.get("suposicoes"),
+        } if metricas_v3 else None,
         "variaveis_excluidas": (_modelos_estado.get("metricas") or {}).get("variaveis_excluidas"),
         "carimbo_prontuario": (
             "Avaliação assistida por algoritmo supervisionado de IA (CFM 2.454/2026). "

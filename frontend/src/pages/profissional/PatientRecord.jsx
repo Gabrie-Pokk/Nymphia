@@ -134,7 +134,8 @@ export default function PatientRecord({ patientId, onBack }) {
         </div>
 
         <p className="text-muted" style={{ fontSize: '0.78rem', marginBottom: '12px' }}>
-          Estimativas populacionais (DATASUS) a partir do cadastro da paciente, e fatores clínicos informados por ela:
+          Estimativas com dados do DATASUS e, na versão 3, fatores clínicos simulados a partir de estudos publicados,
+          calculadas com o cadastro da paciente:
         </p>
 
         <ResumoRiscos riscos={riscos_calculados} modo="profissional" />

@@ -74,6 +74,8 @@ export default function OnboardingClinico({ onCompleted }) {
     pre_eclampsia_previa: '',
     hipertensao_cronica: '',
     diabetes_previo: '',
+    historico_familiar_pe: '',
+    historico_familiar_dm: '',
     gestacoes_anteriores: 0,
     partos_normais: 0,
     partos_cesareos: 0,

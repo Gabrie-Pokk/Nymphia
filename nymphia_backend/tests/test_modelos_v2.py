@@ -1,6 +1,7 @@
 """
-Modelos de risco v2 (15/10/2026): só o que se sabe na gestação, nada inventado,
-probabilidade calibrada e risco relativo para os modelos de caso-controle do SIH.
+Modelos de risco (v2 e v3, 15/10/2026): só o que se sabe na gestação, nada
+inventado, probabilidade calibrada. Na v3, pré-eclâmpsia, eclâmpsia e diabetes
+gestacional dão probabilidade estimada por simulação (efeitos publicados).
 """
 import uuid
 from datetime import date, timedelta
@@ -22,6 +23,8 @@ PERFIL_COMUM = {
     "idade": 27, "estado_civil": "Casada / União Estável", "escolaridade": "Médio Completo",
     "gestacoes_anteriores": 1, "partos_normais": 1, "partos_cesareos": 0, "perdas_gestacionais": 0,
     "numero_fetos": 1, "mes_inicio_prenatal": 2, "uf_residencia": 35,
+    "pre_eclampsia_previa": False, "hipertensao_cronica": False, "diabetes_previo": False,
+    "historico_familiar_pe": False, "historico_familiar_dm": False, "imc_pre_gestacional": 23.0,
 }
 
 
@@ -47,10 +50,10 @@ def test_gemeos_aumentam_a_chance_de_prematuridade():
     assert gemeos["condicoes"]["bem_estar_fetal"]["nivel"] == "alto"
 
 
-def test_modelos_do_sih_mostram_risco_relativo_e_nao_porcentagem():
+def test_pre_eclampsia_v3_e_estimativa_simulada_e_declarada():
     pe = risco.calculate_maternal_risks(PERFIL_COMUM, [])["condicoes"]["pre_eclampsia"]
-    assert pe["tipo_saida"] == "risco_relativo"
-    assert pe["probabilidade"] is None
+    assert pe["fonte"] == "modelo_v3_simulacao" and pe["simulado"] is True
+    assert pe["tipo_saida"] == "probabilidade" and 0 < pe["probabilidade"] < 0.2
     assert pe["risco_relativo"] > 0
 
 
@@ -58,7 +61,8 @@ def test_dado_nao_informado_fica_desconhecido_e_e_avisado():
     resultado = risco.calculate_maternal_risks({"idade": 30}, [])
     faltam = resultado["condicoes"]["bem_estar_fetal"]["dados_faltantes"]
     assert "número de bebês" in faltam and "mês em que começou o pré-natal" in faltam
-    assert resultado["condicoes"]["pre_eclampsia"]["dados_faltantes"] == ["estado onde mora"]
+    faltam_pe = resultado["condicoes"]["pre_eclampsia"]["dados_faltantes"]
+    assert "estado onde mora" in faltam_pe and "pressão alta antes da gravidez" in faltam_pe
 
 
 def test_itu_fica_indisponivel_com_o_motivo():
@@ -93,13 +97,18 @@ def test_meu_risco_usa_o_cadastro_completo(client):
         "idade": 31, "estado_civil": "Solteira", "escolaridade": "Superior Completo",
         "gestacoes_anteriores": 0, "partos_normais": 0, "partos_cesareos": 0, "perdas_gestacionais": 0,
         "numero_fetos": 1, "mes_inicio_prenatal": 2, "uf_residencia": 29, "pre_eclampsia_previa": False,
+        "hipertensao_cronica": False, "diabetes_previo": False,
+        "historico_familiar_pe": False, "historico_familiar_dm": True,
         "dum": dum.isoformat(), "dpp": (dum + timedelta(days=280)).isoformat(),
     })
     assert res.status_code == 201, res.text
     resultado = client.get("/risco/meu-risco", headers=headers).json()
-    assert resultado["versao_modelos"] == "2.0"
+    assert resultado["versao_modelos"] == "3.0"
     assert resultado["condicoes"]["bem_estar_fetal"]["dados_faltantes"] == []
     assert any(f["fator"].startswith("Primeiro parto") for f in resultado["fatores_clinicos"])
+    # A resposta do cadastro sobre diabetes na família chega ao modelo de diabetes gestacional
+    assert "diabetes na família" not in resultado["condicoes"]["diabetes_gestacional"]["dados_faltantes"]
+    assert any(f["fator"].startswith("Diabetes na família") for f in resultado["fatores_clinicos"])
 
 
 def test_sem_cadastro_clinico_nada_e_inventado(client):
@@ -111,3 +120,5 @@ def test_sem_cadastro_clinico_nada_e_inventado(client):
     resultado = client.get("/risco/meu-risco", headers=headers).json()
     assert resultado["cadastro_clinico_completo"] is False
     assert "idade" in resultado["condicoes"]["pre_eclampsia"]["dados_faltantes"]
+    # Sem idade não sai número nenhum
+    assert all(c["probabilidade"] is None for c in resultado["condicoes"].values())

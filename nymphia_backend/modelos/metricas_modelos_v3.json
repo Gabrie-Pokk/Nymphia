@@ -1,0 +1,565 @@
+{
+  "gerado_em": "2026-10-15 22:07",
+  "sklearn": "1.7.2",
+  "base_sintetica": {
+    "versao": "3.0",
+    "linhas": 1200000,
+    "semente": 20261015,
+    "fontes": {
+      "marano2014": "Marano D, Gama SGN, Domingues RMSM, Souza Júnior PRB. Prevalência e fatores associados aos desvios nutricionais em mulheres na fase pré-gestacional em dois municípios do Estado do Rio de Janeiro. Rev Bras Epidemiol 2014;17(1):45-58 (gestantes do SUS no 1º trimestre, n = 1.535, 2007-2008)",
+      "dode2009": "Dode MASO, Santos IS. Fatores de risco para diabetes mellitus gestacional na coorte de nascimentos de Pelotas, 2004. Cad Saúde Pública 2009;25(5):1141-52 (n = 4.243)",
+      "ayorinde2017": "Ayorinde AA, Bhattacharya S. Inherited predisposition to preeclampsia: analysis of the Aberdeen intergenerational cohort. Pregnancy Hypertens 2017",
+      "febrasgo2018": "Peraçoli JC et al. Pré-eclâmpsia/eclâmpsia. Protocolo FEBRASGO de Obstetrícia nº 8, 2018 (pré-eclâmpsia em 2% a 5% da população geral)",
+      "bartsch2016": "Bartsch E et al. Clinical risk factors for pre-eclampsia determined in early pregnancy. BMJ 2016;353:i1753",
+      "duckitt2005": "Duckitt K, Harrington D. Risk factors for pre-eclampsia at antenatal booking. BMJ 2005;330:565",
+      "zhang2024": "Zhang Y et al. Influence of maternal body mass index on pregnancy complications and outcomes: a systematic review and meta-analysis. Front Endocrinol 2024;15:1280692",
+      "zhang2021": "Zhang Y et al. Factors associated with gestational diabetes mellitus: a meta-analysis. J Diabetes Res 2021;2021:6692695",
+      "mocellin2024": "Mocellin LP et al. Gestational diabetes mellitus prevalence in Brazil: a systematic review and meta-analysis. Cad Saúde Pública 2024;40(8):e00064919",
+      "bramham2014": "Bramham K et al. Chronic hypertension and pregnancy outcomes: systematic review and meta-analysis. BMJ 2014;348:g2301",
+      "yu2017": "Yu L et al. Quantitative assessment of the effect of pre-gestational diabetes and risk of adverse maternal, perinatal and neonatal outcomes. Oncotarget 2017;8:61048-56",
+      "sih2022": "SIH/SUS 2022, internações em leito obstétrico (dados reais do projeto, pasta pipeline_data)"
+    },
+    "prevalencias": {
+      "imc_categoria": {
+        "valores": {
+          "1": 0.1,
+          "2": 0.61,
+          "3": 0.18,
+          "4": 0.11
+        },
+        "rotulos": {
+          "1": "baixo peso",
+          "2": "adequado",
+          "3": "sobrepeso",
+          "4": "obesidade"
+        },
+        "fonte": "marano2014"
+      },
+      "hipertensao_cronica": {
+        "valor": 0.072,
+        "fonte": "marano2014",
+        "nota": "autorrelato"
+      },
+      "diabetes_previo": {
+        "valor": 0.01,
+        "fonte": "marano2014"
+      },
+      "historico_familiar_dm": {
+        "valor": 0.32,
+        "fonte": "dode2009"
+      },
+      "historico_familiar_pe": {
+        "valor": 0.025,
+        "fonte": "ayorinde2017",
+        "nota": "só mãe"
+      },
+      "pre_eclampsia_previa": {
+        "regra": "1 - (1 - 0,03) elevado ao número de partos",
+        "fonte": "febrasgo2018"
+      },
+      "regiao": {
+        "fonte": "sih2022",
+        "nota": "distribuição dos partos normais; alguns estados vieram incompletos"
+      }
+    },
+    "incidencias": {
+      "pre_eclampsia": {
+        "valor": 0.03,
+        "fonte": "febrasgo2018",
+        "nota": "pré-eclâmpsia ou eclâmpsia"
+      },
+      "eclampsia": {
+        "regra": "fração do espectro que é eclâmpsia, por idade e região",
+        "fonte": "sih2022"
+      },
+      "diabetes_gestacional": {
+        "valor": 0.14,
+        "fonte": "mocellin2024"
+      },
+      "bem_estar_fetal": {
+        "regra": "desfecho real do SINASC"
+      }
+    },
+    "efeitos": {
+      "pre_eclampsia": {
+        "pre_eclampsia_previa": {
+          "razao_de_chances": 8.4,
+          "fonte": "bartsch2016",
+          "nota": "RR 8,4 usado como razão de chances (desfecho raro)"
+        },
+        "hipertensao_cronica": {
+          "razao_de_chances": 5.1,
+          "fonte": "bartsch2016",
+          "nota": "RR 5,1 usado como razão de chances"
+        },
+        "diabetes_previo": {
+          "razao_de_chances": 3.7,
+          "fonte": "bartsch2016",
+          "nota": "RR 3,7 usado como razão de chances"
+        },
+        "imc_baixo_peso": {
+          "razao_de_chances": 0.69,
+          "fonte": "zhang2024",
+          "nota": "OR"
+        },
+        "imc_sobrepeso": {
+          "razao_de_chances": 1.7,
+          "fonte": "zhang2024",
+          "nota": "OR"
+        },
+        "imc_obesidade": {
+          "razao_de_chances": 2.82,
+          "fonte": "zhang2024",
+          "nota": "OR; igual ao RR de IMC > 30 de bartsch2016 (2,8)"
+        },
+        "gemeos": {
+          "razao_de_chances": 2.93,
+          "fonte": "duckitt2005",
+          "nota": "RR usado como razão de chances"
+        },
+        "nuliparidade": {
+          "razao_de_chances": 2.91,
+          "fonte": "duckitt2005",
+          "nota": "RR usado como razão de chances"
+        },
+        "historico_familiar_pe": {
+          "razao_de_chances": 2.9,
+          "fonte": "duckitt2005",
+          "nota": "RR usado como razão de chances"
+        }
+      },
+      "diabetes_gestacional": {
+        "imc_baixo_peso": {
+          "razao_de_chances": 0.63,
+          "fonte": "zhang2024",
+          "nota": "OR"
+        },
+        "imc_sobrepeso": {
+          "razao_de_chances": 2.2,
+          "fonte": "zhang2024",
+          "nota": "OR da discussão do artigo; a tabela traz 2,92 com intervalo que não o contém"
+        },
+        "imc_obesidade": {
+          "razao_de_chances": 3.46,
+          "fonte": "zhang2024",
+          "nota": "OR"
+        },
+        "historico_familiar_dm": {
+          "razao_de_chances": 1.89,
+          "fonte": "dode2009",
+          "nota": "OR ajustado, coorte brasileira"
+        },
+        "primigesta": {
+          "razao_de_chances": 0.752,
+          "fonte": "zhang2021",
+          "nota": "OR (primeira gestação protege)"
+        }
+      },
+      "bem_estar_fetal": {
+        "hipertensao_cronica": {
+          "razao_de_chances": 3.53,
+          "fonte": "bramham2014",
+          "nota": "RR 2,7 de prematuridade convertido em OR com a base de 12,2% do estudo"
+        },
+        "diabetes_previo": {
+          "razao_de_chances": 3.48,
+          "fonte": "yu2017",
+          "nota": "OR de prematuridade"
+        }
+      }
+    },
+    "suposicoes": [
+      "Fatores independentes entre si, exceto pré-eclâmpsia anterior, que depende do número de partos.",
+      "Efeitos multiplicam a chance (odds); quem tem vários fatores pode ficar com risco superestimado.",
+      "Em cada idade e região, o risco médio da base é igual ao dos dados reais.",
+      "Malformação não recebe fatores nesta versão (sem fonte conferida)."
+    ]
+  },
+  "aviso": "Os modelos v3 aprendem os efeitos publicados que entraram no gerador. A AUC na própria base sintética não foi calculada de propósito: mediria as nossas regras, não o desempenho em gestantes reais. O desempenho real é o da conferência em dados reais, com os fatores desconhecidos.",
+  "modelos": {
+    "bem_estar_fetal": {
+      "condicao": "bem_estar_fetal",
+      "variaveis": [
+        "idade",
+        "estado_civil",
+        "escolaridade",
+        "gestacoes_anteriores",
+        "partos_normais",
+        "partos_cesareos",
+        "perdas_anteriores",
+        "fetos",
+        "mes_inicio_prenatal",
+        "hipertensao_cronica",
+        "diabetes_previo"
+      ],
+      "desfecho": "real (SINASC); só os fatores clínicos são simulados",
+      "n_treino": 720000,
+      "n_calibracao": 240000,
+      "fracao_escondida_no_treino": {
+        "fatores_clinicos": 0.35,
+        "perfil": 0.2
+      },
+      "media_referencia": 0.1556,
+      "efeitos_recuperados": {
+        "hipertensao_cronica": {
+          "razao_de_chances_publicada": 3.53,
+          "fonte": "bramham2014",
+          "razao_de_chances_no_modelo": 3.49,
+          "risco_relativo_no_modelo": 2.64
+        },
+        "diabetes_previo": {
+          "razao_de_chances_publicada": 3.48,
+          "fonte": "yu2017",
+          "razao_de_chances_no_modelo": 3.54,
+          "risco_relativo_no_modelo": 2.7
+        }
+      },
+      "conferencia_em_dados_reais": {
+        "dados": "SINASC real: registros fora do treino da v3 e da v2 (os fatores clínicos ficam desconhecidos)",
+        "v3": {
+          "n": 153067,
+          "casos": 23896,
+          "auc_roc": 0.6055,
+          "brier": 0.12289,
+          "erro_calibracao_esperado": 0.00527,
+          "probabilidade_media_prevista": 0.1523,
+          "frequencia_observada": 0.15611,
+          "ponto_fn_primeiro": {
+            "limiar": 0.11949,
+            "sensibilidade": 0.838,
+            "especificidade": 0.2412,
+            "valor_preditivo_positivo": 0.1696,
+            "valor_preditivo_negativo": 0.8895,
+            "fracao_sinalizada": 0.7711,
+            "matriz": {
+              "verdadeiro_positivo": 20024,
+              "falso_negativo": 3872,
+              "falso_positivo": 98010,
+              "verdadeiro_negativo": 31161
+            }
+          },
+          "calibracao_por_decil": [
+            {
+              "previsto": 0.0984,
+              "observado": 0.1025,
+              "n": 15307
+            },
+            {
+              "previsto": 0.1115,
+              "observado": 0.1169,
+              "n": 15307
+            },
+            {
+              "previsto": 0.1177,
+              "observado": 0.1226,
+              "n": 15307
+            },
+            {
+              "previsto": 0.1225,
+              "observado": 0.1333,
+              "n": 15307
+            },
+            {
+              "previsto": 0.1262,
+              "observado": 0.1346,
+              "n": 15307
+            },
+            {
+              "previsto": 0.1383,
+              "observado": 0.1426,
+              "n": 15307
+            },
+            {
+              "previsto": 0.1489,
+              "observado": 0.1442,
+              "n": 15307
+            },
+            {
+              "previsto": 0.1579,
+              "observado": 0.1617,
+              "n": 15306
+            },
+            {
+              "previsto": 0.1753,
+              "observado": 0.1727,
+              "n": 15306
+            },
+            {
+              "previsto": 0.3264,
+              "observado": 0.3301,
+              "n": 15306
+            }
+          ]
+        },
+        "v2_nas_mesmas_gestantes": {
+          "n": 153067,
+          "casos": 23896,
+          "auc_roc": 0.6107,
+          "brier": 0.12266,
+          "erro_calibracao_esperado": 0.00292,
+          "probabilidade_media_prevista": 0.15521,
+          "frequencia_observada": 0.15611
+        },
+        "so_com_a_idade": {
+          "v3_media_prevista": 0.15608,
+          "v2_media_prevista": 0.10816,
+          "frequencia_observada": 0.15611
+        }
+      },
+      "segundos": 21.4
+    },
+    "pre_eclampsia": {
+      "condicao": "pre_eclampsia",
+      "variaveis": [
+        "idade",
+        "regiao",
+        "fetos",
+        "partos_normais",
+        "partos_cesareos",
+        "pre_eclampsia_previa",
+        "hipertensao_cronica",
+        "diabetes_previo",
+        "imc_categoria",
+        "historico_familiar_pe"
+      ],
+      "desfecho": "simulado: risco por idade e região do SIH real, incidência média de 3% e efeitos publicados",
+      "n_treino": 720000,
+      "n_calibracao": 240000,
+      "fracao_escondida_no_treino": {
+        "fatores_clinicos": 0.35,
+        "perfil": 0.2
+      },
+      "media_referencia": 0.02978,
+      "efeitos_recuperados": {
+        "pre_eclampsia_previa": {
+          "razao_de_chances_publicada": 8.4,
+          "fonte": "bartsch2016",
+          "razao_de_chances_no_modelo": 8.03,
+          "risco_relativo_no_modelo": 7.32
+        },
+        "hipertensao_cronica": {
+          "razao_de_chances_publicada": 5.1,
+          "fonte": "bartsch2016",
+          "razao_de_chances_no_modelo": 4.85,
+          "risco_relativo_no_modelo": 4.6
+        },
+        "diabetes_previo": {
+          "razao_de_chances_publicada": 3.7,
+          "fonte": "bartsch2016",
+          "razao_de_chances_no_modelo": 3.4,
+          "risco_relativo_no_modelo": 3.29
+        },
+        "imc_baixo_peso": {
+          "razao_de_chances_publicada": 0.69,
+          "fonte": "zhang2024",
+          "razao_de_chances_no_modelo": 0.62,
+          "risco_relativo_no_modelo": 0.63
+        },
+        "imc_sobrepeso": {
+          "razao_de_chances_publicada": 1.7,
+          "fonte": "zhang2024",
+          "razao_de_chances_no_modelo": 1.54,
+          "risco_relativo_no_modelo": 1.53
+        },
+        "imc_obesidade": {
+          "razao_de_chances_publicada": 2.82,
+          "fonte": "zhang2024",
+          "razao_de_chances_no_modelo": 2.59,
+          "risco_relativo_no_modelo": 2.53
+        },
+        "gemeos": {
+          "razao_de_chances_publicada": 2.93,
+          "fonte": "duckitt2005",
+          "razao_de_chances_no_modelo": 2.8,
+          "risco_relativo_no_modelo": 2.67
+        },
+        "historico_familiar_pe": {
+          "razao_de_chances_publicada": 2.9,
+          "fonte": "duckitt2005",
+          "razao_de_chances_no_modelo": 2.86,
+          "risco_relativo_no_modelo": 2.74
+        }
+      },
+      "conferencia_em_dados_reais": {
+        "dados": "SIH 2022 real, mesma parte de teste da v2 (caso-controle: só a ordenação vale, a porcentagem não; os fatores clínicos ficam desconhecidos)",
+        "v3": {
+          "n": 32109,
+          "casos": 1976,
+          "auc_roc": 0.6554,
+          "ponto_fn_primeiro": {
+            "limiar": 0.01616,
+            "sensibilidade": 0.8072,
+            "especificidade": 0.3894
+          }
+        },
+        "v2_nas_mesmas_internacoes": {
+          "auc_roc": 0.6543
+        }
+      },
+      "segundos": 21.4
+    },
+    "diabetes_gestacional": {
+      "condicao": "diabetes_gestacional",
+      "variaveis": [
+        "idade",
+        "regiao",
+        "gestacoes_anteriores",
+        "imc_categoria",
+        "historico_familiar_dm"
+      ],
+      "desfecho": "simulado: risco por idade e região do SIH real, prevalência média de 14% e efeitos publicados",
+      "n_treino": 712830,
+      "n_calibracao": 237610,
+      "fracao_escondida_no_treino": {
+        "fatores_clinicos": 0.35,
+        "perfil": 0.2
+      },
+      "media_referencia": 0.13967,
+      "efeitos_recuperados": {
+        "imc_baixo_peso": {
+          "razao_de_chances_publicada": 0.63,
+          "fonte": "zhang2024",
+          "razao_de_chances_no_modelo": 0.63,
+          "risco_relativo_no_modelo": 0.67
+        },
+        "imc_sobrepeso": {
+          "razao_de_chances_publicada": 2.2,
+          "fonte": "zhang2024",
+          "razao_de_chances_no_modelo": 2.21,
+          "risco_relativo_no_modelo": 1.97
+        },
+        "imc_obesidade": {
+          "razao_de_chances_publicada": 3.46,
+          "fonte": "zhang2024",
+          "razao_de_chances_no_modelo": 3.39,
+          "risco_relativo_no_modelo": 2.73
+        },
+        "historico_familiar_dm": {
+          "razao_de_chances_publicada": 1.89,
+          "fonte": "dode2009",
+          "razao_de_chances_no_modelo": 1.88,
+          "risco_relativo_no_modelo": 1.71
+        }
+      },
+      "conferencia_em_dados_reais": {
+        "dados": "SIH 2022 real, mesma parte de teste da v2 (caso-controle: só a ordenação vale, a porcentagem não; os fatores clínicos ficam desconhecidos)",
+        "v3": {
+          "n": 30949,
+          "casos": 816,
+          "auc_roc": 0.6838,
+          "ponto_fn_primeiro": {
+            "limiar": 0.07873,
+            "sensibilidade": 0.8407,
+            "especificidade": 0.3925
+          }
+        },
+        "v2_nas_mesmas_internacoes": {
+          "auc_roc": 0.6827
+        }
+      },
+      "segundos": 17.4
+    },
+    "eclampsia": {
+      "condicao": "eclampsia",
+      "variaveis": [
+        "idade",
+        "regiao",
+        "fetos",
+        "partos_normais",
+        "partos_cesareos",
+        "pre_eclampsia_previa",
+        "hipertensao_cronica",
+        "diabetes_previo",
+        "imc_categoria",
+        "historico_familiar_pe"
+      ],
+      "desfecho": "simulado: parte das pré-eclâmpsias, na proporção por idade e região do SIH real",
+      "regra": "probabilidade de pré-eclâmpsia (v3) vezes a fração de eclâmpsia por idade e região",
+      "fracao_media_no_sih": 0.0885,
+      "casos_no_sih": 10839,
+      "media_referencia": 0.002545,
+      "conferencia_em_dados_reais": {
+        "dados": "SIH 2022 real, mesma parte de teste da v2 (caso-controle: só a ordenação vale, a porcentagem não; os fatores clínicos ficam desconhecidos)",
+        "v3": {
+          "n": 30325,
+          "casos": 192,
+          "auc_roc": 0.5586,
+          "ponto_fn_primeiro": {
+            "limiar": 0.00154,
+            "sensibilidade": 0.8125,
+            "especificidade": 0.1817
+          }
+        },
+        "v2_nas_mesmas_internacoes": {
+          "auc_roc": 0.5652
+        }
+      }
+    },
+    "malformacao": {
+      "condicao": "malformacao",
+      "variaveis": [
+        "idade",
+        "estado_civil",
+        "escolaridade",
+        "gestacoes_anteriores",
+        "partos_normais",
+        "partos_cesareos",
+        "perdas_anteriores",
+        "fetos",
+        "mes_inicio_prenatal"
+      ],
+      "desfecho": "real (SINASC)",
+      "n_treino": 2263326,
+      "n_calibracao": 754442,
+      "fracao_escondida_no_treino": {
+        "perfil": 0.2
+      },
+      "media_referencia": 0.00874,
+      "conferencia_em_dados_reais": {
+        "dados": "SINASC real, mesma parte de teste da v2",
+        "v3": {
+          "n": 754443,
+          "casos": 6591,
+          "auc_roc": 0.5631,
+          "brier": 0.00866,
+          "erro_calibracao_esperado": 0.00039,
+          "probabilidade_media_prevista": 0.00878,
+          "frequencia_observada": 0.00874,
+          "ponto_fn_primeiro": {
+            "limiar": 0.00762,
+            "sensibilidade": 0.8147,
+            "especificidade": 0.2363,
+            "valor_preditivo_positivo": 0.0093,
+            "valor_preditivo_negativo": 0.9931,
+            "fracao_sinalizada": 0.7641,
+            "matriz": {
+              "verdadeiro_positivo": 5370,
+              "falso_negativo": 1221,
+              "falso_positivo": 571098,
+              "verdadeiro_negativo": 176754
+            }
+          }
+        },
+        "v2_nas_mesmas_gestantes": {
+          "n": 754443,
+          "casos": 6591,
+          "auc_roc": 0.5646,
+          "brier": 0.00865,
+          "erro_calibracao_esperado": 0.00037,
+          "probabilidade_media_prevista": 0.00873,
+          "frequencia_observada": 0.00874
+        },
+        "so_com_a_idade": {
+          "v3_media_prevista": 0.00833,
+          "v2_media_prevista": 0.01919,
+          "frequencia_observada": 0.00874
+        }
+      },
+      "segundos": 24.8
+    }
+  },
+  "continuam_na_v2": [
+    "itu",
+    "atipicidade"
+  ]
+}

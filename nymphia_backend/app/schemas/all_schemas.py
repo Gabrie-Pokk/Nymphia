@@ -244,6 +244,8 @@ class PerfilClinicoBase(BaseModel):
     pre_eclampsia_previa: Optional[bool] = None
     hipertensao_cronica: Optional[bool] = None
     diabetes_previo: Optional[bool] = None
+    historico_familiar_pe: Optional[bool] = None
+    historico_familiar_dm: Optional[bool] = None
     dum: date
     dpp: date
     dpp_editada_manualmente: bool = False
@@ -306,6 +308,8 @@ class PerfilClinicoUpdate(BaseModel):
     pre_eclampsia_previa: Optional[bool] = None
     hipertensao_cronica: Optional[bool] = None
     diabetes_previo: Optional[bool] = None
+    historico_familiar_pe: Optional[bool] = None
+    historico_familiar_dm: Optional[bool] = None
     dum: Optional[date] = None
     dpp: Optional[date] = None
     dpp_editada_manualmente: Optional[bool] = None

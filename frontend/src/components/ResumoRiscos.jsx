@@ -1,6 +1,6 @@
 import React from 'react';
 
-// Estimativas dos modelos de risco v2 e fatores clínicos informados.
+// Estimativas dos modelos de risco (v3: fatores clínicos por simulação com efeitos publicados).
 // Profissional: números, AUC e dados faltantes. Gestante: linguagem simples,
 // sem porcentagem, e o que levar para a equipe.
 
@@ -12,7 +12,7 @@ const vezes = (v) => `${Number(v).toLocaleString('pt-BR', { maximumFractionDigit
 
 function valorDoModelo(c) {
   if (c.tipo_saida === 'probabilidade' && typeof c.probabilidade === 'number') {
-    return `${pct(c.probabilidade)} (média ${pct(c.media_populacional)})`;
+    return `${pct(c.probabilidade)} (média ${pct(c.media_populacional)})${c.simulado ? ' · simulação' : ''}`;
   }
   if (typeof c.risco_relativo === 'number') return vezes(c.risco_relativo);
   return '';
@@ -32,12 +32,14 @@ export default function ResumoRiscos({ riscos, modo = 'gestante' }) {
           {condicoes.map((c) => (
             <div key={c.condicao} style={{ backgroundColor: '#FFFFFF', padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}>
               <strong style={{ fontSize: '0.8rem', display: 'block' }}>{c.nome}</strong>
-              {c.fonte === 'indisponivel' ? (
-                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>Indisponível. {c.motivo}</span>
+              {c.fonte === 'indisponivel' || c.fonte === 'nao_se_aplica' ? (
+                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                  {c.fonte === 'nao_se_aplica' ? 'Não se aplica.' : 'Indisponível.'} {c.motivo}
+                </span>
               ) : (
                 <>
                   <span style={{ fontSize: '0.74rem', fontWeight: 700, color: COR_NIVEL[c.nivel] }}>
-                    {ROTULO_NIVEL[c.nivel]}
+                    {ROTULO_NIVEL[c.nivel]}{c.motivo_nivel === 'diretriz' ? ' (critério das diretrizes)' : ''}
                   </span>
                   <span style={{ fontSize: '0.74rem', display: 'block', color: 'var(--color-text)' }}>{valorDoModelo(c)}</span>
                   <span style={{ fontSize: '0.68rem', display: 'block', color: 'var(--color-text-muted)', marginTop: '2px' }}>
@@ -52,14 +54,16 @@ export default function ResumoRiscos({ riscos, modo = 'gestante' }) {
 
         {fatores.length > 0 && (
           <div style={{ marginTop: '12px' }}>
-            <strong style={{ fontSize: '0.8rem', color: 'var(--color-vinho)' }}>Fatores clínicos informados (não estão nas bases do DATASUS)</strong>
+            <strong style={{ fontSize: '0.8rem', color: 'var(--color-vinho)' }}>Fatores clínicos informados (efeito publicado; nos modelos v3 eles já entram na estimativa, por simulação)</strong>
             <ul style={{ margin: '6px 0 0', paddingLeft: '18px', fontSize: '0.76rem', lineHeight: 1.45 }}>
               {fatores.map((f, i) => (
                 <li key={i}>
                   {f.fator}
                   {typeof f.risco_relativo_publicado === 'number'
                     ? `: risco de pré-eclâmpsia ${f.risco_relativo_publicado.toLocaleString('pt-BR')} vezes maior (${f.fonte})`
-                    : ` (${f.fonte})`}
+                    : typeof f.razao_de_chances_publicada === 'number'
+                      ? `: razão de chances ${f.razao_de_chances_publicada.toLocaleString('pt-BR')} para diabetes gestacional (${f.fonte})`
+                      : ` (${f.fonte})`}
                   {f.peso_diretriz ? ` · fator ${f.peso_diretriz}` : ''}
                 </li>
               ))}
@@ -90,12 +94,16 @@ export default function ResumoRiscos({ riscos, modo = 'gestante' }) {
           <ul style={{ margin: '0 0 8px', paddingLeft: '18px' }}>
             {acima.map((c) => (
               <li key={c.condicao}>
-                <strong>{c.nome}</strong>{c.nivel === 'alto' ? ' (bem acima da média)' : ''}
+                <strong>{c.nome}</strong>
+                {c.motivo_nivel === 'diretriz'
+                  ? ' (fator de risco importante no seu cadastro)'
+                  : c.nivel === 'alto' ? ' (bem acima da média)' : ''}
               </li>
             ))}
           </ul>
           <p style={{ margin: '0 0 8px', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
-            Isso não é diagnóstico: é uma comparação com muitas gestantes parecidas com você. Vale conversar com sua equipe.
+            Isso não é diagnóstico: é uma estimativa feita com dados de muitas gestantes brasileiras e com o efeito
+            de fatores de risco publicado em estudos. Vale conversar com sua equipe.
           </p>
         </>
       )}

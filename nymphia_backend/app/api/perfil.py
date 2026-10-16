@@ -44,6 +44,8 @@ def criar_perfil_clinico(
         pre_eclampsia_previa=payload.pre_eclampsia_previa,
         hipertensao_cronica=payload.hipertensao_cronica,
         diabetes_previo=payload.diabetes_previo,
+        historico_familiar_pe=payload.historico_familiar_pe,
+        historico_familiar_dm=payload.historico_familiar_dm,
         dum=payload.dum,
         dpp=payload.dpp,
         dpp_editada_manualmente=payload.dpp_editada_manualmente,

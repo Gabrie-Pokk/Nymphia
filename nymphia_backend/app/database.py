@@ -58,6 +58,8 @@ COLUNAS_ADICIONADAS_DEPOIS = [
     ("perfis_clinicos", "pre_eclampsia_previa", "BOOLEAN"),
     ("perfis_clinicos", "hipertensao_cronica", "BOOLEAN"),
     ("perfis_clinicos", "diabetes_previo", "BOOLEAN"),
+    ("perfis_clinicos", "historico_familiar_pe", "BOOLEAN"),
+    ("perfis_clinicos", "historico_familiar_dm", "BOOLEAN"),
     ("perfis_clinicos", "altura_cm", "FLOAT"),
     ("perfis_clinicos", "peso_pre_gestacional", "FLOAT"),
     ("perfis_clinicos", "maternidade_latitude", "FLOAT"),

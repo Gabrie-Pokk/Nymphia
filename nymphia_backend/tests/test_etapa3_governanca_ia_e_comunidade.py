@@ -26,14 +26,23 @@ def test_transparencia_clinica_cfm_2454_e_cdc(client: TestClient):
     # ITU sem modelo confiável: o relatório diz por quê (poucos casos; o código certo é O23)
     assert "O23" in modelos["itu"]["aviso"]
 
-    # Os números publicados são os do treino v2, não valores escritos à mão (antes: AUC 0,84 inventado)
+    # Os números publicados saem dos arquivos de métricas do treino, não de valores escritos à mão
+    # (antes: AUC 0,84 inventado). Na v3, só desempenho em dados reais.
     import json
     from pathlib import Path
-    reais = json.loads((Path(__file__).resolve().parent.parent / "modelos" / "metricas_modelos_v2.json")
-                       .read_text(encoding="utf-8"))["modelos"]
+    pasta = Path(__file__).resolve().parent.parent / "modelos"
+    v2 = json.loads((pasta / "v2" / "metricas_modelos_v2.json").read_text(encoding="utf-8"))["modelos"]
+    v3 = json.loads((pasta / "metricas_modelos_v3.json").read_text(encoding="utf-8"))["modelos"]
     for nome, publicado in modelos.items():
-        assert publicado["auc_roc"] == reais[nome]["auc_roc"]
-        assert publicado["sensibilidade"] == reais[nome]["ponto_fn_primeiro"]["sensibilidade"]
+        if publicado["versao"] == "3.0":
+            real = v3[nome]["conferencia_em_dados_reais"]["v3"]
+            assert publicado["auc_roc"] == real["auc_roc"]
+            assert publicado["sensibilidade"] == real.get("ponto_fn_primeiro", {}).get("sensibilidade")
+        else:
+            assert publicado["auc_roc"] == v2[nome]["auc_roc"]
+            assert publicado["sensibilidade"] == v2[nome]["ponto_fn_primeiro"]["sensibilidade"]
+    # A simulação é declarada, com fontes
+    assert data["simulacao"]["fontes"] and "não foi calculada" in data["simulacao"]["o_que_e"]
 
     # Rota alternativa /risco/transparencia-clinica
     res_alt = client.get("/risco/transparencia-clinica")

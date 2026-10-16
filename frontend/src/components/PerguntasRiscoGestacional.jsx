@@ -13,7 +13,8 @@ export const UFS = [
 ];
 
 export const CAMPOS_RISCO = [
-  'numero_fetos', 'mes_inicio_prenatal', 'uf_residencia', 'pre_eclampsia_previa', 'hipertensao_cronica', 'diabetes_previo'
+  'numero_fetos', 'mes_inicio_prenatal', 'uf_residencia', 'pre_eclampsia_previa', 'hipertensao_cronica', 'diabetes_previo',
+  'historico_familiar_pe', 'historico_familiar_dm'
 ];
 
 // Valor do formulário para o formato da API (vazio vira null)
@@ -26,7 +27,9 @@ export function paraApi(valores) {
     uf_residencia: numero(valores.uf_residencia),
     pre_eclampsia_previa: simNao(valores.pre_eclampsia_previa),
     hipertensao_cronica: simNao(valores.hipertensao_cronica),
-    diabetes_previo: simNao(valores.diabetes_previo)
+    diabetes_previo: simNao(valores.diabetes_previo),
+    historico_familiar_pe: simNao(valores.historico_familiar_pe),
+    historico_familiar_dm: simNao(valores.historico_familiar_dm)
   };
 }
 
@@ -40,7 +43,9 @@ export function daApi(perfil) {
     uf_residencia: texto(perfil?.uf_residencia),
     pre_eclampsia_previa: simNao(perfil?.pre_eclampsia_previa),
     hipertensao_cronica: simNao(perfil?.hipertensao_cronica),
-    diabetes_previo: simNao(perfil?.diabetes_previo)
+    diabetes_previo: simNao(perfil?.diabetes_previo),
+    historico_familiar_pe: simNao(perfil?.historico_familiar_pe),
+    historico_familiar_dm: simNao(perfil?.historico_familiar_dm)
   };
 }
 
@@ -103,6 +108,10 @@ export default function PerguntasRiscoGestacional({ valores, onChange }) {
         valor={valores.hipertensao_cronica} onChange={muda('hipertensao_cronica')} />
       <SimNao id="risco-dm" rotulo="Tem diabetes desde antes desta gravidez?"
         valor={valores.diabetes_previo} onChange={muda('diabetes_previo')} />
+      <SimNao id="risco-familia-pe" rotulo="Sua mãe ou irmã teve pré-eclâmpsia?"
+        valor={valores.historico_familiar_pe} onChange={muda('historico_familiar_pe')} />
+      <SimNao id="risco-familia-dm" rotulo="Alguém da família (pais, irmãos ou avós) tem diabetes?"
+        valor={valores.historico_familiar_dm} onChange={muda('historico_familiar_dm')} />
     </div>
   );
 }

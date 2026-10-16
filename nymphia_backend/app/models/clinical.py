@@ -22,6 +22,9 @@ class PerfilClinico(Base):
     pre_eclampsia_previa = Column(Boolean, nullable=True)
     hipertensao_cronica = Column(Boolean, nullable=True)
     diabetes_previo = Column(Boolean, nullable=True)
+    # Usados pelos modelos v3 (base sintética). Vazio = não informado.
+    historico_familiar_pe = Column(Boolean, nullable=True)   # mãe ou irmã com pré-eclâmpsia
+    historico_familiar_dm = Column(Boolean, nullable=True)   # pais, irmãos ou avós com diabetes
     dum = Column(Date, nullable=False)
     dpp = Column(Date, nullable=False)
     dpp_editada_manualmente = Column(Boolean, default=False, nullable=False)
