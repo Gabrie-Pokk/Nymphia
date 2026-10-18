@@ -2,7 +2,7 @@ import secrets
 import string
 from typing import List, Optional
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func, inspect as sa_inspect
 
@@ -20,6 +20,7 @@ from app.schemas.all_schemas import (
 from app.security.jwt_auth import get_current_gestante, get_current_profissional, get_current_profissional_aprovado
 from app.services.ai_risk_service import calculate_maternal_risks, perfil_para_modelos
 from app.api.epds import resumos_da_gestante
+from app.services.relatorio_consulta_service import FUSO_BRASILIA, gerar_relatorio_consulta
 
 router = APIRouter(prefix="/vinculo", tags=["Vínculo Gestante-Profissional e Painel"])
 
@@ -396,6 +397,53 @@ def obter_ficha_paciente(
         "observacoes_medicas": _linhas(observacoes_medicas),
         "somente_leitura": True
     }
+
+
+# --- RELATÓRIO PARA A CONSULTA (PDF GERADO NA HORA + AUDITORIA LGPD) ---
+@router.get("/paciente/{gestante_id}/relatorio-consulta")
+def baixar_relatorio_consulta(
+    gestante_id: str,
+    prof: Profissional = Depends(get_current_profissional_aprovado),
+    db: Session = Depends(get_db)
+):
+    """
+    PDF com o período desde a última consulta da agenda: pontos de atenção,
+    check-ins, Escala de Edimburgo, medidas, exames, agenda, rastreio com IA
+    (se a gestante não recusou), conversas autorizadas e as anotações de quem
+    gera. Regras em app/services/relatorio_consulta_service.py.
+    """
+    vinculo = db.query(Vinculo).filter(
+        Vinculo.profissional_id == prof.id,
+        Vinculo.gestante_id == gestante_id,
+        Vinculo.status == "ativo"
+    ).first()
+    if not vinculo:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Você não possui vínculo clínico ativo com esta gestante"
+        )
+
+    agora = datetime.utcnow()
+    db.add(LogAcesso(
+        gestante_id=gestante_id,
+        acessado_por_id=prof.id,
+        acessado_por_tipo="profissional",
+        recurso="relatorio_consulta_pdf",
+        data_hora=agora
+    ))
+    db.commit()
+
+    pdf = gerar_relatorio_consulta(db, gestante_id, prof, agora)
+    # O nome do arquivo não leva o nome da gestante: ele aparece em downloads e históricos
+    nome_arquivo = f"relatorio-consulta-{(agora + FUSO_BRASILIA):%Y-%m-%d}.pdf"
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{nome_arquivo}"',
+            "Cache-Control": "no-store",
+        },
+    )
 
 @router.post("/paciente/{gestante_id}/observacao", response_model=ObservacaoProfissionalOut, status_code=status.HTTP_201_CREATED)
 def adicionar_observacao_medica(

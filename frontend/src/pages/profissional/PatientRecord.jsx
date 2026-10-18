@@ -15,6 +15,41 @@ export default function PatientRecord({ patientId, onBack }) {
   const [salvandoObs, setSalvandoObs] = useState(false);
   const [sucessoObs, setSucessoObs] = useState('');
   const [modalIaAberto, setModalIaAberto] = useState(false);
+  const [gerandoRelatorio, setGerandoRelatorio] = useState(false);
+  const [erroRelatorio, setErroRelatorio] = useState('');
+
+  // Relatório para a consulta: PDF gerado na hora pelo servidor (com registro de acesso)
+  const handleBaixarRelatorio = async () => {
+    setGerandoRelatorio(true);
+    setErroRelatorio('');
+    try {
+      const res = await fetch(`/vinculo/paciente/${patientId}/relatorio-consulta`, { headers: authHeaders() });
+      if (!res.ok) {
+        let mensagem = 'Não foi possível gerar o relatório. Tente de novo em instantes.';
+        try {
+          const corpo = await res.json();
+          if (corpo?.detail && typeof corpo.detail === 'string') mensagem = corpo.detail;
+        } catch {
+          // resposta sem JSON
+        }
+        throw new Error(mensagem);
+      }
+      const blob = await res.blob();
+      const nome = (res.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/)?.[1] || 'relatorio-consulta.pdf';
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nome;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      setErroRelatorio(err.message);
+    } finally {
+      setGerandoRelatorio(false);
+    }
+  };
 
   const carregarFicha = async () => {
     setCarregando(true);
@@ -91,6 +126,31 @@ export default function PatientRecord({ patientId, onBack }) {
           <p className="text-muted" style={{ fontSize: '0.85rem' }}>{identificacao?.email}</p>
         </div>
         <span className="badge-gold">Auditoria LGPD Ativa</span>
+      </div>
+
+      {/* Relatório para a consulta */}
+      <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', borderLeft: '5px solid var(--color-rosa)' }}>
+        <div style={{ flex: '1 1 260px' }}>
+          <strong style={{ fontSize: '0.95rem' }}>Relatório para a consulta</strong>
+          <p className="text-muted" style={{ fontSize: '0.78rem', margin: '4px 0 0' }}>
+            PDF gerado na hora com o período desde a última consulta da agenda: pontos de atenção, check-ins,
+            Escala de Edimburgo, medidas, exames, rastreio e as suas anotações.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={handleBaixarRelatorio}
+          disabled={gerandoRelatorio}
+          style={{ minHeight: '40px', padding: '6px 16px', fontSize: '0.85rem' }}
+        >
+          <FileText size={16} /> {gerandoRelatorio ? 'Gerando...' : 'Baixar PDF'}
+        </button>
+        {erroRelatorio && (
+          <p role="alert" style={{ flexBasis: '100%', margin: 0, fontSize: '0.8rem', color: 'var(--color-vermelho, #C0392B)' }}>
+            {erroRelatorio}
+          </p>
+        )}
       </div>
 
       <TriageDisclaimer />
