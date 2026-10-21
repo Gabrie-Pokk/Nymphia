@@ -18,6 +18,7 @@ export default function EmergencyScreen({ onExit }) {
   const [notificacaoStatus, setNotificacaoStatus] = useState({
     enviado: false,
     profissionalNotificado: false,
+    equipeVinculada: false,
     erro: false
   });
 
@@ -56,6 +57,7 @@ export default function EmergencyScreen({ onExit }) {
           setNotificacaoStatus({
             enviado: true,
             profissionalNotificado: Boolean(data.profissional_notificado),
+            equipeVinculada: Boolean(data.equipe_vinculada),
             erro: false
           });
         } else {
@@ -207,11 +209,15 @@ export default function EmergencyScreen({ onExit }) {
         <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
           {notificacaoStatus.enviado && notificacaoStatus.profissionalNotificado ? (
             <span style={{ color: '#27AE60', fontWeight: 600 }}>
-              ✓ Alerta transmitido em paralelo para sua equipe de saúde vinculada.
+              ✓ Enviamos um aviso por e-mail para sua equipe vinculada. Não espere a resposta: ligue 192.
             </span>
-          ) : notificacaoStatus.enviado && !notificacaoStatus.profissionalNotificado ? (
+          ) : notificacaoStatus.enviado && notificacaoStatus.equipeVinculada ? (
             <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>
-              ℹ️ Chamada de emergência pública registrada. Sem equipe médica vinculada nesta sessão — o atendimento depende exclusivamente da discagem ao SAMU 192.
+              ℹ️ Não conseguimos avisar sua equipe automaticamente. Ligue 192 e, depois, avise sua equipe se puder.
+            </span>
+          ) : notificacaoStatus.enviado ? (
+            <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>
+              ℹ️ Registramos o pedido de ajuda. Você não tem equipe vinculada no app: o atendimento depende da ligação para o SAMU 192.
             </span>
           ) : notificacaoStatus.erro ? (
             <span style={{ color: 'var(--color-vermelho)', fontWeight: 600 }}>

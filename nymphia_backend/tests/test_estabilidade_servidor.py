@@ -15,7 +15,8 @@ from app.services import ai_risk_service
 
 @pytest.fixture
 def modelos_zerados(monkeypatch):
-    estado = {"carregado": False, "carregando": False, "rf": {}, "isolation_forest": None, "desligados_por_memoria": []}
+    estado = {"carregado": False, "carregando": False, "desligados_por_memoria": [], "modelos": {},
+              "atipicidade": None, "metricas": None}
     monkeypatch.setattr(ai_risk_service, "_modelos_estado", estado)
     return estado
 
@@ -47,12 +48,14 @@ def test_health_nao_carrega_modelos(client, monkeypatch, modelos_zerados):
     assert "modelos_carregando" in res.json()
 
 
-def test_health_ignora_pedido_publico_de_recarregar_bertimbau(client, monkeypatch):
-    from app.services import ai_text_service
-    chamadas = []
-    monkeypatch.setattr(ai_text_service, "carregar_bertimbau", lambda forcar=False: chamadas.append(forcar))
-    client.get("/health?recarregar_ia=true")
-    assert chamadas == []
+def test_health_ignora_pedido_publico_de_recarregar_ia(client, monkeypatch, modelos_zerados):
+    def proibido():
+        raise AssertionError("o /health não pode carregar modelos")
+
+    monkeypatch.setattr(ai_risk_service, "_carregar_modelos_sem_trava", proibido)
+    res = client.get("/health?recarregar_ia=true")
+    assert res.status_code == 200
+    assert not any("bertimbau" in chave for chave in res.json())
 
 
 # --- Ambiente ---
@@ -154,12 +157,9 @@ def _carregar_com_limite(monkeypatch, limite_mb):
     import joblib
     carregados = []
 
-    class ModeloFalso:
-        feature_names_in_ = ["IDADEMAE"]
-
     def load_falso(caminho):
         carregados.append(caminho.rsplit("/", 1)[-1])
-        return ModeloFalso()
+        return {"features": ["idade"], "modelo": None}
 
     monkeypatch.setattr(joblib, "load", load_falso)
     monkeypatch.setattr(ai_risk_service, "limite_de_memoria_mb", lambda: limite_mb)
@@ -167,27 +167,22 @@ def _carregar_com_limite(monkeypatch, limite_mb):
     return carregados
 
 
-def test_servidor_de_512_mb_deixa_os_modelos_pesados_desligados(monkeypatch, modelos_zerados):
+def test_modelos_v2_carregam_inteiros_mesmo_com_512_mb(monkeypatch, modelos_zerados):
+    # Os modelos v2 têm menos de 1 MB cada; nenhum precisa ficar desligado
     carregados = _carregar_com_limite(monkeypatch, 512)
-    assert "rf_bem_estar_fetal.joblib" not in carregados
-    assert "rf_malformacao.joblib" not in carregados
-    assert "rf_pre_eclampsia.joblib" in carregados
-    assert modelos_zerados["desligados_por_memoria"] == ["bem_estar_fetal", "malformacao"]
-
-
-def test_servidor_com_memoria_carrega_tudo(monkeypatch, modelos_zerados):
-    carregados = _carregar_com_limite(monkeypatch, 4096)
-    for nome in ai_risk_service.NOMES_RF:
-        assert f"rf_{nome}.joblib" in carregados
+    for nome in ai_risk_service.NOMES_MODELOS:
+        assert f"risco_{nome}.joblib" in carregados
+    assert "atipicidade.joblib" in carregados
     assert modelos_zerados["desligados_por_memoria"] == []
 
 
-def test_resposta_diz_de_onde_veio_cada_numero(modelos_zerados):
+def test_sem_modelos_nenhum_numero_e_inventado(modelos_zerados):
     modelos_zerados["carregado"] = True  # nenhum modelo ligado
     resultado = ai_risk_service.calculate_maternal_risks({"idade": 30}, [])
     assert resultado["condicoes"]
     for item in resultado["condicoes"].values():
-        assert item["fonte"] == "regra_clinica_simples"
+        assert item["fonte"] == "indisponivel"
+        assert item["probabilidade"] is None and item["nivel"] is None
 
 
 def test_health_mostra_modelos_desligados_por_memoria(client, modelos_zerados):

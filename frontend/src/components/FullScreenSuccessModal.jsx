@@ -56,22 +56,6 @@ export default function FullScreenSuccessModal({
         }
       }}
     >
-      <style>{`
-        @keyframes fadeInOverlay {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes scaleUpModal {
-          from { opacity: 0; transform: scale(0.88) translateY(12px); }
-          to { opacity: 1; transform: scale(1) translateY(0); }
-        }
-        @keyframes pulseSuccessIcon {
-          0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(194, 24, 91, 0.4); }
-          70% { transform: scale(1.05); box-shadow: 0 0 0 16px rgba(194, 24, 91, 0); }
-          100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(194, 24, 91, 0); }
-        }
-      `}</style>
-
       <div
         className="card"
         style={{

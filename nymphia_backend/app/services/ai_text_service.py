@@ -1,33 +1,20 @@
-import os
+"""
+Classificação do texto livre da gestante por palavras-chave.
+
+Lê o texto do check-in e da conversa e marca categorias (ansiedade, tristeza,
+estresse, medo, sintoma físico, bem-estar) quando aparece alguma palavra da
+lista, com tolerância a erros de digitação. Não é modelo de IA: o BERTimbau
+foi retirado em 16/10/2026 porque nunca rodou no servidor (precisava de mais
+memória do que o plano tem). Os sinais de urgência ficam no motor de regras
+(app/services/rules_engine.py), que não depende deste arquivo.
+"""
 import re
 import difflib
 import unicodedata
 import logging
-from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple
 
 logger = logging.getLogger("nymphia.ai_text_service")
-
-_BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
-MODELOS_DIR = os.environ.get("NYMPHIA_MODELOS_DIR", str(_BACKEND_DIR / "modelos"))
-BERTIMBAU_DIR = Path(MODELOS_DIR) / "bertimbau_nymphia" / "modelo_final"
-
-BERTIMBAU_CATEGORIAS = [
-    "ansiedade",
-    "tristeza_desanimo",
-    "estresse_sobrecarga",
-    "medo_inseguranca",
-    "bem_estar",
-    "sintoma_fisico"
-]
-
-_bert_estado = {
-    "tentado": False,
-    "disponivel": False,
-    "tokenizer": None,
-    "modelo": None,
-    "diagnostico": "nao_inicializado",
-}
 
 def remover_acentos(texto: str) -> str:
     """Remove diacríticos e acentos da língua portuguesa."""
@@ -122,139 +109,18 @@ EMOTION_KEYWORDS = {
     ]
 }
 
-def carregar_bertimbau(forcar: bool = False):
-    """Tenta carregar o modelo BERTimbau ajustado localmente ou baixa via URL."""
-    global _bert_estado
-    if _bert_estado["disponivel"] and not forcar:
-        return
-    if _bert_estado["tentado"] and not forcar:
-        return
-
-    _bert_estado["tentado"] = True
-
-    carregar_flag = os.getenv("NYMPHIA_CARREGAR_BERTIMBAU", "0").strip().lower()
-    if carregar_flag not in ("1", "true", "sim", "yes") and not forcar:
-        logger.info("NYMPHIA_CARREGAR_BERTIMBAU não habilitado. BERTimbau suspenso para garantir boot leve (<512MB RAM).")
-        _bert_estado["disponivel"] = False
-        _bert_estado["diagnostico"] = "suspenso_por_configuracao_regras_febrasgo_ativas"
-        return
-
-    # 1. Garante que os pesos foram baixados ou descompactados no disco
-    try:
-        from app.services.model_downloader import garantir_bertimbau_presente
-        sucesso_download = garantir_bertimbau_presente()
-        if not sucesso_download:
-            _bert_estado["diagnostico"] = "falha_download_pesos_drive"
-    except Exception as e:
-        logger.warning(f"Verificação de download do BERTimbau retornou: {e}")
-        _bert_estado["diagnostico"] = f"erro_downloader: {e}"
-
-    if not BERTIMBAU_DIR.exists():
-        logger.info(f"Pasta do BERTimbau não encontrada em {BERTIMBAU_DIR}. Operando com motor de regras regex.")
-        _bert_estado["diagnostico"] = f"pasta_inexistente: {BERTIMBAU_DIR}"
-        return
-
-    try:
-        from transformers import AutoTokenizer, AutoModelForSequenceClassification
-        import torch
-        import gc
-
-        # Restringe pools de threads para economizar buffers de memória em CPU
-        torch.set_num_threads(1)
-
-        logger.info(f"Carregando BERTimbau a partir de: {BERTIMBAU_DIR}")
-        _bert_estado["tokenizer"] = AutoTokenizer.from_pretrained(str(BERTIMBAU_DIR))
-
-        caminho_int8 = BERTIMBAU_DIR / "modelo_quantizado_int8.pt"
-        if caminho_int8.exists():
-            logger.info(f"Carregando modelo quantizado INT8 pré-salvo de {caminho_int8} (baixo consumo de RAM)...")
-            try:
-                _bert_estado["modelo"] = torch.load(str(caminho_int8), map_location="cpu", weights_only=False)
-            except TypeError:
-                _bert_estado["modelo"] = torch.load(str(caminho_int8), map_location="cpu")
-            _bert_estado["diagnostico"] = "ativo_quantizado_int8_cpu"
-        else:
-            logger.info("Carregando pesos safetensors com low_cpu_mem_usage...")
-            raw_model = AutoModelForSequenceClassification.from_pretrained(
-                str(BERTIMBAU_DIR),
-                low_cpu_mem_usage=True
-            )
-
-            # Quantização dinâmica INT8: reduz memória de ~800MB para ~180MB
-            logger.info("Aplicando quantização dinâmica INT8 sobre os pesos...")
-            quantized_model = torch.quantization.quantize_dynamic(
-                raw_model, {torch.nn.Linear}, dtype=torch.qint8
-            )
-
-            # Libera o modelo raw imediatamente para evitar duplo consumo de RAM
-            del raw_model
-            gc.collect()
-
-            # Salva o modelo quantizado para carregamentos ultra-leves no futuro
-            try:
-                torch.save(quantized_model, str(caminho_int8))
-                logger.info(f"Modelo INT8 persistido em {caminho_int8}")
-                safetensors_path = BERTIMBAU_DIR / "model.safetensors"
-                if safetensors_path.exists():
-                    safetensors_path.unlink()
-                    logger.info("Arquivo model.safetensors original removido do disco após quantização.")
-            except Exception as s_err:
-                logger.warning(f"Não foi possível salvar modelo quantizado em disco: {s_err}")
-
-            _bert_estado["modelo"] = quantized_model
-            _bert_estado["diagnostico"] = "ativo_quantizado_int8_cpu"
-
-        _bert_estado["modelo"].eval()
-        _bert_estado["disponivel"] = True
-        logger.info("BERTimbau carregado com sucesso para inferência em CPU.")
-    except (MemoryError, Exception) as e:
-        _bert_estado["disponivel"] = False
-        _bert_estado["diagnostico"] = f"memoria_insuficiente_ou_falha: {e}"
-        logger.warning(f"Não foi possível inicializar BERTimbau ({e}). Operando com motor determinístico de regras FEBRASGO.")
-        import gc
-        gc.collect()
-
-
-def bertimbau_disponivel(recarregar: bool = False) -> bool:
-    if recarregar:
-        carregar_bertimbau(forcar=True)
-    return _bert_estado["disponivel"]
-
-
-def bertimbau_diagnostico() -> str:
-    return _bert_estado.get("diagnostico", "desconhecido")
-
-
-
 def classify_text_emotions(text: str) -> Tuple[Dict[str, float], List[str]]:
     """
-    Classificador de conteúdo emocional e sintomas com tolerância ortográfica
-    e margem de erro na escrita da gestante.
+    Marca as categorias citadas no texto, tolerando erros de escrita.
+
+    Devolve (marcas, categorias): em marcas, 1.0 quando alguma palavra da
+    categoria apareceu e 0.0 quando não. Não é probabilidade: antes o valor
+    subia com o número de palavras (0,55 + 0,15 por palavra) e parecia saída
+    de modelo.
     """
     if not text:
         return {}, []
 
-    carregar_bertimbau()
-
-    # 1. Inferência com BERTimbau se disponível
-    if _bert_estado["disponivel"] and _bert_estado["tokenizer"] and _bert_estado["modelo"]:
-        try:
-            import torch
-            tok = _bert_estado["tokenizer"]
-            model = _bert_estado["modelo"]
-            inputs = tok(text, return_tensors="pt", truncation=True, max_length=96)
-            with torch.no_grad():
-                saida = model(**inputs)
-            probs = torch.sigmoid(saida.logits)[0].tolist()
-            scores = {cat: round(float(p), 3) for cat, p in zip(BERTIMBAU_CATEGORIAS, probs)}
-            active = [cat for cat, p in scores.items() if p >= 0.35]
-            if not active:
-                active = ["neutro"]
-            return scores, active
-        except Exception as e:
-            logger.warning(f"Falha na inferência do BERTimbau ({e}), usando motor de regras difusas.")
-
-    # 2. Motor determinístico enriquecido com tolerância a erros e ortografia fonética
     text_normalizado = normalizar_grafia_ptbr(text)
     scores: Dict[str, float] = {}
     active_categories: List[str] = []
@@ -265,7 +131,7 @@ def classify_text_emotions(text: str) -> Tuple[Dict[str, float], List[str]]:
 
     for category, patterns in EMOTION_KEYWORDS.items():
         if category == "bem_estar" and (tem_negacao_bem_estar or tem_mal_estar):
-            scores[category] = 0.05
+            scores[category] = 0.0
             continue
 
         matches = 0
@@ -277,20 +143,18 @@ def classify_text_emotions(text: str) -> Tuple[Dict[str, float], List[str]]:
                 matches += 1
 
         if matches > 0:
-            prob = min(0.99, 0.55 + (matches * 0.15))
-            scores[category] = round(prob, 2)
+            scores[category] = 1.0
             active_categories.append(category)
         else:
-            scores[category] = 0.05
+            scores[category] = 0.0
 
     # Se a gestante relatou mal-estar expresso e sintoma_fisico não pontuou, garante ativação
     if tem_mal_estar and "sintoma_fisico" not in active_categories:
-        scores["sintoma_fisico"] = 0.75
+        scores["sintoma_fisico"] = 1.0
         active_categories.append("sintoma_fisico")
 
-    # CRUCIAL: Se nada pontuou, o estado é neutro/dúvida — NUNCA forçar "bem_estar" automaticamente!
+    # Se nada pontuou, o estado é neutro: nunca marcar "bem_estar" por padrão
     if not active_categories:
-        scores["bem_estar"] = 0.05
         active_categories = ["neutro"]
 
     return scores, active_categories

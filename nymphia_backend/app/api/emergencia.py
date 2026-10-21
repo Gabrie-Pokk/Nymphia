@@ -46,6 +46,7 @@ async def notificar_emergencia(
             evento_id=evento.id,
             data_hora=evento.data_hora,
             profissional_notificado=evento.profissional_notificado,
+            equipe_vinculada=bool((evento.contexto or {}).get("equipe_vinculada")),
             orientacao_samu="Ligue 192 (SAMU) imediatamente."
         )
     else:

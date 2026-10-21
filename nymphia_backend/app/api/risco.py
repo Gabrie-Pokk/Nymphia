@@ -3,7 +3,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.services.ai_risk_service import calculate_maternal_risks, DISCLAIMER_TEXT, obter_transparencia_clinica
+from app.services.ai_risk_service import (
+    calculate_maternal_risks, DISCLAIMER_TEXT, obter_transparencia_clinica, perfil_para_modelos,
+)
 from app.models.auth import Gestante
 from app.models.clinical import PerfilClinico, HistoricoFamiliar
 from app.security.jwt_auth import get_current_gestante
@@ -36,14 +38,10 @@ def calcular_meu_risco(
     perfil = db.query(PerfilClinico).filter(PerfilClinico.gestante_id == gestante.id).first()
     historico = db.query(HistoricoFamiliar).filter(HistoricoFamiliar.gestante_id == gestante.id).all()
 
-    perfil_dict = {
-        "idade": perfil.idade if perfil else 25,
-        "perdas_gestacionais": perfil.perdas_gestacionais if perfil else 0,
-        "partos_cesareos": perfil.partos_cesareos if perfil else 0,
-        "gestacoes_anteriores": perfil.gestacoes_anteriores if perfil else 0,
-    }
     historico_list = [{"parente": h.parente, "condicao": h.condicao} for h in historico]
-    return calculate_maternal_risks(perfil_dict, historico_list)
+    resultado = calculate_maternal_risks(perfil_para_modelos(perfil), historico_list)
+    resultado["cadastro_clinico_completo"] = perfil is not None
+    return resultado
 
 @router.post("/risco/internacao")
 def calcular_risco_internacao(dados: Dict[str, Any]):

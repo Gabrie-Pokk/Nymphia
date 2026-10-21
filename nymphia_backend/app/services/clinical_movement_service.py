@@ -1,10 +1,14 @@
 """
-Serviço de Triagem Clínica de Movimento, Postura e Exercícios Gestacionais
-Diretrizes: FEBRASGO, ACOG (American College of Obstetricians and Gynecologists)
-e Ministério da Saúde do Brasil.
+Orientação de movimento e postura na gestação, por regras fixas (não é IA).
 
-Analisa como a gestante se sente (energia, queixas musculoesqueléticas, dores e sinais de alerta)
-para determinar com precisão médica o que a IA DEVE recomendar e o que NÃO PODE falar para ela fazer.
+Base principal: diretriz canadense de atividade física na gestação (Mottola MF
+et al., Br J Sports Med 2018;52:1339-1346, publicada como "2019 Canadian
+guideline"): sinais para parar o exercício (Quadro 2), posição de barriga para
+cima (recomendação 6) e exercícios do assoalho pélvico (recomendação 5).
+
+Revisado em 15/10/2026: saíram afirmações sem base ("melhora a oxigenação da
+placenta", "prepara a bacia para o parto", proibição de deitar de costas a
+partir de 16 semanas por "mais de 3 minutos").
 """
 
 from typing import Dict, Any, List, Optional
@@ -16,11 +20,23 @@ SINAIS_ALERTA_CONTRAINDICACAO_ABSOLUTA = [
     "visao embaçada", "pressao alta", "febre"
 ]
 
+# Diretriz canadense 2019, Quadro 2: parar a atividade e procurar atendimento
+SINAIS_PARA_PARAR = (
+    "Pare o exercício e procure atendimento se tiver: falta de ar forte que continua mesmo parada, "
+    "dor forte no peito, contrações regulares e doloridas, sangramento vaginal, perda de líquido "
+    "pela vagina, ou tontura ou desmaio que continua mesmo parada."
+)
+
+POSICAO_DE_COSTAS = (
+    "Se ao fazer exercício deitada de barriga para cima você sentir tontura, enjoo ou mal-estar, "
+    "mude de posição: de lado, sentada ou em pé."
+)
+
 def avaliar_seguranca_movimento(
     disposicao: str, # "disposta" | "leve_cansaco" | "exausta"
     queixas: List[str], # ["dor_lombar", "dor_pelvica", "ciatico", "pernas_inchadas", "azia", "nenhuma"]
     sinais_alerta: List[str], # sinais reportados
-    semana_gestacional: int = 24
+    semana_gestacional: Optional[int] = None
 ) -> Dict[str, Any]:
     """
     Motor determinístico de segurança postural e prescrição de movimentos.
@@ -36,9 +52,8 @@ def avaliar_seguranca_movimento(
             "nivel_risco": "alto",
             "cor_alerta": "#C0392B",
             "mensagem_ia": (
-                "Atenção Médica Imediata: Você relatou sinais clínicos de alerta. "
-                "Qualquer exercício, alongamento ou esforço físico está estritamente suspenso no momento. "
-                "Deite-se confortavelmente sobre o lado esquerdo e entre em contato imediatamente com sua equipe obstétrica ou dirija-se à maternidade."
+                "Você marcou um sinal de alerta. Não faça exercício agora. Procure a maternidade ou ligue "
+                "192 (SAMU). Enquanto espera, fique em repouso, de preferência deitada de lado."
             ),
             "exercicios_permitidos": [],
             "exercicios_proibidos": [
@@ -55,15 +70,22 @@ def avaliar_seguranca_movimento(
             ]
         }
 
+    # Semana desconhecida: vale a cautela de fim de gestação (todas as restrições)
+    semana_para_regras = semana_gestacional if semana_gestacional is not None else 40
+
     # 2. Gestante Apta com Adaptações Personalizadas
     recomendados: List[Dict[str, Any]] = []
     proibidos: List[str] = []
     orientacoes: List[str] = []
 
-    # Regra Universal da Veia Cava (> 16 semanas)
-    if semana_gestacional >= 16:
-        proibidos.append("Decúbito dorsal prolongado (deitar de barriga para cima por mais de 3 minutos sem elevação)")
-        orientacoes.append("Como você está com 16 semanas ou mais, nunca permaneça deitada de costas no chão: o peso do bebê pode comprimir a veia cava e diminuir a oxigenação fetal. Sempre opte pelo lado esquerdo ou posição sentada.")
+    # Sinais para parar valem para todas
+    orientacoes.append(SINAIS_PARA_PARAR)
+
+    # Barriga para cima: a diretriz pede mudar de posição se houver sintomas.
+    # A partir da metade da gestação o útero pode comprimir a veia cava; antes, a orientação não se aplica.
+    if semana_para_regras >= 20:
+        proibidos.append("Continuar deitada de barriga para cima se der tontura, enjoo ou mal-estar")
+        orientacoes.append(POSICAO_DE_COSTAS)
 
     # Análise das queixas específicas:
     tem_dor_lombar = "dor_lombar" in queixas
@@ -74,19 +96,19 @@ def avaliar_seguranca_movimento(
 
     # Avaliação por Disposição
     if disposicao == "exausta":
-        orientacoes.append("Seu corpo está demandando descanso metabólico hoje. Focaremos 100% em respiração e alívio postural, sem treinos de esforço.")
+        orientacoes.append("Hoje o seu corpo está pedindo descanso. A sugestão é ficar só com respiração e posições de alívio, sem treino de esforço.")
         proibidos.append("Treinos de resistência ou musculação com carga")
         proibidos.append("Exercícios aeróbicos ou caminhadas longas")
         recomendados.append({
             "id": "respiracao_diafragmatica",
             "titulo": "Respiração Diafragmática Acalmadora",
-            "beneficio": "Reduz o cortisol, acalma o sistema nervoso autônomo e melhora a oxigenação da placenta.",
+            "beneficio": "Ajuda a relaxar e a soltar a tensão dos ombros.",
             "como_fazer": "Sente-se confortavelmente com as costas apoiadas. Inspire profundamente pelo nariz contando 4 segundos, sinta suas costelas se expandirem lateralmente e expire pela boca suavemente por 6 segundos."
         })
         recomendados.append({
             "id": "relaxamento_lateral_esquerdo",
-            "titulo": "Repouso em Decúbito Lateral Esquerdo",
-            "beneficio": "Alívio gravitacional imediato na coluna e liberação máxima do fluxo da veia cava.",
+            "titulo": "Descanso deitada de lado",
+            "beneficio": "Alivia as costas; deitada de lado, o útero não pesa sobre os vasos das costas.",
             "como_fazer": "Deite sobre o lado esquerdo do corpo. Coloque um travesseiro entre os joelhos mantendo o quadril alinhado e outro travesseiro suave sob a barriga."
         })
 
@@ -98,19 +120,19 @@ def avaliar_seguranca_movimento(
         recomendados.append({
             "id": "bascula_pelvica",
             "titulo": "Báscula Pélvica Suave (Em pé ou na Bola Suíça)",
-            "beneficio": "Mobiliza as articulações lombossacrais e solta a fáscia tensa da região lombar.",
+            "beneficio": "Movimenta a parte baixa das costas e pode aliviar a tensão na lombar.",
             "como_fazer": "Em pé com joelhos levemente destravados ou sentada na bola: encaixe o quadril para frente suavemente (retroversão) e retorne à posição neutra, sem empinar exageradamente."
         })
         recomendados.append({
             "id": "gato_vaca_suave",
             "titulo": "Postura Quatro Apoios (Gato-Vaca Suave)",
-            "beneficio": "Descomprime a coluna vertebral, tirando o peso da barriga da região lombar.",
+            "beneficio": "Tira o peso da barriga da lombar por alguns instantes.",
             "como_fazer": "Em um tapete macio em 4 apoios (mãos sob os ombros, joelhos sob os quadris): ao expirar, curve as costas para cima suavemente como um gato. Ao inspirar, volte à posição reta e neutra."
         })
         recomendados.append({
             "id": "alongamento_piriforme_sentada",
             "titulo": "Alongamento de Glúteo e Piriforme Sentada",
-            "beneficio": "Alivia a pressão sobre o nervo ciático e reduz a contratura dos glúteos.",
+            "beneficio": "Alonga o glúteo, o que costuma aliviar o desconforto que desce pela perna.",
             "como_fazer": "Sentada em uma cadeira firme, cruze um tornozelo sobre o joelho oposto. Mantenha a coluna ereta e incline levemente o peito para frente até sentir um alongamento agradável no glúteo."
         })
 
@@ -122,13 +144,13 @@ def avaliar_seguranca_movimento(
         recomendados.append({
             "id": "isometria_adutores",
             "titulo": "Ativação Isométrica Simétrica com Almofada",
-            "beneficio": "Estabiliza o anel pélvico sem forçar a articulação da sínfise púbica.",
+            "beneficio": "Fortalece a musculatura da bacia com as pernas alinhadas, sem forçar a frente da bacia.",
             "como_fazer": "Sentada ou deitada de lado: coloque uma almofada ou bola macia entre os joelhos. Pressione suavemente por 5 segundos e relaxe, mantendo sempre as duas pernas unidas e alinhadas."
         })
         recomendados.append({
             "id": "kegel_suave",
             "titulo": "Fortalecimento Suave do Assoalho Pélvico (Kegel)",
-            "beneficio": "Dá suporte aos órgãos pélvicos e ao peso do útero, prevenindo perda involuntária de urina.",
+            "beneficio": "Feito todo dia, reduz o risco de perder urina sem querer (diretriz canadense 2019). Vale pedir para a equipe ou fisioterapeuta conferir a técnica.",
             "como_fazer": "Contraia suavemente a musculatura perineal (como se fosse segurar o xixi por 3 segundos) e solte completamente por 5 segundos. Faça 5 repetições sem prender a respiração."
         })
 
@@ -137,7 +159,7 @@ def avaliar_seguranca_movimento(
         recomendados.append({
             "id": "alongamento_ciatico",
             "titulo": "Descompressão do Nervo Ciático na Cadeira",
-            "beneficio": "Libera a compressão do piriforme sobre o nervo ciático.",
+            "beneficio": "Alongamento leve para o desconforto que desce pela perna.",
             "como_fazer": "Sentada, estique suavemente a perna afetada apoiando o calcanhar no chão e aponte os dedos do pé para o teto, mantendo a coluna alinhada."
         })
 
@@ -146,33 +168,33 @@ def avaliar_seguranca_movimento(
         recomendados.append({
             "id": "bomba_tornozelo",
             "titulo": "Bomba de Panturrilha (Movimentos Circulares e Flexão)",
-            "beneficio": "A panturrilha atua como o 'segundo coração', bombeando o sangue de volta e drenando o edema das pernas.",
+            "beneficio": "O movimento da panturrilha ajuda o sangue a voltar das pernas e pode aliviar o inchaço.",
             "como_fazer": "Sentada ou reclinada: aponte os pés para frente e puxe em direção ao corpo 15 vezes. Em seguida, faça giros circulares suaves nos tornozelos."
         })
 
     # Avaliação de Azia / Refluxo
     if tem_azia:
         proibidos.append("Posições invertidas ou deitar-se logo após os exercícios")
-        orientacoes.append("Devido à azia relatada, todas as posturas devem ser executadas com o tronco ereto ou sentado, nunca deitada ou com a cabeça abaixo do nível do estômago.")
+        orientacoes.append("Com azia, prefira fazer os exercícios em pé ou sentada, sem deitar e sem baixar a cabeça abaixo do estômago.")
 
     # Se a gestante estiver ótima e sem queixas
     if not queixas or queixas == ["nenhuma"]:
         recomendados.append({
             "id": "alongamento_peitoral_postura",
             "titulo": "Abertura Peitoral e Alinhamento Cervical",
-            "beneficio": "Compensa o peso das mamas e a curvatura dos ombros para frente.",
+            "beneficio": "Abre o peito e ajuda a não ficar com os ombros caídos para a frente.",
             "como_fazer": "Em pé ou sentada: entrelace as mãos atrás do quadril ou apoie as mãos na lombar, abrindo o peito com suavidade e olhando para frente."
         })
         recomendados.append({
             "id": "mobilidade_pelvica_ativa",
             "titulo": "Mobilidade Pélvica Ativa na Bola ou em Pé",
-            "beneficio": "Prepara a bacia para o parto e melhora a circulação pélvica.",
+            "beneficio": "Movimenta o quadril e a lombar com suavidade.",
             "como_fazer": "Faça círculos lentos com o quadril (sentido horário e anti-horário), mantendo a respiração contínua e suave."
         })
 
     # Se a gestante estiver no 3º trimestre (> 28 semanas)
-    if semana_gestacional >= 28:
-        orientacoes.append("No 3º trimestre, os ligamentos estão ainda mais flexíveis por conta da relaxina. Mantenha os movimentos dentro de uma faixa confortável, sem forçar o limite articular.")
+    if semana_para_regras >= 28:
+        orientacoes.append("No fim da gestação o equilíbrio muda com o peso da barriga e as articulações ficam mais soltas. Faça os movimentos devagar, perto de um apoio, sem forçar.")
 
     return {
         "apta_exercicio": True,
@@ -183,18 +205,19 @@ def avaliar_seguranca_movimento(
         "exercicios_permitidos": recomendados,
         "exercicios_proibidos": proibidos,
         "orientacoes_especificas": orientacoes,
-        "posicao_descanso_ideal": "Decúbito Lateral Esquerdo com travesseiro entre os joelhos"
+        "posicao_descanso_ideal": "Deitada de lado, com um travesseiro entre os joelhos"
     }
 
-def _gerar_fala_personalizada_ia(disposicao: str, queixas: List[str], semana: int) -> str:
+def _gerar_fala_personalizada_ia(disposicao: str, queixas: List[str], semana: Optional[int]) -> str:
     """Gera mensagem empática e natural da IA de voz para a gestante."""
     if "dor_lombar" in queixas and "dor_pelvica" in queixas:
-        return "Olá querida! Percebi que você está com desconforto na lombar e na bacia hoje. Já filtrei apenas exercícios suaves que protegem suas articulações e proibi movimentos assimétricos. Vamos fazer tudo com calma!"
+        return "Como você marcou dor na lombar e na bacia, separei exercícios suaves e deixei de fora movimentos com uma perna de cada vez. Vá com calma e pare se doer."
     elif "dor_lombar" in queixas:
-        return "Olá querida! Como você relatou dor na lombar, preparei uma série especial para aliviar a tensão das costas e descomprimir a coluna com segurança."
+        return "Como você marcou dor na lombar, separei exercícios leves que costumam aliviar a tensão nas costas. Pare se a dor aumentar."
     elif "dor_pelvica" in queixas:
-        return "Olá! Com a dor na bacia que você mencionou, é muito importante mantermos as pernas sempre alinhadas. Bloqueei movimentos unilaterais para cuidar da sua sínfise púbica."
+        return "Com dor na bacia, o melhor é manter as pernas alinhadas. Deixei de fora movimentos com uma perna de cada vez."
     elif disposicao == "exausta":
-        return "Olá querida! Ouvi o seu corpo: hoje ele pediu acolhimento. Vamos focar apenas em respiração gostosa e alívio do peso do bebê, sem nenhum treino cansativo."
+        return "Hoje o seu corpo está pedindo descanso. Ficamos só com respiração e posições de alívio, sem treino cansativo."
     else:
-        return f"Que ótimo te ver por aqui na sua {semana}ª semana! Seu corpo está pronto para uma sessão gostosa de mobilidade e postura segura. Vamos começar?"
+        quando = f" na sua {semana}ª semana" if semana else ""
+        return f"Que bom te ver por aqui{quando}! Aqui estão movimentos leves de postura e mobilidade. Pare se sentir qualquer desconforto."

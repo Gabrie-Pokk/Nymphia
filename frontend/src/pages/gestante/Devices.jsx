@@ -4,6 +4,7 @@ import BackButton from '../../components/BackButton';
 import { Bluetooth, Activity, AlertTriangle, CheckCircle2, Plus, Info, RefreshCw } from 'lucide-react';
 import TriageDisclaimer from '../../components/TriageDisclaimer';
 
+import { formatDateTime } from '../../utils/dateUtils';
 export default function Devices({ onBack }) {
   const { authHeaders } = useAuth();
   const [medicoes, setMedicoes] = useState([]);
@@ -276,7 +277,7 @@ export default function Devices({ onBack }) {
                     )}
                   </div>
                   <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
-                    {new Date(m.data_hora).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })} • Origem: {m.origem === 'dispositivo_bluetooth' ? 'Bluetooth SIG' : 'Manual'}
+                    {formatDateTime(m.data_hora)} • Origem: {m.origem === 'dispositivo_bluetooth' ? 'Bluetooth SIG' : 'Manual'}
                   </span>
                 </div>
                 <span className="badge-gold">{isPressao ? 'PA' : 'Glicose'}</span>

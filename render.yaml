@@ -26,8 +26,6 @@ services:
         fromDatabase:
           name: nymphia-postgres
           property: connectionString
-      - key: NYMPHIA_BERTIMBAU_URL
-        sync: false
       # Adicionados em 15/10/2026 (ver nymphia_backend/.env.example)
       - key: NYMPHIA_ADMIN_TOKEN
         generateValue: true

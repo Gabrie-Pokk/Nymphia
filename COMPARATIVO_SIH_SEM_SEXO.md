@@ -1,5 +1,7 @@
 # COMPARATIVO_SIH_SEM_SEXO.md — Análise da Feature 'SEXO' e Retreinamento dos Modelos SIH
 
+> **Atualização de 16/10/2026: experimento encerrado.** Os modelos de produção foram refeitos (v2 e v3, em 15/10) e nenhum usa `SEXO` (ver `nymphia_backend/modelos/v2/metricas_modelos_v2.json`, campo `variaveis_excluidas`). A pasta `nymphia_backend/modelos_experimentais_sem_sexo/` e os scripts `scripts/retreinar_sih_sem_sexo.py` e `scripts/calcular_metricas_reais.py` foram removidos. Este arquivo fica só como registro.
+
 > **Conformidade com a Regra 1 e Instruções do Bloco 5**:  
 > 1. Dados e métricas 100% reais, reproduzíveis pelo script `scripts/retreinar_sih_sem_sexo.py`.  
 > 2. Trabalho executado exclusivamente na branch `bloco-5-feature-sexo-sih`.  

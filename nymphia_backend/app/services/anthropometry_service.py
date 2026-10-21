@@ -1,10 +1,12 @@
 """
 Serviço Clínico de Antropometria Materna e Ganho Ponderal Gestacional.
 Ganho de peso: recomendação brasileira (FEBRASGO 2023, curvas de Kac et al. 2021,
-Ministério da Saúde 2022). Altura uterina: percentis 10 e 90 do Ministério da Saúde.
+Ministério da Saúde 2022). Altura uterina: padrão internacional INTERGROWTH-21st
+(Papageorghiou et al., BMJ 2016), percentis 10 e 90, de 16 a 40 semanas.
 A curva de Atalah ficou só por compatibilidade e não é mais usada pela API.
 """
 
+import re
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, date
 
@@ -55,38 +57,50 @@ CURVA_ATALAH = {
     42: (25.0, 29.2, 33.2)
 }
 
-# Tabela de Altura Uterina por Idade Gestacional (Ministério da Saúde - Percentis 10 e 90 em centímetros)
-# semana: (p10, p90)
+# Altura uterina (sínfise-fundo), em cm: percentis 10, 50 e 90 do padrão
+# internacional INTERGROWTH-21st, que acompanhou gestantes de 8 países (o Brasil
+# entre eles, em Pelotas). Fonte: Papageorghiou AT et al. BMJ 2016;355:i5662,
+# tabela oficial de centis de 16 a 40 semanas, conferida em 15/10/2026.
+#
+# ATENÇÃO: até 15/10/2026 esta tabela tinha o rótulo "Ministério da Saúde", mas
+# os números não batiam com nenhuma curva publicada (subiam de 1 em 1 cm, como
+# uma aproximação). A Caderneta da Gestante traz a curva só como gráfico, sem
+# tabela; se a equipe quiser usar exatamente a da Caderneta, os números precisam
+# vir de uma fonte oficial com valores.
+# semana: (p10, p50, p90)
 CURVA_ALTURA_UTERINA = {
-    13: (8.0, 12.0),
-    14: (9.0, 13.0),
-    15: (10.0, 14.5),
-    16: (11.0, 16.0),
-    17: (12.0, 17.0),
-    18: (13.5, 18.5),
-    19: (15.0, 20.0),
-    20: (16.0, 21.0),
-    21: (17.0, 22.0),
-    22: (18.0, 23.0),
-    23: (19.0, 24.5),
-    24: (20.0, 25.5),
-    25: (21.0, 26.5),
-    26: (22.0, 27.5),
-    27: (23.0, 28.5),
-    28: (24.0, 29.5),
-    29: (25.0, 30.5),
-    30: (26.0, 31.5),
-    31: (27.0, 32.5),
-    32: (28.0, 33.5),
-    33: (29.0, 34.5),
-    34: (30.0, 35.5),
-    35: (31.0, 36.0),
-    36: (31.5, 36.5),
-    37: (32.0, 37.0),
-    38: (32.5, 37.5),
-    39: (33.0, 38.0),
-    40: (33.0, 38.5)
+    16: (14.0, 15.8, 17.6),
+    17: (14.9, 16.8, 18.6),
+    18: (15.9, 17.8, 19.6),
+    19: (16.9, 18.8, 20.7),
+    20: (17.8, 19.8, 21.7),
+    21: (18.8, 20.8, 22.7),
+    22: (19.8, 21.8, 23.8),
+    23: (20.7, 22.8, 24.8),
+    24: (21.7, 23.8, 25.8),
+    25: (22.7, 24.7, 26.8),
+    26: (23.6, 25.7, 27.9),
+    27: (24.6, 26.7, 28.9),
+    28: (25.5, 27.7, 29.9),
+    29: (26.4, 28.6, 30.9),
+    30: (27.3, 29.6, 31.8),
+    31: (28.2, 30.5, 32.8),
+    32: (29.1, 31.4, 33.8),
+    33: (30.0, 32.3, 34.7),
+    34: (30.8, 33.2, 35.6),
+    35: (31.6, 34.0, 36.5),
+    36: (32.4, 34.9, 37.3),
+    37: (33.2, 35.7, 38.2),
+    38: (33.9, 36.5, 39.0),
+    39: (34.7, 37.2, 39.8),
+    40: (35.4, 38.0, 40.5),
 }
+SEMANA_INICIAL_ALTURA_UTERINA = 16
+
+REFERENCIA_ALTURA_UTERINA = (
+    "Padrão internacional INTERGROWTH-21st de altura uterina (Papageorghiou et al., BMJ 2016), "
+    "percentis 10 e 90"
+)
 
 # ---------------------------------------------------------------------------
 # Ganho de peso gestacional: recomendações brasileiras
@@ -413,38 +427,49 @@ def classificar_curva_atalah(
         "nota_transicao": "A curva de Atalah foi substituída no Brasil pela Curva UFRJ/MS em 2022."
     }
 
-def avaliar_altura_uterina(semana: int, au_cm: Optional[float]) -> Optional[Dict[str, Any]]:
+def avaliar_altura_uterina(semana: Optional[int], au_cm: Optional[float]) -> Optional[Dict[str, Any]]:
     """
-    Avalia a Altura Uterina (AU) em centímetros em relação à curva P10-P90 do Ministério da Saúde.
+    Compara a altura uterina (cm) com os percentis 10 e 90 do INTERGROWTH-21st
+    para a semana em que foi medida. Antes de 16 semanas a curva não existe e a
+    medida não é classificada. Depois de 40 semanas vale a faixa da 40ª.
     """
-    if au_cm is None or semana < 13:
+    if au_cm is None or semana is None:
         return None
 
-    semana_clamp = max(13, min(40, semana))
-    p10, p90 = CURVA_ALTURA_UTERINA.get(semana_clamp, (semana_clamp - 2, semana_clamp + 2))
-
-    if au_cm < p10:
-        status = "Abaixo do Percentil 10"
-        cor = "#E67E22"
-        detalhe = "A medida uterina está menor do que a média esperada para a semana. O obstetra pode solicitar uma ultrassonografia com Doppler para avaliar o crescimento fetal e o volume de líquido amniótico."
-    elif p10 <= au_cm <= p90:
-        status = "Adequada (P10 - P90)"
-        cor = "#27AE60"
-        detalhe = "Crescimento uterino perfeitamente compatível com a idade gestacional."
-    else:
-        status = "Acima do Percentil 90"
-        cor = "#F39C12"
-        detalhe = "A medida está superior ao percentil 90. Pode indicar gestação múltipla, feto com crescimento acentuado (macrossomia) ou maior quantidade de líquido amniótico (polidrâmnio)."
-
-    return {
+    base = {
         "semana": semana,
         "altura_uterina_cm": au_cm,
-        "p10": p10,
-        "p90": p90,
-        "status": status,
-        "cor": cor,
-        "detalhe": detalhe
+        "referencia": REFERENCIA_ALTURA_UTERINA,
+        "observacao": ("A medida muda um pouco de pessoa para pessoa que mede. "
+                       "Mais do que uma medida isolada, importa a sequência ao longo das consultas."),
     }
+    if semana < SEMANA_INICIAL_ALTURA_UTERINA:
+        return {**base, "p10": None, "p50": None, "p90": None, "semana_referencia": None,
+                "status": "Sem curva antes de 16 semanas", "cor": "#C9A84C",
+                "detalhe": "A curva de altura uterina começa na 16ª semana. Esta medida fica anotada, sem classificação."}
+
+    semana_ref = min(40, semana)
+    p10, p50, p90 = CURVA_ALTURA_UTERINA[semana_ref]
+
+    if au_cm < p10:
+        status = "Abaixo do percentil 10"
+        cor = "#E67E22"
+        detalhe = ("A medida ficou abaixo do esperado para a semana. Mostre para sua equipe de pré-natal: "
+                   "costuma ser pedido um ultrassom para ver o crescimento do bebê. Não é emergência, mas "
+                   "se o bebê estiver mexendo menos, procure atendimento hoje.")
+    elif au_cm <= p90:
+        status = "Dentro do esperado (P10 a P90)"
+        cor = "#27AE60"
+        detalhe = "A medida está dentro da faixa esperada para a semana."
+    else:
+        status = "Acima do percentil 90"
+        cor = "#F39C12"
+        detalhe = ("A medida ficou acima do esperado para a semana. Pode ser um bebê maior, mais líquido "
+                   "amniótico, gêmeos ou diabetes na gestação. Mostre para sua equipe: costuma ser pedido um ultrassom.")
+
+    return {**base, "p10": p10, "p50": p50, "p90": p90, "semana_referencia": semana_ref,
+            "status": status, "cor": cor, "detalhe": detalhe}
+
 
 def obter_guia_educativo_antropometria(exames: Optional[List[Any]] = None) -> Dict[str, Any]:
     """
@@ -465,7 +490,7 @@ def obter_guia_educativo_antropometria(exames: Optional[List[Any]] = None) -> Di
         "mitos_e_verdades": [
             {
                 "mito": "A gestante precisa 'comer por dois'.",
-                "fato": "Mito! No 1º trimestre, o gasto calórico mal se altera. No 2º e 3º trimestres, o aumento necessário é de apenas 300 a 450 kcal por dia — o que equivale a 1 iogurte natural com frutas e castanhas. O mais importante é a DENSIDADE NUTRICIONAL, não a quantidade de calorias vazias."
+                "fato": "Mito! No 1º trimestre, o gasto calórico mal se altera. No 2º trimestre, o aumento é de cerca de 340 kcal por dia e no 3º, de cerca de 450 kcal: o equivalente a um lanche a mais, como iogurte natural com frutas e castanhas. O mais importante é a DENSIDADE NUTRICIONAL, não a quantidade de calorias vazias."
             },
             {
                 "mito": "Não se pode engordar nada se já estiver com sobrepeso.",
@@ -483,7 +508,7 @@ def obter_guia_educativo_antropometria(exames: Optional[List[Any]] = None) -> Di
         "micronutrientes_essenciais": [
             {
                 "nutriente": "Ácido Fólico (Vitamina B9)",
-                "importancia": "Essencial para o fechamento do tubo neural do feto (prevenção de anencefalia e espinha bífida). Deve ser suplementado desde o pré-concepcional até a 12ª semana.",
+                "importancia": "Essencial para o fechamento do tubo neural do bebê (prevenção de anencefalia e espinha bífida). O ideal é começar pelo menos 30 dias antes de engravidar; o Ministério da Saúde orienta manter durante a gestação. A dose é a que sua equipe indicar.",
                 "fontes_alimentos": "Espinafre, couve, brócolis, feijão, lentilha, gema de ovo e cereais fortificados."
             },
             {
@@ -499,12 +524,12 @@ def obter_guia_educativo_antropometria(exames: Optional[List[Any]] = None) -> Di
             {
                 "nutriente": "Ômega-3 (DHA)",
                 "importancia": "Ácido graxo estrutural indispensável para o desenvolvimento neurológico, córtex cerebral e retina do feto.",
-                "fontes_alimentos": "Sardinha, salmão bem cozido, sementes de linhaça, chia e nozes."
+                "fontes_alimentos": "Peixes como sardinha e salmão, bem cozidos. Linhaça, chia e nozes têm outro tipo de ômega-3 (ALA), que o corpo transforma pouco em DHA."
             },
             {
                 "nutriente": "Vitamina D",
-                "importancia": "Imunomodulação materna, fixação de cálcio e prevenção de complicações no parto.",
-                "fontes_alimentos": "Banhos de sol curtos matinais (15 minutos), ovos cozidos e suplementação médica individualizada."
+                "importancia": "Ajuda o corpo a aproveitar o cálcio, para os ossos da mãe e do bebê.",
+                "fontes_alimentos": "Sardinha, salmão e gema de ovo. A pele também produz vitamina D com o sol; se for preciso suplementar, a dose é indicada pela sua equipe."
             }
         ],
         "recomendacoes_trimestrais": [
@@ -580,9 +605,17 @@ def processar_nutricao_baseada_em_exames(exames: Optional[List[Any]] = None) -> 
     hb = valores_encontrados.get("hemoglobina")
     ferr = valores_encontrados.get("ferritina")
     if hb is not None or ferr is not None:
-        tem_anemia = (hb is not None and hb < 11.0) or (ferr is not None and ferr < 30.0)
-        status_texto = "Atenção: Indicativo de Anemia Ferropriva / Estoque Baixo de Ferro" if tem_anemia else "Níveis de Hemoglobina e Ferro Adequados"
-        cor = "#C0392B" if tem_anemia else "#27AE60"
+        # Anemia na gestação: hemoglobina abaixo de 11 g/dL (OMS). Ferritina baixa sem
+        # anemia é estoque de ferro baixo, não anemia.
+        tem_anemia = hb is not None and hb < 11.0
+        estoque_baixo = ferr is not None and ferr < 30.0
+        if tem_anemia:
+            status_texto = "Atenção: hemoglobina abaixo de 11 g/dL, compatível com anemia. Converse com sua equipe."
+        elif estoque_baixo:
+            status_texto = "Atenção: estoque de ferro baixo (ferritina abaixo de 30). Converse com sua equipe."
+        else:
+            status_texto = "Hemoglobina e ferro dentro do esperado"
+        cor = "#C0392B" if tem_anemia else ("#E67E22" if estoque_baixo else "#27AE60")
         detalhe_valor = f"Hemoglobina: {hb} g/dL" if hb else ""
         if ferr: detalhe_valor += f" (Ferritina: {ferr} ng/mL)"
     else:
@@ -604,20 +637,29 @@ def processar_nutricao_baseada_em_exames(exames: Optional[List[Any]] = None) -> 
             "Sementes de abóbora tostadas e gergelim"
         ],
         "sinergia_absorcao": "🍋 Dica de Ouro: Sempre consuma uma fonte de Vitamina C (suco de limão ou laranja, acerola, kiwi) junto da refeição rica em ferro.",
-        "inibidores_evitar": "☕ Evite estritamente café, chá preto/verde, leite e derivados até 2 horas após o almoço ou jantar (cálcio e polifenóis reduzem a absorção de ferro em até 60%)."
+        "inibidores_evitar": "☕ Deixe café, chá preto ou verde e leite para 1 a 2 horas longe das refeições ricas em ferro: eles diminuem a absorção do ferro."
     })
 
     # 2. Glicemia de Jejum
     glic = valores_encontrados.get("glicemia")
     if glic is not None:
-        tem_dg = glic >= 92.0
-        status_texto = "Atenção: Glicemia Limítrofe / Rastreio de Diabetes Gestacional (>= 92 mg/dL)" if tem_dg else "Glicemia de Jejum Normal (< 92 mg/dL)"
-        cor = "#E67E22" if tem_dg else "#27AE60"
-        detalhe_valor = f"{glic} mg/dL (Critério FEBRASGO/IADPSG)"
+        # Critério brasileiro (OPAS, Ministério da Saúde, FEBRASGO e SBD, 2016): jejum de
+        # 92 a 125 mg/dL na gestação é critério de diabetes gestacional; 126 ou mais,
+        # de diabetes diagnosticado na gestação. O app avisa; quem confirma é a equipe.
+        if glic >= 126.0:
+            status_texto = "Atenção: jejum de 126 mg/dL ou mais. Mostre este exame para sua equipe o quanto antes."
+            cor = "#C0392B"
+        elif glic >= 92.0:
+            status_texto = "Atenção: jejum entre 92 e 125 mg/dL, faixa usada no critério de diabetes gestacional. Mostre para sua equipe."
+            cor = "#E67E22"
+        else:
+            status_texto = "Glicemia de jejum abaixo de 92 mg/dL"
+            cor = "#27AE60"
+        detalhe_valor = f"{glic} mg/dL (critério brasileiro: OPAS, Ministério da Saúde, FEBRASGO e SBD)"
     else:
         status_texto = "Equilíbrio Glicêmico & Curva Glicêmica"
         cor = "#C9A84C"
-        detalhe_valor = "Meta no 1º, 2º e 3º trimestres: Jejum < 92 mg/dL"
+        detalhe_valor = "Referência na gestação: jejum abaixo de 92 mg/dL"
 
     biomarcadores.append({
         "id": "glicemia",
@@ -639,14 +681,22 @@ def processar_nutricao_baseada_em_exames(exames: Optional[List[Any]] = None) -> 
     # 3. Vitamina D
     vit_d = valores_encontrados.get("vitamina_d")
     if vit_d is not None:
-        baixa_d = vit_d < 30.0
-        status_texto = "Atenção: Vitamina D Subótima (< 30 ng/mL)" if baixa_d else "Vitamina D em Faixa Ideal (>= 30 ng/mL)"
-        cor = "#F39C12" if baixa_d else "#27AE60"
+        # SBEM e SBPC/ML (Arch Endocrinol Metab 2020;64(4):462-478): para gestantes,
+        # 30 a 60 ng/mL; abaixo de 20 é deficiência.
+        if vit_d < 20.0:
+            status_texto = "Atenção: vitamina D abaixo de 20 ng/mL (deficiência). Mostre para sua equipe."
+            cor = "#E67E22"
+        elif vit_d < 30.0:
+            status_texto = "Vitamina D abaixo de 30 ng/mL, valor recomendado para gestantes. Converse com sua equipe."
+            cor = "#F39C12"
+        else:
+            status_texto = "Vitamina D dentro do recomendado para gestantes (30 ng/mL ou mais)"
+            cor = "#27AE60"
         detalhe_valor = f"{vit_d} ng/mL"
     else:
         status_texto = "Mineralização Óssea & Fixação de Cálcio"
         cor = "#C9A84C"
-        detalhe_valor = "Meta gestacional recomendada: >= 30 ng/mL"
+        detalhe_valor = "Referência para gestantes: 30 a 60 ng/mL (SBEM e SBPC/ML, 2020)"
 
     biomarcadores.append({
         "id": "vitamina_d",
@@ -660,20 +710,21 @@ def processar_nutricao_baseada_em_exames(exames: Optional[List[Any]] = None) -> 
             "Sardinha fresca e salmão bem cozidos",
             "Cogumelos frescos expostos ao sol"
         ],
-        "sinergia_absorcao": "☀️ Banho de Sol Seguro: 15 a 20 minutos de sol matinal antes das 9h com braços e pernas descobertos (sem protetor nas áreas expostas por curto período).",
+        "sinergia_absorcao": "☀️ Sol com cuidado: use protetor solar (manchas na pele são comuns na gestação). A necessidade de suplementar vitamina D é avaliada pela sua equipe.",
         "inibidores_evitar": "⚠️ Não tome megadoses por conta própria; a suplementação em gotas ou cápsulas deve ser ajustada com a dosagem prescrita pelo obstetra."
     })
 
     # 4. Hormônios da Tireoide (TSH)
     tsh = valores_encontrados.get("tsh")
     if tsh is not None:
-        status_texto = f"TSH: {tsh} mUI/L (Acompanhamento Perinatal)"
-        cor = "#27AE60" if 0.4 <= tsh <= 3.0 else "#E67E22"
+        # A faixa de TSH na gestação depende do trimestre e do laboratório; quem interpreta é a equipe
+        status_texto = f"TSH: {tsh} mUI/L. Sua equipe interpreta pelo trimestre e pela referência do laboratório."
+        cor = "#C9A84C"
         detalhe_valor = f"{tsh} mUI/L"
     else:
         status_texto = "Tireoide & Neurodesenvolvimento Fetal"
         cor = "#C9A84C"
-        detalhe_valor = "Referência: 1º tri < 2,5 mUI/L | 2º e 3º tri < 3,0 mUI/L"
+        detalhe_valor = "A referência de TSH na gestação depende do trimestre e do laboratório"
 
     biomarcadores.append({
         "id": "tsh_tireoide",
@@ -685,9 +736,9 @@ def processar_nutricao_baseada_em_exames(exames: Optional[List[Any]] = None) -> 
         "alimentos_recomendados": [
             "Sal de cozinha iodado brasileiro (usado com moderação para não elevar a pressão)",
             "Peixes de água salgada bem cozidos",
-            "Castanha-do-pará (1 unidade ao dia fornece o selênio ideal para a conversão de T4 em T3)"
+            "Castanha-do-pará: 1 por dia já costuma cobrir o selênio do dia; não precisa de mais"
         ],
-        "sinergia_absorcao": "💧 Hidratação Plena: A tireoide regula a temperatura corporal e a expansão do volume sanguíneo gestacional.",
+        "sinergia_absorcao": "💊 Se você toma levotiroxina: tome em jejum e deixe pelo menos 4 horas de distância dos suplementos de ferro e cálcio, que atrapalham a absorção.",
         "inibidores_evitar": "🚫 Evite excesso de soja não fermentada ou couve crua em grandes volumes se tiver hipotireoidismo diagnosticado."
     })
 
@@ -696,3 +747,105 @@ def processar_nutricao_baseada_em_exames(exames: Optional[List[Any]] = None) -> 
         "valores_identificados": valores_encontrados,
         "biomarcadores": biomarcadores
     }
+
+
+# ---------------------------------------------------------------------------
+# Semana gestacional, pressão, edema e ritmo de ganho (15/10/2026)
+# ---------------------------------------------------------------------------
+# Até 15/10/2026 a pressão anotada junto com o peso era guardada e nunca
+# avaliada: quem anotava 160/110 com 30 semanas não recebia alerta nenhum.
+# Os cortes seguem os do check-in (rules_engine): 140/90 ou mais é urgente,
+# porque na gestação pode ser pré-eclâmpsia e a prioridade é não deixar passar.
+
+def semana_na_data(dum: Optional[date], dia: date) -> Optional[int]:
+    """Semanas completas de gestação numa data, a partir da DUM. None sem DUM."""
+    if not dum or not dia:
+        return None
+    return max(0, (dia - dum).days // 7)
+
+
+_PRESSAO_TEXTO = re.compile(
+    r"^\s*(\d{1,3})(?:[.,]\d)?\s*(?:/|x|por)\s*(\d{1,3})(?:[.,]\d)?\s*(?:mm\s*hg|cm\s*hg)?\s*$",
+    re.IGNORECASE,
+)
+
+
+def ler_pressao_arterial(texto: Optional[str]) -> Optional[Tuple[int, int]]:
+    """'120/80', '120x80', '120 por 80' ou '12 por 8' (cmHg) viram (120, 80). None se não der para ler."""
+    if not texto:
+        return None
+    achado = _PRESSAO_TEXTO.match(texto.strip())
+    if not achado:
+        return None
+    from app.services.rules_engine import pressao_em_mmhg
+    return pressao_em_mmhg(int(achado.group(1)), int(achado.group(2)))
+
+
+DIAS_PARA_PRESSAO_RECENTE = 7
+
+
+def avaliar_pressao_arterial(texto: Optional[str], data_medida: Optional[date] = None,
+                             hoje: Optional[date] = None) -> Optional[Dict[str, Any]]:
+    leitura = ler_pressao_arterial(texto)
+    if leitura is None:
+        return None
+    sistolica, diastolica = leitura
+    hoje = hoje or datetime.utcnow().date()
+    data_medida = data_medida or hoje
+    recente = (hoje - data_medida).days <= DIAS_PARA_PRESSAO_RECENTE
+
+    base = {"tipo": "pressao", "sistolica": sistolica, "diastolica": diastolica,
+            "data": data_medida.isoformat(), "leitura": f"{sistolica}/{diastolica} mmHg"}
+    if sistolica < 140 and diastolica < 90:
+        return {**base, "nivel": "nenhum", "titulo": f"Pressão {sistolica}/{diastolica} mmHg",
+                "orientacao": "Dentro do esperado na gestação (abaixo de 140/90)."}
+    if not recente:
+        return {**base, "nivel": "atencao", "titulo": f"Última pressão anotada estava alta ({sistolica}/{diastolica})",
+                "orientacao": (f"A pressão anotada em {data_medida.strftime('%d/%m')} estava alta. "
+                               "Meça de novo hoje e conte para sua equipe de pré-natal.")}
+    if sistolica >= 160 or diastolica >= 110:
+        return {**base, "nivel": "urgente", "titulo": f"Pressão muito alta: {sistolica}/{diastolica} mmHg",
+                "orientacao": ("Procure a maternidade agora. Pressão nesse nível na gestação precisa de "
+                               "avaliação imediata, mesmo sem outros sintomas.")}
+    return {**base, "nivel": "urgente", "titulo": f"Pressão alta: {sistolica}/{diastolica} mmHg",
+            "orientacao": ("Procure atendimento ainda hoje, na maternidade ou com sua equipe de pré-natal, "
+                           "para medir de novo e investigar pré-eclâmpsia. Vá agora se tiver dor de cabeça forte, "
+                           "visão embaçada ou pontos brilhantes, dor no estômago ou falta de ar.")}
+
+
+def avaliar_edema(edema: Optional[str]) -> Optional[Dict[str, Any]]:
+    """Inchaço discreto é comum na gestação; o intenso (3+ ou 4+) merece aviso."""
+    if edema in ("+++/4+", "++++/4+"):
+        return {"tipo": "edema", "nivel": "atencao", "titulo": f"Inchaço intenso anotado ({edema})",
+                "orientacao": ("Conte para sua equipe de pré-natal. Procure a maternidade se o inchaço apareceu "
+                               "de repente, no rosto ou nas mãos, ou veio com dor de cabeça, visão embaçada ou pressão alta.")}
+    return None
+
+
+def avaliar_ritmo_de_ganho(peso_atual: float, data_atual: date, peso_anterior: float, data_anterior: date,
+                           semana: Optional[int]) -> Optional[Dict[str, Any]]:
+    """
+    Ganho rápido entre duas pesagens, a partir de 20 semanas: 1 kg ou mais em até
+    10 dias (regra antiga, mantida) ou ritmo de 1 kg por semana ou mais em até 21 dias.
+    """
+    dias = (data_atual - data_anterior).days
+    if dias <= 0 or dias > 21 or semana is None or semana < 20:
+        return None
+    ganho = peso_atual - peso_anterior
+    ritmo = ganho / dias * 7
+    if (ganho >= 1.0 and dias <= 10) or ritmo >= 1.0:
+        return {"tipo": "ganho_rapido", "nivel": "atencao",
+                "titulo": f"Ganho rápido: {_formatar_kg(round(ganho, 1))} kg em {dias} dias",
+                "orientacao": ("Ganho rápido de peso pode ser retenção de líquido. Meça a pressão hoje; "
+                               "se estiver em 140/90 ou mais, ou se houver inchaço no rosto ou nas mãos, "
+                               "procure a maternidade.")}
+    return None
+
+
+def curva_ganho_recomendada(categoria_chave: str) -> List[Dict[str, Any]]:
+    """Faixa recomendada de ganho acumulado de 0 a 40 semanas, para o gráfico."""
+    return [
+        {"semana": s, "min_kg": lo, "max_kg": hi}
+        for s in range(0, 41)
+        for lo, hi in [calcular_faixa_ganho_esperado_ufrj(categoria_chave, s)]
+    ]

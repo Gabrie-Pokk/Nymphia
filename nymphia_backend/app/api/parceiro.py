@@ -404,8 +404,8 @@ def registrar_checkin_pelo_parceiro(
     alertas_regras = avaliacao.urgentes
     orientacao_regras = avaliacao.orientacao
 
-    # 2. Análise emocional (BERTimbau / heurística)
-    scores_bertimbau, categorias_emocionais = classify_text_emotions(descricao_formatada)
+    # 2. Categorias por palavras-chave (app/services/ai_text_service.py)
+    _, categorias_emocionais = classify_text_emotions(descricao_formatada)
 
     # 3. Formatação da orientação ao parceiro
     if is_urgent or avaliacao.nivel == "atencao":
@@ -416,7 +416,7 @@ def registrar_checkin_pelo_parceiro(
             f"Registramos os sintomas da gestante ({sintomas_txt}) via apoio do parceiro. "
             f"Ajude-a a manter repouso e hidratação. Se os sintomas persistirem ou se intensificarem, contate o obstetra."
         )
-    elif "ansiedade" in categorias_emocionais or "tristeza" in categorias_emocionais:
+    elif "ansiedade" in categorias_emocionais or "tristeza_desanimo" in categorias_emocionais:
         recomendacao = (
             f"Obrigado por registrar o check-in. {gestante.nome} pode estar passando por um dia mais cansativo ou ansioso. "
             f"Ofereça acolhimento, escuta atenta e tranquilidade."
@@ -433,11 +433,9 @@ def registrar_checkin_pelo_parceiro(
         sintomas=payload.sintomas,
         movimentos_bebe=payload.movimentos_bebe,
         semana_gestacional=payload.semana_gestacional,
-        categorias_bertimbau=scores_bertimbau,
         categorias_regras=categorias_emocionais,
         alerta_sintoma_fisico=alertas_regras,
         sinais_atencao=avaliacao.atencoes,
-        score_anomalia=0.65 if is_urgent else 0.05
     )
     db.add(novo_checkin)
 
@@ -460,12 +458,9 @@ def registrar_checkin_pelo_parceiro(
         sintomas=novo_checkin.sintomas,
         movimentos_bebe=novo_checkin.movimentos_bebe,
         semana_gestacional=novo_checkin.semana_gestacional,
-        categorias_bertimbau=novo_checkin.categorias_bertimbau,
         categorias_regras=novo_checkin.categorias_regras,
         alerta_sintoma_fisico=novo_checkin.alerta_sintoma_fisico,
         sinais_atencao=novo_checkin.sinais_atencao or [],
-        score_anomalia=novo_checkin.score_anomalia,
-        bertimbau_disponivel=True,
         recomendacao=recomendacao
     )
 

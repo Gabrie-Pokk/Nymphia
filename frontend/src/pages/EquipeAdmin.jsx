@@ -3,6 +3,7 @@ import LotusLogo from '../components/LotusLogo';
 import { apiFetch } from '../utils/api';
 import { ShieldCheck, FileText, Check, X, RefreshCw, ExternalLink, LogOut } from 'lucide-react';
 
+import { formatDate } from '../utils/dateUtils';
 /**
  * Área da equipe Nymphia: conferência e aprovação de profissionais.
  *
@@ -290,7 +291,7 @@ export default function EquipeAdmin({ onExit }) {
                   <div style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>{prof.email}</div>
                   <div style={{ fontSize: '0.86rem', marginTop: '4px' }}>
                     <strong>{prof.registro}</strong>
-                    {prof.criado_em && <> · cadastro em {new Date(prof.criado_em + 'Z').toLocaleDateString('pt-BR')}</>}
+                    {prof.criado_em && <> · cadastro em {formatDate(prof.criado_em)}</>}
                   </div>
                   <div style={{ fontSize: '0.78rem', marginTop: '2px', color: prof.enviou_documento ? '#1E7E34' : '#A04000' }}>
                     {prof.enviou_documento ? 'Enviou documento' : 'Não enviou documento'}

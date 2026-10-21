@@ -1,0 +1,237 @@
+{
+  "_leia_antes": [
+    "Modelo do arquivo da EPDS. Troque cada texto entre colchetes pelo texto da versão brasileira validada,",
+    "exatamente na ordem da escala original.",
+    "Os 'pontos' NÃO podem ser alterados: o servidor confere com a chave da escala e recusa o arquivo se não baterem.",
+    "Só ligue a triagem com autorização por escrito do Royal College of Psychiatrists para uso no app;",
+    "descreva essa autorização no campo 'licenca'. Sem 'licenca' preenchida o arquivo é recusado.",
+    "O repositório do Nymphia é público: não coloque o texto preenchido no Git.",
+    "No servidor, cole o conteúdo do arquivo preenchido na variável de ambiente NYMPHIA_EPDS_JSON.",
+    "Para testar no computador, salve como epds_ptbr.json nesta pasta (o .gitignore já ignora esse nome)."
+  ],
+  "versao": "[Nome da versão, ex.: EPDS, versão brasileira validada por Santos et al., 2007]",
+  "licenca": "",
+  "instrucao": "[Texto de instrução da escala para a gestante]",
+  "itens": [
+    {
+      "numero": 1,
+      "texto": "[Texto da pergunta 1]",
+      "opcoes": [
+        {
+          "texto": "[Resposta 1 da pergunta 1]",
+          "pontos": 0
+        },
+        {
+          "texto": "[Resposta 2 da pergunta 1]",
+          "pontos": 1
+        },
+        {
+          "texto": "[Resposta 3 da pergunta 1]",
+          "pontos": 2
+        },
+        {
+          "texto": "[Resposta 4 da pergunta 1]",
+          "pontos": 3
+        }
+      ]
+    },
+    {
+      "numero": 2,
+      "texto": "[Texto da pergunta 2]",
+      "opcoes": [
+        {
+          "texto": "[Resposta 1 da pergunta 2]",
+          "pontos": 0
+        },
+        {
+          "texto": "[Resposta 2 da pergunta 2]",
+          "pontos": 1
+        },
+        {
+          "texto": "[Resposta 3 da pergunta 2]",
+          "pontos": 2
+        },
+        {
+          "texto": "[Resposta 4 da pergunta 2]",
+          "pontos": 3
+        }
+      ]
+    },
+    {
+      "numero": 3,
+      "texto": "[Texto da pergunta 3]",
+      "opcoes": [
+        {
+          "texto": "[Resposta 1 da pergunta 3]",
+          "pontos": 3
+        },
+        {
+          "texto": "[Resposta 2 da pergunta 3]",
+          "pontos": 2
+        },
+        {
+          "texto": "[Resposta 3 da pergunta 3]",
+          "pontos": 1
+        },
+        {
+          "texto": "[Resposta 4 da pergunta 3]",
+          "pontos": 0
+        }
+      ]
+    },
+    {
+      "numero": 4,
+      "texto": "[Texto da pergunta 4]",
+      "opcoes": [
+        {
+          "texto": "[Resposta 1 da pergunta 4]",
+          "pontos": 0
+        },
+        {
+          "texto": "[Resposta 2 da pergunta 4]",
+          "pontos": 1
+        },
+        {
+          "texto": "[Resposta 3 da pergunta 4]",
+          "pontos": 2
+        },
+        {
+          "texto": "[Resposta 4 da pergunta 4]",
+          "pontos": 3
+        }
+      ]
+    },
+    {
+      "numero": 5,
+      "texto": "[Texto da pergunta 5]",
+      "opcoes": [
+        {
+          "texto": "[Resposta 1 da pergunta 5]",
+          "pontos": 3
+        },
+        {
+          "texto": "[Resposta 2 da pergunta 5]",
+          "pontos": 2
+        },
+        {
+          "texto": "[Resposta 3 da pergunta 5]",
+          "pontos": 1
+        },
+        {
+          "texto": "[Resposta 4 da pergunta 5]",
+          "pontos": 0
+        }
+      ]
+    },
+    {
+      "numero": 6,
+      "texto": "[Texto da pergunta 6]",
+      "opcoes": [
+        {
+          "texto": "[Resposta 1 da pergunta 6]",
+          "pontos": 3
+        },
+        {
+          "texto": "[Resposta 2 da pergunta 6]",
+          "pontos": 2
+        },
+        {
+          "texto": "[Resposta 3 da pergunta 6]",
+          "pontos": 1
+        },
+        {
+          "texto": "[Resposta 4 da pergunta 6]",
+          "pontos": 0
+        }
+      ]
+    },
+    {
+      "numero": 7,
+      "texto": "[Texto da pergunta 7]",
+      "opcoes": [
+        {
+          "texto": "[Resposta 1 da pergunta 7]",
+          "pontos": 3
+        },
+        {
+          "texto": "[Resposta 2 da pergunta 7]",
+          "pontos": 2
+        },
+        {
+          "texto": "[Resposta 3 da pergunta 7]",
+          "pontos": 1
+        },
+        {
+          "texto": "[Resposta 4 da pergunta 7]",
+          "pontos": 0
+        }
+      ]
+    },
+    {
+      "numero": 8,
+      "texto": "[Texto da pergunta 8]",
+      "opcoes": [
+        {
+          "texto": "[Resposta 1 da pergunta 8]",
+          "pontos": 3
+        },
+        {
+          "texto": "[Resposta 2 da pergunta 8]",
+          "pontos": 2
+        },
+        {
+          "texto": "[Resposta 3 da pergunta 8]",
+          "pontos": 1
+        },
+        {
+          "texto": "[Resposta 4 da pergunta 8]",
+          "pontos": 0
+        }
+      ]
+    },
+    {
+      "numero": 9,
+      "texto": "[Texto da pergunta 9]",
+      "opcoes": [
+        {
+          "texto": "[Resposta 1 da pergunta 9]",
+          "pontos": 3
+        },
+        {
+          "texto": "[Resposta 2 da pergunta 9]",
+          "pontos": 2
+        },
+        {
+          "texto": "[Resposta 3 da pergunta 9]",
+          "pontos": 1
+        },
+        {
+          "texto": "[Resposta 4 da pergunta 9]",
+          "pontos": 0
+        }
+      ]
+    },
+    {
+      "numero": 10,
+      "texto": "[Texto da pergunta 10]",
+      "opcoes": [
+        {
+          "texto": "[Resposta 1 da pergunta 10]",
+          "pontos": 3
+        },
+        {
+          "texto": "[Resposta 2 da pergunta 10]",
+          "pontos": 2
+        },
+        {
+          "texto": "[Resposta 3 da pergunta 10]",
+          "pontos": 1
+        },
+        {
+          "texto": "[Resposta 4 da pergunta 10]",
+          "pontos": 0
+        }
+      ]
+    }
+  ]
+}

@@ -3,17 +3,20 @@ import { useAuth } from '../../context/AuthContext';
 import {
   Calendar, MessageSquare, Users, CheckCircle, Activity, Heart,
   Shield, FileText, Camera, Bluetooth, ChevronRight, AlertCircle,
-  Link, Eye, Scale, Stethoscope, Copy, Check, Share2, X
+  Link, Scale, Stethoscope, Copy, Check, Share2, X
 } from 'lucide-react';
 import TriageDisclaimer from '../../components/TriageDisclaimer';
+import { nomeComTitulo } from '../../utils/nomeProfissional';
 
 export default function GestanteHome({ onNavigate }) {
   const { user, authHeaders } = useAuth();
   const [perfil, setPerfil] = useState(null);
   const [checkinHoje, setCheckinHoje] = useState(false);
   const [proximoEvento, setProximoEvento] = useState(null);
-  const [semana, setSemana] = useState(24);
-  const [diasSemana, setDiasSemana] = useState(3);
+  // Sem DUM carregada, a semana fica vazia (antes aparecia "24ª semana + 3 dias" para todo mundo)
+  const [semana, setSemana] = useState(null);
+  const [diasSemana, setDiasSemana] = useState(null);
+  const [epdsDisponivel, setEpdsDisponivel] = useState(false);
 
   // Vínculos com Médico Obstetra e Parceiro Real
   const [medicosConectados, setMedicosConectados] = useState([]);
@@ -32,7 +35,7 @@ export default function GestanteHome({ onNavigate }) {
             const dumDate = new Date(data.dum + 'T12:00:00');
             const hoje = new Date();
             const diffDias = Math.floor((hoje - dumDate) / (1000 * 60 * 60 * 24));
-            if (diffDias > 0) {
+            if (diffDias >= 0) {
               setSemana(Math.floor(diffDias / 7));
               setDiasSemana(diffDias % 7);
             }
@@ -73,6 +76,12 @@ export default function GestanteHome({ onNavigate }) {
       })
       .catch(() => {});
 
+    // Questionário de bem-estar (EPDS): só aparece quando o texto licenciado estiver no servidor
+    fetch('/epds/status', { headers: authHeaders() })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setEpdsDisponivel(Boolean(data?.disponivel)))
+      .catch(() => {});
+
     // 5. Parceiro vinculado e código de convite
     fetch('/parceiro/meu-vinculo', { headers: authHeaders() })
       .then((res) => (res.ok ? res.json() : null))
@@ -100,11 +109,18 @@ export default function GestanteHome({ onNavigate }) {
             Olá, {user?.nome?.split(' ')[0] || 'Gestante'}
           </span>
           <h2 style={{ fontSize: '1.6rem', marginTop: '4px', marginBottom: '8px' }}>
-            {semana}ª Semana + {diasSemana} dias
+            {semana != null
+              ? `${semana}ª semana e ${diasSemana} ${diasSemana === 1 ? 'dia' : 'dias'}`
+              : perfil ? 'Semana ainda não calculada' : 'Carregando...'}
           </h2>
-          <p style={{ fontSize: '0.88rem', opacity: 0.9 }}>
-            O bebê já responde a estímulos sonoros e os pulmões produzem surfactante.
-          </p>
+          {perfil?.dpp && (() => {
+            const dias = Math.ceil((new Date(perfil.dpp + 'T12:00:00') - new Date()) / (1000 * 60 * 60 * 24));
+            return dias > 0 ? (
+              <p style={{ fontSize: '0.88rem', opacity: 0.9 }}>
+                Faltam cerca de {Math.ceil(dias / 7)} semanas para a data provável do parto.
+              </p>
+            ) : null;
+          })()}
 
           <div style={{ display: 'flex', gap: '8px', marginTop: '16px', flexWrap: 'wrap' }}>
             <span className="badge-gold">
@@ -112,7 +128,7 @@ export default function GestanteHome({ onNavigate }) {
             </span>
             {medicoPrincipal && (
               <span style={{ fontSize: '0.74rem', padding: '3px 8px', backgroundColor: 'rgba(255,255,255,0.22)', color: '#FFFFFF', borderRadius: '4px', fontWeight: 600 }}>
-                🩺 Dr(a). {medicoPrincipal.profissional_nome}
+                🩺 {nomeComTitulo(medicoPrincipal.profissional_nome)}
               </span>
             )}
           </div>
@@ -154,7 +170,7 @@ export default function GestanteHome({ onNavigate }) {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <h3 style={{ fontSize: '0.98rem', margin: 0, color: 'var(--color-vinho)' }}>
-                  Dr(a). {medicoPrincipal.profissional_nome}
+                  {nomeComTitulo(medicoPrincipal.profissional_nome)}
                 </h3>
                 <span className="badge-gold" style={{ fontSize: '0.65rem', padding: '1px 6px' }}>
                   Obstetra Conectado
@@ -422,9 +438,20 @@ export default function GestanteHome({ onNavigate }) {
           style={{ flexDirection: 'column', height: '96px', padding: '12px', textAlign: 'center', border: '1.5px solid var(--color-rosa)', backgroundColor: '#FFFDFD' }}
           onClick={() => onNavigate('/visao-corporal')}
         >
-          <Eye size={26} color="var(--color-rosa)" />
-          <span style={{ fontSize: '0.85rem', marginTop: '6px', fontWeight: 600, color: 'var(--color-vinho)' }}>Visão Corporal IA</span>
+          <Activity size={26} color="var(--color-rosa)" />
+          <span style={{ fontSize: '0.85rem', marginTop: '6px', fontWeight: 600, color: 'var(--color-vinho)' }}>Postura e movimento</span>
         </button>
+
+        {epdsDisponivel && (
+          <button
+            className="btn btn-outline"
+            style={{ flexDirection: 'column', height: '96px', padding: '12px', textAlign: 'center' }}
+            onClick={() => onNavigate('/bem-estar-emocional')}
+          >
+            <Heart size={26} color="var(--color-rosa)" />
+            <span style={{ fontSize: '0.85rem', marginTop: '6px' }}>Como você tem se sentido</span>
+          </button>
+        )}
 
         <button
           className="btn btn-outline"

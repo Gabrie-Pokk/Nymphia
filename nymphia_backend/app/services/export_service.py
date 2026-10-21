@@ -7,7 +7,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 
 from app.models.auth import Gestante
-from app.models.clinical import PerfilClinico, HistoricoFamiliar, CheckinRegistro, Exame
+from app.models.clinical import PerfilClinico, HistoricoFamiliar, CheckinRegistro, Exame, RegistroAntropometrico, TriagemEPDS
 from app.models.interaction import EventoAgenda, Mensagem, EventoEmergencia
 from app.models.relations import LogAcesso, Vinculo
 
@@ -22,6 +22,11 @@ def export_gestante_json(gestante_id: str, db: Session) -> Dict[str, Any]:
     agenda = db.query(EventoAgenda).filter(EventoAgenda.gestante_id == gestante_id).all()
     exames = db.query(Exame).filter(Exame.gestante_id == gestante_id).all()
     emergencias = db.query(EventoEmergencia).filter(EventoEmergencia.gestante_id == gestante_id).all()
+    antropometria = (db.query(RegistroAntropometrico)
+                     .filter(RegistroAntropometrico.gestante_id == gestante_id)
+                     .order_by(RegistroAntropometrico.data_registro.desc()).all())
+    triagens = (db.query(TriagemEPDS).filter(TriagemEPDS.gestante_id == gestante_id)
+                .order_by(TriagemEPDS.data_hora.desc()).all())
 
     return {
         "titular": {
@@ -40,6 +45,14 @@ def export_gestante_json(gestante_id: str, db: Session) -> Dict[str, Any]:
             "partos_normais": perfil.partos_normais if perfil else 0,
             "partos_cesareos": perfil.partos_cesareos if perfil else 0,
             "perdas_gestacionais": perfil.perdas_gestacionais if perfil else 0,
+            "numero_fetos": perfil.numero_fetos,
+            "mes_inicio_prenatal": perfil.mes_inicio_prenatal,
+            "uf_residencia": perfil.uf_residencia,
+            "pre_eclampsia_previa": perfil.pre_eclampsia_previa,
+            "hipertensao_cronica": perfil.hipertensao_cronica,
+            "diabetes_previo": perfil.diabetes_previo,
+            "altura_cm": perfil.altura_cm,
+            "peso_pre_gestacional": perfil.peso_pre_gestacional,
             "maternidade_referencia": perfil.maternidade_nome if perfil else None,
             "maternidade_telefone": perfil.maternidade_telefone if perfil else None
         } if perfil else None,
@@ -80,6 +93,29 @@ def export_gestante_json(gestante_id: str, db: Session) -> Dict[str, Any]:
                 "data_hora": em.data_hora.isoformat(),
                 "profissional_notificado": em.profissional_notificado
             } for em in emergencias
+        ],
+        "registros_antropometricos": [
+            {
+                "data_registro": r.data_registro.isoformat() if r.data_registro else None,
+                "semana_gestacional": r.semana_gestacional,
+                "peso_atual_kg": r.peso_atual_kg,
+                "altura_uterina_cm": r.altura_uterina_cm,
+                "circunferencia_abdominal_cm": r.circunferencia_abdominal_cm,
+                "pressao_arterial": r.pressao_arterial,
+                "edema": r.edema,
+                "observacoes": r.observacoes
+            } for r in antropometria
+        ],
+        "triagens_epds": [
+            {
+                "data_hora": t.data_hora.isoformat(),
+                "semana_gestacional": t.semana_gestacional,
+                "respostas": t.respostas,
+                "pontos_por_item": t.pontos_por_item,
+                "pontuacao": t.pontuacao,
+                "nivel": t.nivel,
+                "versao_questionario": t.versao_questionario
+            } for t in triagens
         ]
     }
 

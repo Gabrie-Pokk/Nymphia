@@ -5,6 +5,18 @@ import {
 } from 'lucide-react';
 import { apiFetch } from '../utils/api';
 
+const ROTULO_FATOR = {
+  pre_eclampsia_previa: 'Pré-eclâmpsia anterior',
+  hipertensao_cronica: 'Pressão alta antes da gravidez',
+  diabetes_previo: 'Diabetes antes da gravidez',
+  imc_baixo_peso: 'IMC abaixo de 18,5',
+  imc_sobrepeso: 'IMC de 25 a 29,9',
+  imc_obesidade: 'IMC de 30 ou mais',
+  gemeos: 'Gêmeos',
+  historico_familiar_pe: 'Mãe com pré-eclâmpsia',
+  historico_familiar_dm: 'Diabetes na família'
+};
+
 export default function AiTransparencyModal({ isOpen, onClose }) {
   const [dados, setDados] = useState(null);
   const [carregando, setCarregando] = useState(false);
@@ -83,7 +95,7 @@ export default function AiTransparencyModal({ isOpen, onClose }) {
                 Governança de IA & Transparência Clínica
               </h3>
               <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.85)' }}>
-                Resolução CFM nº 2.454/2026 • Código de Defesa do Consumidor • RDC Anvisa 657/2022
+                Resolução CFM nº 2.454/2026 • Código de Defesa do Consumidor • LGPD
               </span>
             </div>
           </div>
@@ -132,7 +144,7 @@ export default function AiTransparencyModal({ isOpen, onClose }) {
               gap: '6px'
             }}
           >
-            <Activity size={16} /> Matriz de Métricas (6 Modelos)
+            <Activity size={16} /> Métricas reais dos modelos
           </button>
           <button
             onClick={() => setAbaAtiva('itu')}
@@ -152,7 +164,7 @@ export default function AiTransparencyModal({ isOpen, onClose }) {
               gap: '6px'
             }}
           >
-            <AlertTriangle size={16} color="var(--color-dourado)" /> Alerta CDC / ITU (1%)
+            <AlertTriangle size={16} color="var(--color-dourado)" /> Infecção urinária
           </button>
           <button
             onClick={() => setAbaAtiva('regulatorio')}
@@ -172,7 +184,7 @@ export default function AiTransparencyModal({ isOpen, onClose }) {
               gap: '6px'
             }}
           >
-            <ShieldCheck size={16} /> Marco Regulatório SaMD
+            <ShieldCheck size={16} /> Marco Regulatório
           </button>
         </div>
 
@@ -199,97 +211,122 @@ export default function AiTransparencyModal({ isOpen, onClose }) {
               >
                 <Info size={20} color="var(--color-dourado)" style={{ flexShrink: 0, marginTop: '2px' }} />
                 <div style={{ fontSize: '0.82rem', color: '#78350F' }}>
-                  <strong>Aviso Mandatório (Resolução CFM nº 2.454/2026, Art. 5º, §2º):</strong> A inteligência artificial
-                  Nymphia opera estritamente como ferramenta de suporte e triagem preditiva populacional. É expressamente
-                  vedado ao sistema emitir diagnósticos definitivos ou prescrever condutas de forma autônoma. Decisões clínicas
-                  cabem exclusivamente ao médico obstetra assistente.
+                  <strong>Aviso (Resolução CFM nº 2.454/2026, Art. 4º, I e Art. 5º, § 2º):</strong> a IA da Nymphia é só
+                  apoio, com estimativas estatísticas populacionais. Ela não dá diagnóstico nem prescreve conduta, e o médico
+                  não pode deixar que ela comunique diagnóstico, prognóstico ou tratamento sem mediação humana. A decisão
+                  clínica é do médico assistente.
                 </div>
               </div>
 
-              {/* Aba 1: Matriz de Métricas */}
+              {/* Aba 1: métricas reais do treino v2, lidas do servidor */}
               {abaAtiva === 'metricas' && (
                 <div>
                   <h4 style={{ color: 'var(--color-vinho)', marginTop: 0, marginBottom: '8px' }}>
-                    Validação Estatística dos Modelos Preditivos Supervisionados
+                    Como os modelos foram avaliados
                   </h4>
-                  <p className="text-muted" style={{ fontSize: '0.82rem', marginBottom: '14px' }}>
-                    Modelos ensemble de Machine Learning treinados sobre registros do SINASC e SIH/SUS (DATASUS),
-                    calibrados com fatores de risco familiares e antecedentes clínicos:
+                  <p className="text-muted" style={{ fontSize: '0.82rem', marginBottom: '10px' }}>
+                    Números de teste em dados reais que o modelo nunca viu. Os modelos só usam o que se sabe durante a
+                    gestação. {dados?.como_ler}
                   </p>
 
-                  <div style={{ overflowX: 'auto', marginBottom: '16px' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-                      <thead>
-                        <tr style={{ backgroundColor: 'var(--color-creme)', textAlign: 'left', borderBottom: '2px solid var(--color-border)' }}>
-                          <th style={{ padding: '8px 10px' }}>Condição Obstétrica</th>
-                          <th style={{ padding: '8px 10px' }}>AUC-ROC</th>
-                          <th style={{ padding: '8px 10px' }}>Sensibilidade</th>
-                          <th style={{ padding: '8px 10px' }}>Especificidade</th>
-                          <th style={{ padding: '8px 10px' }}>Precisão</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                          <td style={{ padding: '8px 10px', fontWeight: 600 }}>Pré-eclâmpsia</td>
-                          <td style={{ padding: '8px 10px', color: '#047857' }}>0.84</td>
-                          <td style={{ padding: '8px 10px' }}>78%</td>
-                          <td style={{ padding: '8px 10px' }}>76%</td>
-                          <td style={{ padding: '8px 10px' }}>71%</td>
-                        </tr>
-                        <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                          <td style={{ padding: '8px 10px', fontWeight: 600 }}>Eclâmpsia</td>
-                          <td style={{ padding: '8px 10px', color: '#047857' }}>0.82</td>
-                          <td style={{ padding: '8px 10px' }}>75%</td>
-                          <td style={{ padding: '8px 10px' }}>80%</td>
-                          <td style={{ padding: '8px 10px' }}>68%</td>
-                        </tr>
-                        <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                          <td style={{ padding: '8px 10px', fontWeight: 600 }}>Diabetes Gestacional</td>
-                          <td style={{ padding: '8px 10px', color: '#047857' }}>0.79</td>
-                          <td style={{ padding: '8px 10px' }}>72%</td>
-                          <td style={{ padding: '8px 10px' }}>74%</td>
-                          <td style={{ padding: '8px 10px' }}>69%</td>
-                        </tr>
-                        <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                          <td style={{ padding: '8px 10px', fontWeight: 600 }}>Bem-Estar Fetal</td>
-                          <td style={{ padding: '8px 10px', color: '#047857' }}>0.81</td>
-                          <td style={{ padding: '8px 10px' }}>74%</td>
-                          <td style={{ padding: '8px 10px' }}>77%</td>
-                          <td style={{ padding: '8px 10px' }}>73%</td>
-                        </tr>
-                        <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                          <td style={{ padding: '8px 10px', fontWeight: 600 }}>Malformação Congênita</td>
-                          <td style={{ padding: '8px 10px', color: '#047857' }}>0.76</td>
-                          <td style={{ padding: '8px 10px' }}>70%</td>
-                          <td style={{ padding: '8px 10px' }}>75%</td>
-                          <td style={{ padding: '8px 10px' }}>64%</td>
-                        </tr>
-                        <tr style={{ backgroundColor: '#FEF2F2', borderBottom: '1px solid var(--color-border)' }}>
-                          <td style={{ padding: '8px 10px', fontWeight: 600, color: 'var(--color-vermelho)' }}>
-                            Infecção Urinária (ITU) ⚠️
-                          </td>
-                          <td style={{ padding: '8px 10px' }}>0.65</td>
-                          <td style={{ padding: '8px 10px' }}>62%</td>
-                          <td style={{ padding: '8px 10px' }}>68%</td>
-                          <td style={{ padding: '8px 10px', fontWeight: 700, color: 'var(--color-vermelho)' }}>1% (0.01)</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
+                  {!dados?.modelos ? (
+                    <p className="text-muted" style={{ fontSize: '0.82rem' }}>Não foi possível carregar as métricas agora.</p>
+                  ) : (
+                    <div style={{ overflowX: 'auto', marginBottom: '16px' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                        <thead>
+                          <tr style={{ backgroundColor: 'var(--color-creme)', textAlign: 'left', borderBottom: '2px solid var(--color-border)' }}>
+                            <th style={{ padding: '8px 10px' }}>Condição</th>
+                            <th style={{ padding: '8px 10px' }}>AUC (dados reais)</th>
+                            <th style={{ padding: '8px 10px' }}>Comparação</th>
+                            <th style={{ padding: '8px 10px' }}>Sensibilidade</th>
+                            <th style={{ padding: '8px 10px' }}>Especificidade</th>
+                            <th style={{ padding: '8px 10px' }}>Gestantes sinalizadas</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(dados.modelos).map(([chave, m]) => {
+                            const pct = (v) => (typeof v === 'number' ? `${Math.round(v * 100)}%` : '-');
+                            const num = (v) => (typeof v === 'number' ? v.toFixed(2).replace('.', ',') : '-');
+                            const indisponivel = chave === 'itu';
+                            const versao = m.simulado ? 'v3, simulação' : m.versao === '3.0' ? 'v3' : 'v2';
+                            const comparacao = m.versao === '3.0'
+                              ? `v2 nos mesmos dados: ${num(m.auc_roc_v2_nos_mesmos_dados)}`
+                              : `só com a idade: ${num(m.auc_roc_so_com_idade)}`;
+                            return (
+                              <tr key={chave} style={{ borderBottom: '1px solid var(--color-border)', backgroundColor: indisponivel ? '#FEF2F2' : 'transparent' }}>
+                                <td style={{ padding: '8px 10px', fontWeight: 600 }}>
+                                  {m.nome_clinico}{indisponivel ? ' (indisponível)' : ''}
+                                  <span style={{ display: 'block', fontWeight: 400, fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{versao}</span>
+                                </td>
+                                <td style={{ padding: '8px 10px' }}>{num(m.auc_roc)}</td>
+                                <td style={{ padding: '8px 10px', color: 'var(--color-text-muted)' }}>{comparacao}</td>
+                                <td style={{ padding: '8px 10px' }}>{pct(m.sensibilidade)}</td>
+                                <td style={{ padding: '8px 10px' }}>{pct(m.especificidade)}</td>
+                                <td style={{ padding: '8px 10px' }}>{pct(m.fracao_sinalizada_no_ponto)}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
 
                   <div style={{ backgroundColor: 'var(--color-creme)', padding: '12px', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem' }}>
                     <div style={{ fontWeight: 700, color: 'var(--color-vinho)', marginBottom: '4px' }}>
-                      Detector de Padrões Atípicos (Isolation Forest)
+                      O que esses números querem dizer
                     </div>
                     <div>
-                      Algoritmo de aprendizado não supervisionado treinado para sinalizar perfis que se desviam da distribuição
-                      populacional usual (ex: extremos de idade combinados com multiparidade e histórico de cesáreas prévias).
+                      As bases públicas do DATASUS não registram os fatores mais fortes (pré-eclâmpsia anterior, pressão alta
+                      ou diabetes de antes da gravidez, IMC). Na versão 3 esses fatores entram por simulação: o efeito de
+                      cada um vem de estudos publicados. Nos dados reais, com os fatores desconhecidos, o desempenho ficou
+                      igual ao da versão 2. A simulação não faz o modelo acertar mais em dados reais: ela faz a estimativa
+                      mudar quando a gestante informa um fator, na medida que os estudos mostram. Os alarmes do check-in não
+                      dependem destes modelos: são regras clínicas feitas para não deixar passar sinais de urgência.
                     </div>
                   </div>
+
+                  {dados?.simulacao && (
+                    <div style={{ marginTop: '14px' }}>
+                      <h4 style={{ color: 'var(--color-vinho)', margin: '0 0 6px' }}>Fatores simulados: efeito publicado e efeito no modelo</h4>
+                      <p className="text-muted" style={{ fontSize: '0.78rem', margin: '0 0 8px' }}>{dados.simulacao.o_que_e}</p>
+                      <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.76rem' }}>
+                          <thead>
+                            <tr style={{ backgroundColor: 'var(--color-creme)', textAlign: 'left' }}>
+                              <th style={{ padding: '6px 8px' }}>Condição</th>
+                              <th style={{ padding: '6px 8px' }}>Fator</th>
+                              <th style={{ padding: '6px 8px' }}>Razão de chances publicada</th>
+                              <th style={{ padding: '6px 8px' }}>No modelo</th>
+                              <th style={{ padding: '6px 8px' }}>Fonte</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {Object.entries(dados.modelos).flatMap(([chave, m]) =>
+                              Object.entries(m.efeitos_dos_fatores || {}).map(([fator, e]) => (
+                                <tr key={`${chave}-${fator}`} style={{ borderTop: '1px solid var(--color-border)' }}>
+                                  <td style={{ padding: '6px 8px' }}>{m.nome_clinico}</td>
+                                  <td style={{ padding: '6px 8px' }}>{ROTULO_FATOR[fator] || fator.replace(/_/g, ' ')}</td>
+                                  <td style={{ padding: '6px 8px' }}>{String(e.razao_de_chances_publicada ?? '-').replace('.', ',')}</td>
+                                  <td style={{ padding: '6px 8px' }}>{String(e.razao_de_chances_no_modelo ?? '-').replace('.', ',')}</td>
+                                  <td style={{ padding: '6px 8px', color: 'var(--color-text-muted)' }}>{dados.simulacao.fontes?.[e.fonte] || e.fonte}</td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                      {dados.simulacao.suposicoes?.length > 0 && (
+                        <ul style={{ fontSize: '0.76rem', margin: '8px 0 0', paddingLeft: '18px', color: 'var(--color-text-muted)' }}>
+                          {dados.simulacao.suposicoes.map((t, i) => <li key={i}>{t}</li>)}
+                        </ul>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Aba 2: Alerta CDC / ITU */}
+              {/* Aba 2: infecção urinária */}
               {abaAtiva === 'itu' && (
                 <div>
                   <div
@@ -303,31 +340,16 @@ export default function AiTransparencyModal({ isOpen, onClose }) {
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-vermelho)', fontWeight: 700, fontSize: '0.95rem', marginBottom: '8px' }}>
                       <AlertTriangle size={18} />
-                      Dever de Transparência e Boa-Fé Objetiva (CDC Arts. 12-14)
+                      Infecção urinária: sem modelo por enquanto
                     </div>
                     <p style={{ margin: 0, fontSize: '0.84rem', color: '#7F1D1D', lineHeight: 1.5 }}>
-                      Em conformidade com o Código de Defesa do Consumidor e a Resolução CFM nº 2.454/2026, declaramos
-                      expressamente que o modelo preditivo de Infecção do Trato Urinário (ITU) possui <strong>precisão de 0,01 (1%)</strong>.
+                      {dados?.modelos?.itu?.aviso || 'A base de treino não tinha casos suficientes.'}
                     </p>
                   </div>
-
-                  <h5 style={{ color: 'var(--color-vinho)', marginBottom: '6px' }}>Por que a precisão é de 1%?</h5>
-                  <p style={{ fontSize: '0.83rem', color: 'var(--color-text-main)', marginBottom: '12px' }}>
-                    O treinamento foi baseado no banco de dados hospitalares do SIH/SUS (DATASUS), onde quase a totalidade absoluta
-                    dos registros correspondia a partos a termo normais. Apenas internações obstétricas de alta complexidade com
-                    sepse ou pielonefrite aguda continham a codificação de ITU como diagnóstico primário gerador da AIH.
-                  </p>
-
-                  <h5 style={{ color: 'var(--color-vinho)', marginBottom: '6px' }}>Como este resultado deve ser utilizado?</h5>
+                  <h5 style={{ color: 'var(--color-vinho)', marginBottom: '6px' }}>O que vale enquanto isso</h5>
                   <ul style={{ fontSize: '0.83rem', paddingLeft: '20px', color: 'var(--color-text-main)', margin: '0 0 16px' }}>
-                    <li>
-                      <strong>Gatilho de rotina preventiva:</strong> Um score elevado serve apenas como lembrete educativo para que o obstetra
-                      ou a gestante verifiquem se a urocultura de rotina do trimestre foi solicitada e realizada.
-                    </li>
-                    <li>
-                      <strong>Proibição de presunção diagnóstica:</strong> Jamais interprete o score como comprovação de bacteriúria ativa,
-                      e nunca inicie ou interrompa antibióticos sem o laudo de urocultura com antibiograma.
-                    </li>
+                    <li>A urocultura de rotina do pré-natal é o caminho para encontrar infecção sem sintomas.</li>
+                    <li>Ardor ao urinar, febre ou dor nas costas são avaliados pelas regras do check-in, que avisam na hora.</li>
                   </ul>
                 </div>
               )}
@@ -340,17 +362,23 @@ export default function AiTransparencyModal({ isOpen, onClose }) {
                   </h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <div style={{ border: '1px solid var(--color-border)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
-                      <strong style={{ color: 'var(--color-vinho)' }}>Classificação SaMD (Anvisa / CFM):</strong>
+                      <strong style={{ color: 'var(--color-vinho)' }}>Nível de risco (CFM 2.454/2026, Art. 13):</strong>
                       <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: 'var(--color-text-main)' }}>
-                        O sistema Nymphia enquadra-se como Software as a Medical Device (SaMD) de Risco Médio (Classe II),
-                        segundo a RDC Anvisa nº 657/2022 e o Anexo II da Resolução CFM nº 2.454/2026.
+                        {dados?.classificacao_risco_cfm || 'Risco médio, pela avaliação preliminar da própria Nymphia (Resolução CFM nº 2.454/2026, Arts. 12 e 13 e Anexo II): o sistema influencia decisões, mas um profissional revisa cada resultado.'}
                       </p>
                     </div>
 
                     <div style={{ border: '1px solid var(--color-border)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
-                      <strong style={{ color: 'var(--color-vinho)' }}>Carimbo Auditável em Prontuário (Art. 4º, V):</strong>
+                      <strong style={{ color: 'var(--color-vinho)' }}>Situação na ANVISA:</strong>
+                      <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: 'var(--color-text-main)' }}>
+                        {dados?.situacao_anvisa || 'Sem notificação ou registro na ANVISA. Para ser oferecido como software de dispositivo médico (RDC nº 657/2022), o produto ainda precisa ser regularizado.'}
+                      </p>
+                    </div>
+
+                    <div style={{ border: '1px solid var(--color-border)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
+                      <strong style={{ color: 'var(--color-vinho)' }}>Registro do uso de IA no prontuário (Art. 4º, V):</strong>
                       <div style={{ fontStyle: 'italic', backgroundColor: 'var(--color-creme)', padding: '8px', borderRadius: '4px', marginTop: '6px', fontSize: '0.8rem' }}>
-                        "{dados?.carimbo_prontuario || 'Informações apoiadas por algoritmos preditivos de Inteligência Artificial (SaMD - CFM nº 2.454/2026). Decisão diagnóstica privativa do médico assistente.'}"
+                        "{dados?.carimbo_prontuario || 'Estimativa estatística com apoio de IA, registrada no prontuário como pede o Art. 4º, V da Resolução CFM nº 2.454/2026. Diagnóstico e conduta são decisões do médico assistente.'}"
                       </div>
                     </div>
 

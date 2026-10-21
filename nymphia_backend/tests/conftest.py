@@ -1,3 +1,5 @@
+import threading
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -53,6 +55,11 @@ def client(db_session):
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+    # Ao ligar, o servidor carrega os modelos numa linha de execução separada.
+    # Espera terminar, para ela não mexer no estado dos modelos do teste seguinte.
+    for linha in threading.enumerate():
+        if linha.name == "ml-warmup":
+            linha.join(timeout=120)
 
 
 # --- Fixtures adicionadas em 15/10/2026 ---

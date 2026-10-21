@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
+import { formatDate } from '../../utils/dateUtils';
 import { 
   Check, Shield, Sparkles, HeartHandshake, Stethoscope, 
   QrCode, CreditCard, AlertCircle, X, ExternalLink, RefreshCw 
@@ -141,7 +142,7 @@ export default function SubscriptionScreen({ onBack }) {
               </h3>
               <p style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', margin: 0 }}>
                 Status: <strong style={{ color: minhaAssinatura.status === 'ativa' ? '#27AE60' : 'var(--color-vermelho)' }}>{minhaAssinatura.status.toUpperCase()}</strong>
-                {minhaAssinatura.proxima_cobranca && ` • Próxima renovação: ${new Date(minhaAssinatura.proxima_cobranca).toLocaleDateString('pt-BR')}`}
+                {minhaAssinatura.proxima_cobranca && ` • Próxima renovação: ${formatDate(minhaAssinatura.proxima_cobranca)}`}
               </p>
             </div>
             {minhaAssinatura.plano !== 'free' && minhaAssinatura.status === 'ativa' && (

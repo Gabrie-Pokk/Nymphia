@@ -472,6 +472,14 @@ def _pressao_em_mmhg(sistolica: int, diastolica: int) -> Optional[Tuple[int, int
     return None
 
 
+def pressao_em_mmhg(sistolica: int, diastolica: int) -> Optional[Tuple[int, int]]:
+    """Versão pública: "14 por 9" (cmHg) ou "140/90" (mmHg) viram (140, 90). None se não fizer sentido."""
+    leitura = _pressao_em_mmhg(sistolica, diastolica)
+    if leitura and leitura[0] > leitura[1]:
+        return leitura
+    return None
+
+
 def _ler_numeros(texto: str) -> Tuple[List[Tuple[str, str, str]], List[str]]:
     """Devolve (sinais [(codigo, descricao, nivel)], números lidos para registro)."""
     achados: List[Tuple[str, str, str]] = []

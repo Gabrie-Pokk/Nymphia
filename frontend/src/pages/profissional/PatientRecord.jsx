@@ -3,8 +3,10 @@ import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 import TriageDisclaimer from '../../components/TriageDisclaimer';
 import AiTransparencyModal from '../../components/AiTransparencyModal';
+import ResumoRiscos from '../../components/ResumoRiscos';
 import { User, Activity, AlertTriangle, FileText, MessageSquare, Plus, CheckCircle2, ShieldCheck, Heart, Info, Bot } from 'lucide-react';
 
+import { formatDateTime } from '../../utils/dateUtils';
 export default function PatientRecord({ patientId, onBack }) {
   const { authHeaders } = useAuth();
   const [ficha, setFicha] = useState(null);
@@ -13,6 +15,41 @@ export default function PatientRecord({ patientId, onBack }) {
   const [salvandoObs, setSalvandoObs] = useState(false);
   const [sucessoObs, setSucessoObs] = useState('');
   const [modalIaAberto, setModalIaAberto] = useState(false);
+  const [gerandoRelatorio, setGerandoRelatorio] = useState(false);
+  const [erroRelatorio, setErroRelatorio] = useState('');
+
+  // Relatório para a consulta: PDF gerado na hora pelo servidor (com registro de acesso)
+  const handleBaixarRelatorio = async () => {
+    setGerandoRelatorio(true);
+    setErroRelatorio('');
+    try {
+      const res = await fetch(`/vinculo/paciente/${patientId}/relatorio-consulta`, { headers: authHeaders() });
+      if (!res.ok) {
+        let mensagem = 'Não foi possível gerar o relatório. Tente de novo em instantes.';
+        try {
+          const corpo = await res.json();
+          if (corpo?.detail && typeof corpo.detail === 'string') mensagem = corpo.detail;
+        } catch {
+          // resposta sem JSON
+        }
+        throw new Error(mensagem);
+      }
+      const blob = await res.blob();
+      const nome = (res.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/)?.[1] || 'relatorio-consulta.pdf';
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nome;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      setErroRelatorio(err.message);
+    } finally {
+      setGerandoRelatorio(false);
+    }
+  };
 
   const carregarFicha = async () => {
     setCarregando(true);
@@ -68,6 +105,12 @@ export default function PatientRecord({ patientId, onBack }) {
   }
 
   const { identificacao, perfil_clinico, historico_familiar, riscos_calculados, checkins, exames, mensagens_autorizadas, observacoes_medicas } = ficha;
+  const triagensEpds = ficha.triagens_epds || [];
+  const NIVEL_EPDS = {
+    urgente: { rotulo: 'Pergunta 10 positiva', cor: 'var(--color-vermelho, #C0392B)' },
+    atencao: { rotulo: 'Triagem positiva (10 ou mais)', cor: '#B45309' },
+    sem_sinais: { rotulo: 'Abaixo do corte', cor: '#1E7A46' }
+  };
 
   return (
     <div>
@@ -83,6 +126,31 @@ export default function PatientRecord({ patientId, onBack }) {
           <p className="text-muted" style={{ fontSize: '0.85rem' }}>{identificacao?.email}</p>
         </div>
         <span className="badge-gold">Auditoria LGPD Ativa</span>
+      </div>
+
+      {/* Relatório para a consulta */}
+      <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', borderLeft: '5px solid var(--color-rosa)' }}>
+        <div style={{ flex: '1 1 260px' }}>
+          <strong style={{ fontSize: '0.95rem' }}>Relatório para a consulta</strong>
+          <p className="text-muted" style={{ fontSize: '0.78rem', margin: '4px 0 0' }}>
+            PDF gerado na hora com o período desde a última consulta da agenda: pontos de atenção, check-ins,
+            Escala de Edimburgo, medidas, exames, rastreio e as suas anotações.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={handleBaixarRelatorio}
+          disabled={gerandoRelatorio}
+          style={{ minHeight: '40px', padding: '6px 16px', fontSize: '0.85rem' }}
+        >
+          <FileText size={16} /> {gerandoRelatorio ? 'Gerando...' : 'Baixar PDF'}
+        </button>
+        {erroRelatorio && (
+          <p role="alert" style={{ flexBasis: '100%', margin: 0, fontSize: '0.8rem', color: 'var(--color-vermelho, #C0392B)' }}>
+            {erroRelatorio}
+          </p>
+        )}
       </div>
 
       <TriageDisclaimer />
@@ -107,13 +175,13 @@ export default function PatientRecord({ patientId, onBack }) {
         </div>
       </div>
 
-      {/* Riscos Obstétricos Calculados (6 Condições CFM 2.454) */}
+      {/* Riscos calculados pelos modelos */}
       <div className="card" style={{ borderLeft: '5px solid var(--color-dourado)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
           <div>
             <h3 style={{ fontSize: '1.05rem', margin: 0 }}>Rastreio Estatístico Populacional (SINASC/SIH)</h3>
             <span style={{ fontSize: '0.72rem', color: 'var(--color-vinho)', fontWeight: 600 }}>
-              🛡️ SaMD Classe II • Resolução CFM nº 2.454/2026 (Art. 4º, V)
+              IA de risco médio pela avaliação da própria Nymphia (CFM 2.454/2026) • sem registro na ANVISA
             </span>
           </div>
           <button
@@ -127,48 +195,16 @@ export default function PatientRecord({ patientId, onBack }) {
         </div>
 
         <p className="text-muted" style={{ fontSize: '0.78rem', marginBottom: '12px' }}>
-          Triagem multivariada baseada no perfil e histórico familiar da paciente:
+          Estimativas com dados do DATASUS e, na versão 3, fatores clínicos simulados a partir de estudos publicados,
+          calculadas com o cadastro da paciente:
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-          {riscos_calculados?.condicoes && Object.entries(riscos_calculados.condicoes).map(([cond, val]) => (
-            <div
-              key={cond}
-              style={{
-                backgroundColor: '#FFFFFF',
-                padding: '10px',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--color-border)'
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <strong style={{ fontSize: '0.82rem', textTransform: 'capitalize' }}>
-                  {cond.replace(/_/g, ' ')}
-                  {cond === 'itu' && <span title="Precisão de 1% devido a desbalanceamento hospitalar do SUS" style={{ color: 'var(--color-dourado)', marginLeft: '4px', cursor: 'help' }}>⚠️</span>}
-                </strong>
-                <span
-                  style={{
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    color: val.nivel === 'alto' ? 'var(--color-vermelho)' : val.nivel === 'moderado' ? '#D97706' : '#27AE60'
-                  }}
-                >
-                  {val.nivel.toUpperCase()} ({Math.round(val.probabilidade * 100)}%)
-                </span>
-              </div>
-              {val.fonte === 'regra_clinica_simples' && (
-                <div style={{ fontSize: '0.68rem', color: 'var(--color-texto-suave, #6B6B6B)', marginTop: '4px' }}>
-                  Estimativa por regra clínica simples (o modelo treinado não está ligado neste servidor).
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+        <ResumoRiscos riscos={riscos_calculados} modo="profissional" />
 
-        {/* Carimbo de Prontuário CFM 2.454/2026 */}
+        {/* Registro do uso de IA no prontuário (CFM 2.454/2026, Art. 4º, V) */}
         <div style={{ marginTop: '12px', padding: '10px 12px', backgroundColor: 'var(--color-creme)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', fontSize: '0.74rem', color: 'var(--color-vinho)', lineHeight: '1.4' }}>
-          <strong>Carimbo Auditável de Prontuário (CFM 2.454/2026):</strong>{' '}
-          {riscos_calculados?.carimbo_samd_cfm || 'Triagem com suporte de IA supervisionada (SaMD Classe II / CFM nº 2.454/2026). Decisão diagnóstica privativa do médico obstetra assistente.'}
+          <strong>Registro do uso de IA no prontuário:</strong>{' '}
+          {riscos_calculados?.carimbo_samd_cfm || 'Estimativa estatística com apoio de IA, registrada no prontuário como pede o Art. 4º, V da Resolução CFM nº 2.454/2026. Diagnóstico e conduta são decisões do médico assistente.'}
         </div>
       </div>
 
@@ -184,7 +220,7 @@ export default function PatientRecord({ patientId, onBack }) {
             {checkins.map((c) => (
               <div key={c.id} style={{ padding: '8px 10px', backgroundColor: '#FFFFFF', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', fontSize: '0.82rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                  <strong>{new Date(c.data_hora).toLocaleString('pt-BR')}</strong>
+                  <strong>{formatDateTime(c.data_hora)}</strong>
                   <span className="badge-gold" style={{ fontSize: '0.68rem' }}>Humor {c.humor}/5</span>
                 </div>
                 {c.descricao && <p style={{ margin: '2px 0', color: 'var(--color-text-main)' }}>"{c.descricao}"</p>}
@@ -197,6 +233,42 @@ export default function PatientRecord({ patientId, onBack }) {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Triagem emocional (EPDS) */}
+      <div className="card">
+        <h3 style={{ fontSize: '1.05rem', marginBottom: '8px' }}>Triagem Emocional (EPDS)</h3>
+        {triagensEpds.length === 0 ? (
+          <p className="text-muted" style={{ fontSize: '0.85rem', margin: 0 }}>A paciente ainda não respondeu à escala.</p>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+            <thead>
+              <tr style={{ textAlign: 'left', color: 'var(--color-text-muted)' }}>
+                <th style={{ padding: '4px 6px' }}>Data</th>
+                <th style={{ padding: '4px 6px' }}>Semana</th>
+                <th style={{ padding: '4px 6px' }}>Pontos</th>
+                <th style={{ padding: '4px 6px' }}>Resultado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {triagensEpds.map((t) => (
+                <tr key={t.id} style={{ borderTop: '1px solid var(--color-border)' }}>
+                  <td style={{ padding: '4px 6px' }}>{formatDateTime(t.data_hora)}</td>
+                  <td style={{ padding: '4px 6px' }}>{t.semana_gestacional ?? '-'}</td>
+                  <td style={{ padding: '4px 6px' }}>{t.pontuacao}/30</td>
+                  <td style={{ padding: '4px 6px', color: NIVEL_EPDS[t.nivel]?.cor, fontWeight: 700 }}>
+                    {NIVEL_EPDS[t.nivel]?.rotulo || t.nivel}
+                    {t.pensamento_de_se_machucar ? ' · pensamento de se machucar' : ''}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <p className="text-muted" style={{ fontSize: '0.72rem', margin: '8px 0 0' }}>
+          Escala de Edimburgo. Corte de triagem: 10 ou mais (validação brasileira, Santos et al., 2007).
+          Qualquer resposta positiva na pergunta 10 pede avaliação do risco de suicídio. Triagem não é diagnóstico.
+        </p>
       </div>
 
       {/* Trechos de Conversa Autorizados */}
@@ -213,7 +285,7 @@ export default function PatientRecord({ patientId, onBack }) {
             {mensagens_autorizadas.map((m) => (
               <div key={m.id} style={{ padding: '8px 12px', backgroundColor: '#FFFFFF', borderRadius: 'var(--radius-sm)', borderLeft: '4px solid var(--color-rosa)' }}>
                 <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-                  {new Date(m.data_hora).toLocaleString('pt-BR')}
+                  {formatDateTime(m.data_hora)}
                 </span>
                 <p style={{ fontSize: '0.85rem', margin: '4px 0 0 0' }}>"{m.conteudo}"</p>
               </div>
@@ -263,7 +335,7 @@ export default function PatientRecord({ patientId, onBack }) {
               {observacoes_medicas.map((obs) => (
                 <div key={obs.id} style={{ padding: '8px 12px', backgroundColor: '#FFFFFF', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', fontSize: '0.85rem' }}>
                   <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-                    Registrado em: {new Date(obs.criado_em).toLocaleString('pt-BR')}
+                    Registrado em: {formatDateTime(obs.criado_em)}
                   </span>
                   <p style={{ margin: '4px 0 0 0', color: 'var(--color-vinho)', fontWeight: 500 }}>
                     {obs.observacao}

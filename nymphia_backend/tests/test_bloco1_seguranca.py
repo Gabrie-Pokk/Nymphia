@@ -185,3 +185,15 @@ def test_1_5_limitacao_de_taxa_auth_bloqueia_apos_n_tentativas(client):
     assert status_codes[11] == 429
 
     auth_rate_limiter.reset()
+
+
+def test_csp_lista_so_o_que_o_app_carrega(client):
+    """16/10/2026: a política descreve o que o app usa de verdade, para poder ser ativada depois."""
+    csp = client.get("/health").headers.get("Content-Security-Policy-Report-Only", "")
+    diretivas = dict(d.strip().split(" ", 1) for d in csp.split(";") if d.strip())
+    assert diretivas["script-src"] == "'self'"  # nenhum script de fora nem inline
+    assert "unsafe-inline" not in csp and "unsafe-eval" not in csp
+    assert "jsdelivr" not in csp  # o MediaPipe saiu com o guia de postura novo
+    assert "https://fonts.googleapis.com" in diretivas["style-src"]
+    assert "https://fonts.gstatic.com" in diretivas["font-src"]
+    assert "blob:" in diretivas["frame-src"]  # documento do profissional na área da equipe

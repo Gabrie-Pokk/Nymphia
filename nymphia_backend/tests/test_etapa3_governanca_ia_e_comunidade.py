@@ -3,16 +3,21 @@ from fastapi.testclient import TestClient
 
 def test_transparencia_clinica_cfm_2454_e_cdc(client: TestClient):
     """
-    Verifica a publicação obrigatória das métricas dos modelos de IA,
-    classificação SaMD e justificativa do desbalanceamento de ITU (CFM 2.454/2026 e CDC).
+    Verifica a publicação obrigatória das métricas dos modelos de IA, o nível de
+    risco informado (CFM 2.454/2026, Art. 13), a situação na ANVISA sem exagero e
+    a justificativa do desbalanceamento de ITU.
     """
     res = client.get("/modelos/transparencia-clinica")
     assert res.status_code == 200
     data = res.json()
 
     assert "CFM nº 2.454/2026" in data["marco_regulatorio"]
-    assert "SaMD" in data["classificacao_samd"]
-    assert "PROIBIDO" in data["finalidade_exclusiva"]
+    assert "classificacao_samd" not in data
+    assert "Risco médio" in data["classificacao_risco_cfm"] and "Anexo II" in data["classificacao_risco_cfm"]
+    # Sem notificação na ANVISA, nada de "Classe II" ou de selo de dispositivo médico
+    assert data["situacao_anvisa"].startswith("Sem notificação ou registro na ANVISA")
+    assert "Classe II" not in str(data)
+    assert "Não serve para diagnóstico" in data["finalidade_exclusiva"]
     assert "modelos" in data
 
     modelos = data["modelos"]
@@ -23,12 +28,26 @@ def test_transparencia_clinica_cfm_2454_e_cdc(client: TestClient):
     assert "malformacao" in modelos
     assert "itu" in modelos
 
-    # Validação do modelo de ITU com transparência sobre precisão 0.01 / 1%
-    itu = modelos["itu"]
-    assert itu["precisao"] == 0.01
-    assert itu["alerta_cdc_transparencia"] is True
-    assert "desbalanceamento" in itu["justificativa_tecnica"].lower()
-    assert "SIH/SUS" in itu["justificativa_tecnica"]
+    # ITU sem modelo confiável: o relatório diz por quê (poucos casos; o código certo é O23)
+    assert "O23" in modelos["itu"]["aviso"]
+
+    # Os números publicados saem dos arquivos de métricas do treino, não de valores escritos à mão
+    # (antes: AUC 0,84 inventado). Na v3, só desempenho em dados reais.
+    import json
+    from pathlib import Path
+    pasta = Path(__file__).resolve().parent.parent / "modelos"
+    v2 = json.loads((pasta / "v2" / "metricas_modelos_v2.json").read_text(encoding="utf-8"))["modelos"]
+    v3 = json.loads((pasta / "metricas_modelos_v3.json").read_text(encoding="utf-8"))["modelos"]
+    for nome, publicado in modelos.items():
+        if publicado["versao"] == "3.0":
+            real = v3[nome]["conferencia_em_dados_reais"]["v3"]
+            assert publicado["auc_roc"] == real["auc_roc"]
+            assert publicado["sensibilidade"] == real.get("ponto_fn_primeiro", {}).get("sensibilidade")
+        else:
+            assert publicado["auc_roc"] == v2[nome]["auc_roc"]
+            assert publicado["sensibilidade"] == v2[nome]["ponto_fn_primeiro"]["sensibilidade"]
+    # A simulação é declarada, com fontes
+    assert data["simulacao"]["fontes"] and "não foi calculada" in data["simulacao"]["o_que_e"]
 
     # Rota alternativa /risco/transparencia-clinica
     res_alt = client.get("/risco/transparencia-clinica")
@@ -51,8 +70,11 @@ def test_carimbo_samd_em_calculo_de_risco(client: TestClient):
     data = res.json()
 
     assert "carimbo_samd_cfm" in data
-    assert "CFM nº 2.454/2026" in data["carimbo_samd_cfm"]
-    assert "alerta_transparencia_cdc" in data["condicoes"]["itu"]
+    assert "CFM nº 2.454/2026" in data["carimbo_samd_cfm"] and "Art. 4º, V" in data["carimbo_samd_cfm"]
+    assert "Classe II" not in data["carimbo_samd_cfm"] + data["enquadramento_regulatorio"]
+    assert "Sem notificação ou registro na ANVISA" in data["enquadramento_regulatorio"]
+    assert data["condicoes"]["itu"]["fonte"] == "indisponivel"
+    assert "O23" in data["condicoes"]["itu"]["motivo"]
 
 
 def test_diretrizes_comunidade_stf_tema_987(client: TestClient):

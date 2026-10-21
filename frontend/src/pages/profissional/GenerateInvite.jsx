@@ -4,6 +4,7 @@ import BackButton from '../../components/BackButton';
 import { apiFetch } from '../../utils/api';
 import { QrCode, Copy, Share2, CheckCircle2, AlertCircle } from 'lucide-react';
 
+import { formatDate } from '../../utils/dateUtils';
 export default function GenerateInvite({ onBack }) {
   const { authHeaders } = useAuth();
   const [codigo, setCodigo] = useState('');
@@ -118,7 +119,7 @@ export default function GenerateInvite({ onBack }) {
             </div>
 
             <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '16px' }}>
-              Válido até: {new Date(expiraEm).toLocaleDateString('pt-BR')} (ou até o primeiro uso)
+              Válido até: {formatDate(expiraEm)} (ou até o primeiro uso)
             </p>
 
             <div style={{ display: 'flex', gap: '10px' }}>

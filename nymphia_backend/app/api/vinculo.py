@@ -2,25 +2,53 @@ import secrets
 import string
 from typing import List, Optional
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, inspect as sa_inspect
 
 from app.database import get_db
 from app.models.auth import Gestante, Profissional
-from app.models.clinical import PerfilClinico, HistoricoFamiliar, CheckinRegistro, Exame
+from app.models.clinical import PerfilClinico, HistoricoFamiliar, CheckinRegistro, Exame, TriagemEPDS
 from app.models.interaction import EventoEmergencia, Mensagem, EventoAgenda
 from app.models.relations import Vinculo, CodigoConvite, LogAcesso
 from app.models.governance import ObservacaoProfissional
 from app.schemas.all_schemas import (
     CodigoConviteOut, UsarCodigoRequest, SolicitarVinculoRequest,
     ResponderVinculoRequest, VinculoOut, PacientePainelItem,
-    ObservacaoProfissionalCreate, ObservacaoProfissionalOut
+    ObservacaoProfissionalCreate, ObservacaoProfissionalOut, _serialize_datetime_utc
 )
 from app.security.jwt_auth import get_current_gestante, get_current_profissional, get_current_profissional_aprovado
-from app.services.ai_risk_service import calculate_maternal_risks
+from app.services.ai_risk_service import calculate_maternal_risks, perfil_para_modelos
+from app.api.epds import resumos_da_gestante
+from app.services.relatorio_consulta_service import FUSO_BRASILIA, gerar_relatorio_consulta
 
 router = APIRouter(prefix="/vinculo", tags=["Vínculo Gestante-Profissional e Painel"])
+
+def _linha(registro, excluir=()):
+    """Linha do banco como dicionário, com os horários marcados como UTC.
+
+    Sem o "Z", o navegador lê o horário UTC como se fosse local e a ficha
+    mostrava check-ins, mensagens e observações 3 horas adiantados.
+    """
+    if registro is None:
+        return None
+    dados = {}
+    for coluna in sa_inspect(registro).mapper.column_attrs:
+        if coluna.key in excluir:
+            continue
+        valor = getattr(registro, coluna.key)
+        dados[coluna.key] = _serialize_datetime_utc(valor) if isinstance(valor, datetime) else valor
+    return dados
+
+
+def _linhas(registros, excluir=()):
+    return [_linha(r, excluir) for r in registros]
+
+
+# Colunas antigas do check-in que não vão para a ficha: a "anomalia" era um
+# número fixo e as categorias do BERTimbau vinham, na verdade, de palavras-chave.
+COLUNAS_ANTIGAS_DO_CHECKIN = ("categorias_bertimbau", "score_anomalia")
+
 
 def generate_random_code(length: int = 8) -> str:
     chars = string.ascii_uppercase + string.digits
@@ -192,7 +220,7 @@ def listar_minhas_gestantes(
     """
     PAINEL DO PROFISSIONAL:
     Ordenada ESTRITAMENTE por prioridade de urgência, NUNCA alfabética.
-    Critério 1: Contagem de alertas (check-in e conversa) nos últimos 30 dias (DESC).
+    Critério 1: Contagem de alertas (check-in, conversa e triagem emocional) nos últimos 30 dias (DESC).
     Critério 2 (desempate): Check-in mais recente primeiro (DESC).
     Critério 3: Gestante sem check-in fica por ÚLTIMO dentro do seu grupo.
     """
@@ -226,9 +254,16 @@ def listar_minhas_gestantes(
             Mensagem.data_hora >= trinta_dias_atras
         ).count()
 
+        # Triagem emocional (EPDS) positiva ou com pensamento de se machucar
+        epds_alerta_30d = db.query(TriagemEPDS).filter(
+            TriagemEPDS.gestante_id == gestante.id,
+            TriagemEPDS.nivel.in_(("urgente", "atencao")),
+            TriagemEPDS.data_hora >= trinta_dias_atras
+        ).count()
+
         # Total de alertas
         total_alertas_checkin = sum(len(c.alerta_sintoma_fisico or []) for c in checkins_30d)
-        total_alertas = total_alertas_checkin + mensagens_alerta_30d
+        total_alertas = total_alertas_checkin + mensagens_alerta_30d + epds_alerta_30d
 
         # Último check-in geral
         ultimo_checkin = (
@@ -342,14 +377,8 @@ def obter_ficha_paciente(
     ).order_by(ObservacaoProfissional.criado_em.desc()).all()
 
     # Cálculo dos riscos obstétricos
-    perfil_dict = {
-        "idade": perfil.idade if perfil else 25,
-        "perdas_gestacionais": perfil.perdas_gestacionais if perfil else 0,
-        "partos_cesareos": perfil.partos_cesareos if perfil else 0,
-        "gestacoes_anteriores": perfil.gestacoes_anteriores if perfil else 0,
-    }
     historico_list = [{"parente": h.parente, "condicao": h.condicao} for h in historico]
-    riscos_calculados = calculate_maternal_risks(perfil_dict, historico_list)
+    riscos_calculados = calculate_maternal_risks(perfil_para_modelos(perfil), historico_list)
 
     return {
         "identificacao": {
@@ -357,16 +386,64 @@ def obter_ficha_paciente(
             "email": gestante.email,
             "recusa_ia": gestante.recusa_ia
         },
-        "perfil_clinico": perfil,
-        "historico_familiar": historico,
+        "perfil_clinico": _linha(perfil),
+        "historico_familiar": _linhas(historico),
         "riscos_calculados": riscos_calculados,
-        "checkins": checkins,
-        "exames": exames,
-        "emergencias": emergencias,
-        "mensagens_autorizadas": mensagens_autorizadas,
-        "observacoes_medicas": observacoes_medicas,
+        "checkins": _linhas(checkins, excluir=COLUNAS_ANTIGAS_DO_CHECKIN),
+        "triagens_epds": resumos_da_gestante(db, gestante_id),
+        "exames": _linhas(exames),
+        "emergencias": _linhas(emergencias),
+        "mensagens_autorizadas": _linhas(mensagens_autorizadas),
+        "observacoes_medicas": _linhas(observacoes_medicas),
         "somente_leitura": True
     }
+
+
+# --- RELATÓRIO PARA A CONSULTA (PDF GERADO NA HORA + AUDITORIA LGPD) ---
+@router.get("/paciente/{gestante_id}/relatorio-consulta")
+def baixar_relatorio_consulta(
+    gestante_id: str,
+    prof: Profissional = Depends(get_current_profissional_aprovado),
+    db: Session = Depends(get_db)
+):
+    """
+    PDF com o período desde a última consulta da agenda: pontos de atenção,
+    check-ins, Escala de Edimburgo, medidas, exames, agenda, rastreio com IA
+    (se a gestante não recusou), conversas autorizadas e as anotações de quem
+    gera. Regras em app/services/relatorio_consulta_service.py.
+    """
+    vinculo = db.query(Vinculo).filter(
+        Vinculo.profissional_id == prof.id,
+        Vinculo.gestante_id == gestante_id,
+        Vinculo.status == "ativo"
+    ).first()
+    if not vinculo:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Você não possui vínculo clínico ativo com esta gestante"
+        )
+
+    agora = datetime.utcnow()
+    db.add(LogAcesso(
+        gestante_id=gestante_id,
+        acessado_por_id=prof.id,
+        acessado_por_tipo="profissional",
+        recurso="relatorio_consulta_pdf",
+        data_hora=agora
+    ))
+    db.commit()
+
+    pdf = gerar_relatorio_consulta(db, gestante_id, prof, agora)
+    # O nome do arquivo não leva o nome da gestante: ele aparece em downloads e históricos
+    nome_arquivo = f"relatorio-consulta-{(agora + FUSO_BRASILIA):%Y-%m-%d}.pdf"
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{nome_arquivo}"',
+            "Cache-Control": "no-store",
+        },
+    )
 
 @router.post("/paciente/{gestante_id}/observacao", response_model=ObservacaoProfissionalOut, status_code=status.HTTP_201_CREATED)
 def adicionar_observacao_medica(
